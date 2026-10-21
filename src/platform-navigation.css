@@ -1,0 +1,77 @@
+.platform-header { height:58px; background:#fff; border-bottom:1px solid #e3eaf4; color:#294568; font-family:"Microsoft YaHei","PingFang SC",sans-serif; }
+.platform-header-inner { max-width:1664px; height:100%; margin:auto; padding:0 32px; display:flex; align-items:center; gap:40px; }
+.platform-brand { display:flex; align-items:center; gap:22px; min-width:0; text-decoration:none; color:inherit; font-size:14px; white-space:nowrap; }
+.platform-brand img { width:77px; height:40px; object-fit:contain; }
+.platform-brand>span { border-left:1px solid #e3eaf4; padding-left:22px; }
+.platform-navigation { display:flex; align-self:stretch; gap:24px; }
+.platform-navigation>a { display:flex; position:relative; align-items:center; gap:8px; color:#70829e; text-decoration:none; font-size:14px; white-space:nowrap; }
+.platform-navigation>a>svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.platform-navigation>a[aria-current="page"] { color:#315ee9; font-weight:600; }
+.platform-navigation>a[aria-current="page"]::after { content:""; position:absolute; height:3px; bottom:0; left:0; right:0; background:#315ee9; border-radius:3px 3px 0 0; }
+.platform-navigation>a:hover { color:#315ee9; }
+.platform-header a:focus-visible { outline:2px solid #315ee9; outline-offset:4px; border-radius:3px; }
+@media(max-width:760px) { .platform-header-inner { padding:0 18px; justify-content:space-between; gap:14px; } .platform-brand { gap:12px; } .platform-brand>span { padding-left:12px; font-size:12px; } .platform-navigation { gap:18px; } .platform-navigation>a { font-size:12px; gap:5px; } }
+@media(max-width:520px) { .platform-brand>span { display:none; } .platform-brand img { width:66px; } }
+.platform-settings-link { margin-left:auto; border:0; background:transparent; color:#7a8ba4; cursor:pointer; font:inherit; font-size:12px; padding:8px 0 8px 12px; white-space:nowrap; }
+.platform-settings-link:hover { color:#315ee9; }
+.platform-settings-link:focus-visible { outline:2px solid #315ee9; outline-offset:3px; }
+@media(max-width:680px) { .platform-brand>span { display:none; } }
+@media(max-width:520px) {
+  .platform-header-inner { padding:0 12px; gap:10px; }
+  .platform-brand img { width:52px; }
+  .platform-navigation { gap:12px; }
+  .platform-navigation>a { font-size:11px; }
+  .platform-navigation>a>svg { display:none; }
+  .platform-settings-link { font-size:9px; }
+}
+.project-command.hero { background:linear-gradient(115deg,#174ba4,#173978); box-shadow:none; }
+.project-command .project-command-inner { max-width:1664px; min-height:112px; margin:auto; padding:22px 32px; justify-content:space-between; gap:20px; }
+.project-command .hero-title { width:auto; padding:0; text-align:left; }
+.project-command .hero-title h1 { margin:0 0 9px; font-size:24px; font-weight:650; line-height:1.25; white-space:normal; }
+.project-scope { margin:0; color:#d0dcf3; font-size:13px; line-height:1.6; }
+.project-scope span { margin-left:16px; padding-left:16px; border-left:1px solid #ffffff38; }
+.project-command .hero-tools { flex:none; justify-content:flex-end; gap:16px; }
+.project-command .refresh { border-radius:7px; min-height:34px; padding:6px 12px; font-weight:500; }
+.project-command .update-time { font-size:11px; font-weight:400; }
+.page { background:#f3f6fc; }
+.page>main { max-width:1664px; padding:20px 32px 36px; }
+.page .kpi-grid { gap:14px; margin-bottom:20px; }
+.page .kpi-card { min-height:104px; grid-template-columns:46px minmax(0,1fr); gap:14px; padding:18px; border-radius:12px; box-shadow:0 4px 18px #244e8a09; }
+.page .kpi-icon { width:46px; height:46px; border-radius:10px; font-size:22px; box-shadow:none; }
+.page .kpi-content h2 { font-size:12px; font-weight:600; margin:0 0 10px; }
+.page .kpi-value strong { font-size:29px; font-weight:650; }
+.plan-sync-status { margin-bottom:16px; border:1px solid #f0d2a7; background:#fff9ed; color:#8a5b1e; border-radius:8px; padding:10px 14px; font-size:12px; line-height:1.7; }
+.application-settings-dialog { width:min(480px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); overflow:auto; padding:0; border:1px solid #dce5f2; border-radius:14px; background:#fff; color:#294568; font:14px/1.6 "Microsoft YaHei",sans-serif; box-shadow:0 20px 70px #173c7140; }
+.application-settings-dialog::backdrop { background:#142b4b66; backdrop-filter:blur(3px); }
+.application-settings-dialog header,.application-settings-dialog footer { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; background:#fff; }
+.application-settings-dialog header { position:sticky; top:0; border-bottom:1px solid #e3eaf4; }
+.application-settings-dialog h2 { margin:0; font-size:18px; font-weight:600; }
+.application-settings-dialog button { font:inherit; cursor:pointer; border:1px solid #dce5f2; border-radius:7px; color:#526b8e; background:#fff; padding:6px 12px; }
+.application-settings-dialog header button { font-size:22px; line-height:1; padding:4px 8px; border:0; }
+.application-settings-fields { padding:20px 22px; }
+.application-settings-fields label { display:block; font-size:12px; font-weight:600; margin-bottom:16px; }
+.application-settings-fields input { display:block; box-sizing:border-box; width:100%; margin-top:7px; padding:10px 12px; font:inherit; font-size:14px; line-height:1.4; color:#294568; border:1px solid #dce5f2; border-radius:7px; background:#fbfcfe; }
+.application-settings-fields p { margin:0 0 12px; color:#7a8ba4; font-size:11px; }
+.application-settings-status { font-size:12px; min-height:20px; }
+.application-settings-dialog[data-state=error] .application-settings-status { color:#b64141; }
+.application-settings-dialog[data-state=success] .application-settings-status { color:#208471; }
+.application-settings-dialog footer { position:sticky; bottom:0; justify-content:flex-end; gap:10px; border-top:1px solid #e3eaf4; }
+.application-settings-dialog button[type=submit] { background:#315ee9; color:#fff; border-color:#315ee9; }
+.application-settings-dialog button:disabled { opacity:.55; cursor:default; }
+.application-settings-dialog :focus-visible { outline:2px solid #315ee9; outline-offset:2px; }
+@media(max-width:760px) {
+  .platform-header-inner { gap:12px; }
+  .platform-navigation { gap:14px; }
+  .platform-settings-link { margin-left:0; font-size:10px; padding-left:0; }
+  .project-command .project-command-inner { min-height:0; padding:18px; flex-wrap:wrap; gap:14px; }
+  .project-command .hero-title h1 { font-size:21px; }
+  .project-command .hero-tools { gap:12px; }
+  .project-scope { font-size:11px; }
+  .project-scope span { margin-left:10px; padding-left:10px; }
+  .page>main { padding:16px 18px 28px; }
+  .page .kpi-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .page .kpi-card { grid-template-columns:1fr; padding:12px; gap:8px; min-height:0; }
+  .page .kpi-icon { display:none; }
+  .page .kpi-content h2 { font-size:10px; }
+  .page .kpi-value strong { font-size:24px; }
+}

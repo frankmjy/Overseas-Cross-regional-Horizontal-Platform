@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>VNET</title>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#315ee9"/>
+  <path d="M15 17h11l6 19 7-19h11L37 48H26Z" fill="#fff"/>
+  <circle cx="47" cy="16" r="6" fill="#06c69b" stroke="#fff" stroke-width="2.5"/>
+</svg>

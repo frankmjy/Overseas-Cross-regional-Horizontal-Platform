@@ -1,0 +1,351 @@
+{
+  "baseToken": "CID8b8V7CaCtKesWGFKcHTdqnlc",
+  "baseUrl": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc",
+  "categories": [
+    {
+      "id": "index",
+      "name": "Knowledge Index（知识索引）"
+    },
+    {
+      "id": "standards",
+      "name": "01 Standards & Interfaces（标准与界面）"
+    },
+    {
+      "id": "ehs",
+      "name": "02 EHS References（安全健康环境资料）"
+    },
+    {
+      "id": "experience",
+      "name": "03 Experience Sharing（经验共享）"
+    }
+  ],
+  "sources": [
+    {
+      "id": "tblIJiG3OE2QGTm8",
+      "name": "Knowledge Index（知识索引）",
+      "category": "index",
+      "kind": "index",
+      "fields": {
+        "Document Title": {
+          "id": "fldgMSPCEH",
+          "name": "Document Title（文档名称）"
+        },
+        "Notes": {
+          "id": "fld3kNDDxq",
+          "name": "Notes（备注）"
+        },
+        "Document Link": {
+          "id": "fldlBexqbh",
+          "name": "Document Link（文档链接）"
+        },
+        "Shared At": {
+          "id": "fldugm27nS",
+          "name": "Shared At（分享时间）"
+        },
+        "Summary": {
+          "id": "fldAVxUEA0",
+          "name": "Summary（文档摘要）"
+        },
+        "Topic": {
+          "id": "fld2unPzSu",
+          "name": "Topic（主题分类）"
+        },
+        "Document Type": {
+          "id": "fldy5oRCNO",
+          "name": "Document Type（文档类型）"
+        },
+        "Project": {
+          "id": "fldaZZ8nPf",
+          "name": "Project（项目归属）"
+        }
+      }
+    },
+    {
+      "id": "tblYddsWcDx5vBWo",
+      "name": "Reference Service Standards（服务标准参考）",
+      "category": "standards",
+      "kind": "reference",
+      "fields": {
+        "Content": {
+          "id": "fld05JB1jX",
+          "name": "Content（内容）"
+        },
+        "Subcategory": {
+          "id": "fldWvpZnn0",
+          "name": "Subcategory（子分类）"
+        },
+        "Category": {
+          "id": "fldYEPkNCT",
+          "name": "Category（分类）"
+        },
+        "Source Files": {
+          "id": "fldfbJFw4X",
+          "name": "Source Files（源附件清单）"
+        },
+        "Source Record": {
+          "id": "fldpO76RDJ",
+          "name": "Source Record（原记录链接）"
+        }
+      }
+    },
+    {
+      "id": "tblgafmSBZdQuwjQ",
+      "name": "Reference Handover Interfaces（交付界面参考）",
+      "category": "standards",
+      "kind": "reference",
+      "fields": {
+        "Source Record": {
+          "id": "fldnKGCkXR",
+          "name": "Source Record（原记录链接）"
+        },
+        "Content": {
+          "id": "fld8QvHCSX",
+          "name": "Content（内容）"
+        },
+        "Departments": {
+          "id": "fldJ2Wc2Tu",
+          "name": "Departments（涉及部门）"
+        },
+        "Discipline": {
+          "id": "fldht1YcUx",
+          "name": "Discipline（专业）"
+        },
+        "Source Files": {
+          "id": "fldOuKYXls",
+          "name": "Source Files（源附件清单）"
+        }
+      }
+    },
+    {
+      "id": "tblim7pPp0M9K9Di",
+      "name": "Occupational Health Catalog（职业卫生目录）",
+      "category": "ehs",
+      "kind": "ehs",
+      "contentField": "Occupational Health Content",
+      "fields": {
+        "Source Record": {
+          "id": "fld6kH7QkF",
+          "name": "Source Record（原记录链接）"
+        },
+        "Category": {
+          "id": "fld5RIKvI3",
+          "name": "Category（分类）"
+        },
+        "Occupational Health Content": {
+          "id": "fldxY540fe",
+          "name": "Occupational Health Content（职业卫生管理内容）"
+        },
+        "Notes": {
+          "id": "fldX99Xt6J",
+          "name": "Notes（备注）"
+        },
+        "Source Files": {
+          "id": "fld6F4QDIz",
+          "name": "Source Files（源附件清单）"
+        }
+      }
+    },
+    {
+      "id": "tblYXC4PCW9qVcmd",
+      "name": "Workplace Safety Catalog（安全生产目录）",
+      "category": "ehs",
+      "kind": "ehs",
+      "contentField": "Safety Management Content",
+      "fields": {
+        "Execution Frequency": {
+          "id": "fldN3fqJS6",
+          "name": "Execution Frequency（执行频次）"
+        },
+        "Safety Management Content": {
+          "id": "fldhxcRFjc",
+          "name": "Safety Management Content（安全生产管理内容）"
+        },
+        "Category": {
+          "id": "fldu0GBZY5",
+          "name": "Category（分类）"
+        },
+        "Source Files": {
+          "id": "fldsTbG7C3",
+          "name": "Source Files（源附件清单）"
+        },
+        "Source Record": {
+          "id": "fldjhDP1QC",
+          "name": "Source Record（原记录链接）"
+        }
+      }
+    },
+    {
+      "id": "tblt0YzyHk6IZrzR",
+      "name": "Environmental Protection Catalog（环境保护目录）",
+      "category": "ehs",
+      "kind": "ehs",
+      "contentField": "Environmental Content",
+      "fields": {
+        "Environmental Content": {
+          "id": "fldJqpitqO",
+          "name": "Environmental Content（环境保护管理内容）"
+        },
+        "Source Record": {
+          "id": "fldEAV1N1I",
+          "name": "Source Record（原记录链接）"
+        },
+        "Source Files": {
+          "id": "fldAXRdOgK",
+          "name": "Source Files（源附件清单）"
+        },
+        "Category": {
+          "id": "fldTYnQkpQ",
+          "name": "Category（分类）"
+        }
+      }
+    },
+    {
+      "id": "tblonKw63Ltol1hP",
+      "name": "Fire Safety Catalog（消防安全目录）",
+      "category": "ehs",
+      "kind": "ehs",
+      "contentField": "Fire Safety Content",
+      "fields": {
+        "Source Record": {
+          "id": "fldOkLX79o",
+          "name": "Source Record（原记录链接）"
+        },
+        "Source Files": {
+          "id": "fldAtNlrYS",
+          "name": "Source Files（源附件清单）"
+        },
+        "Fire Safety Content": {
+          "id": "fldZEKJFwW",
+          "name": "Fire Safety Content（消防安全管理内容）"
+        },
+        "Category": {
+          "id": "fldkxp4efI",
+          "name": "Category（分类）"
+        }
+      }
+    },
+    {
+      "id": "tblwvi00cg9RKDuj",
+      "name": "Operations Lessons（运维经验沉淀）",
+      "category": "experience",
+      "kind": "lesson",
+      "fields": {
+        "Title": {
+          "id": "fldYqFvvSg",
+          "name": "Title（经验主题）"
+        },
+        "Scenario": {
+          "id": "fld0ZI7i8P",
+          "name": "Scenario（适用场景）"
+        },
+        "Source Context": {
+          "id": "fldWDDJIeH",
+          "name": "Source Context（原始场景）"
+        },
+        "Lesson Type": {
+          "id": "fldFUWofV0",
+          "name": "Lesson Type（经验类别）"
+        },
+        "Discipline": {
+          "id": "fldYTjdYVE",
+          "name": "Discipline（专业）"
+        },
+        "Key Points": {
+          "id": "fldAbYaccS",
+          "name": "Key Points（经验要点）"
+        },
+        "Checkpoints": {
+          "id": "flddSc9qwl",
+          "name": "Checkpoints（现场核查要点）"
+        },
+        "Source Records": {
+          "id": "flddYpUPLa",
+          "name": "Source Records（来源记录）"
+        }
+      }
+    },
+    {
+      "id": "tblJaE0LTj04NEke",
+      "name": "Thailand Meetings（泰国项目会议）",
+      "category": "meetings",
+      "kind": "meeting",
+      "project": "thailand",
+      "fields": {
+        "Meeting Date": {
+          "id": "fldfowcGet",
+          "name": "Meeting Date（会议日期）"
+        },
+        "Minutes Link": {
+          "id": "fldJtHZOgR",
+          "name": "Minutes Link（纪要链接）"
+        },
+        "Recording Link": {
+          "id": "fld14IwUm2",
+          "name": "Recording Link（妙记链接）"
+        },
+        "Action Items": {
+          "id": "flddN5Ki1T",
+          "name": "Action Items（待办事项）"
+        },
+        "Summary": {
+          "id": "fldJhFFXv8",
+          "name": "Summary（会议概要）"
+        },
+        "Status": {
+          "id": "fldC3KJlAh",
+          "name": "Status（状态）"
+        },
+        "Meeting Time": {
+          "id": "fldBOjOOuZ",
+          "name": "Meeting Time（会议时间）"
+        },
+        "Meeting Title": {
+          "id": "fldIjqBP7w",
+          "name": "Meeting Title（会议名称）"
+        }
+      }
+    },
+    {
+      "id": "tblpoE7rwxKdbes2",
+      "name": "Malaysia Meetings（马来项目会议）",
+      "category": "meetings",
+      "kind": "meeting",
+      "project": "malaysia",
+      "fields": {
+        "Meeting Time": {
+          "id": "fldo5V2yGO",
+          "name": "Meeting Time（会议时间）"
+        },
+        "Status": {
+          "id": "fldAfKzDZI",
+          "name": "Status（状态）"
+        },
+        "Meeting Date": {
+          "id": "fldBZMkVwD",
+          "name": "Meeting Date（会议日期）"
+        },
+        "Summary": {
+          "id": "flduh0hoFP",
+          "name": "Summary（会议概要）"
+        },
+        "Action Items": {
+          "id": "fldVI2OVvp",
+          "name": "Action Items（待办事项）"
+        },
+        "Recording Link": {
+          "id": "fldwsVXrql",
+          "name": "Recording Link（妙记链接）"
+        },
+        "Minutes Link": {
+          "id": "fldiiJTMVF",
+          "name": "Minutes Link（纪要链接）"
+        },
+        "Meeting Title": {
+          "id": "fldudyxREK",
+          "name": "Meeting Title（会议名称）"
+        }
+      }
+    }
+  ],
+  "architectureUrl": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=ldxpV5M0qhI0IgVy"
+}

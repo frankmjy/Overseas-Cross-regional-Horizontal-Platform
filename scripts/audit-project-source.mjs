@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {BaseAdapter} from '../research/adapter.mjs';
+const dir='reports/project-tables-20261018',bytes=await fs.readFile(dir+'/sources.json'),sources=JSON.parse(bytes),base=new BaseAdapter({baseToken:'CID8b8V7CaCtKesWGFKcHTdqnlc'});
+const cli=async(c,a)=>{try{return await base.cli(c,a);}catch{return base.cli(c,a);}};
+const canonical=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+const verified=[];
+for(let i=0;i<sources.length;i+=3){const results=await Promise.allSettled(sources.slice(i,i+3).map(async s=>{const d=await cli('+table-get',['--table-id',s.id]);assert.equal(canonical([...d.fields].sort((a,b)=>a.id.localeCompare(b.id))),canonical([...s.fields].sort((a,b)=>a.id.localeCompare(b.id))),'source fields '+s.key);assert.equal(canonical([...d.views].sort((a,b)=>a.id.localeCompare(b.id))),canonical([...s.views].sort((a,b)=>a.id.localeCompare(b.id))),'source views '+s.key);let all=[],offset=0;for(;;){const r=await cli('+record-list',['--table-id',s.id,'--limit','200','--offset',String(offset),...s.fields.flatMap(f=>['--field-id',f.id])]);all.push(...r.data.map((row,j)=>({id:r.record_id_list[j],cells:Object.fromEntries(r.fields.map((n,k)=>[n,row[k]]))})));if(!r.has_more)break;assert.ok(r.data.length);offset+=r.data.length;}assert.equal(canonical([...all].sort((a,b)=>a.id.localeCompare(b.id))),canonical([...s.rows].sort((a,b)=>a.id.localeCompare(b.id))),'source records '+s.key);return{id:s.id,rows:all.length,views:s.views.length};}));for(const r of results){if(r.status==='rejected')throw r.reason;verified.push(r.value);}}
+const proof={at:new Date().toISOString(),sourceSha256:createHash('sha256').update(bytes).digest('hex'),verified};await fs.writeFile(dir+'/source-proof.json',JSON.stringify(proof,null,2));console.log(JSON.stringify({tables:verified.length,rows:verified.reduce((n,s)=>n+s.rows,0),views:verified.reduce((n,s)=>n+s.views,0),allFieldsAndRecordsUnchanged:true}));

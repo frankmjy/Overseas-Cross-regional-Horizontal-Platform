@@ -1,0 +1,12 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {BaseAdapter} from '../research/adapter.mjs';
+process.env.LARK_CLI_SCRIPT=path.resolve('.tmp/lark-cli-1.0.98/package/scripts/run.js');
+const base=new BaseAdapter({}),document=(await base.cli('+fetch',['--doc','VDQgdT3wyoWKElxmvFcclf6bnnK','--detail','full'],process.cwd(),'docs')).document;
+const content=document.content,images=(content.match(/<img\b/g)||[]).length,links=new Set([...content.matchAll(/table=(tbl\w+)/g)].map(x=>x[1]));
+assert.equal(images,3);assert.equal(links.size,115);assert(content.includes('5.1 调研正式数据源'));assert(content.includes('115张数据表和1份架构云文档共147个目录项'));assert(content.includes('新增通用问题只在马来增加条目'));
+const section=content.slice(content.indexOf('5.1 调研正式数据源')),sheet=/<sheet\b[^>]*sheet-id="([^"]+)"[^>]*token="([^"]+)"/.exec(section);assert(sheet,'Native pasted routing table must remain embedded');
+const routing=await base.cli('+cells-get',['--spreadsheet-token',sheet[2],'--sheet-id',sheet[1],'--range','A1:B4','--include','value'],process.cwd(),'sheets');assert.equal(routing.has_more,false);assert.equal(routing.ranges[0].actual_range,'A1:B4');assert.equal(routing.returned_cell_count,8);assert.equal(routing.ranges[0].cells[3][1].value,'默认进入马来正式表，适用范围标记为“通用”');
+const source=await base.cli('+workbook-info',['--spreadsheet-token','DCWyskGejheU9ttN82icPJ5xnOg'],process.cwd(),'sheets');assert.equal(source.revision,908,'Source changed since the reviewed migration; reconcile before completion');assert(source.sheets.some(sheet=>sheet.sheet_id==='wwLsaC'&&sheet.sheet_name==='目录整理版'));
+const proof={revision:document.revision_id,images,linkedTables:links.size,routingCells:8,sourceRevision:source.revision,verified:true};await fs.writeFile('reports/research-formal-20261019/architecture-cloud-after.json',JSON.stringify(document,null,2));await fs.writeFile('reports/research-formal-20261019/architecture-routing.json',JSON.stringify(routing,null,2));await fs.writeFile('reports/research-formal-20261019/source-latest.json',JSON.stringify(source,null,2));await fs.writeFile('reports/research-formal-20261019/architecture-verification.json',JSON.stringify(proof,null,2));console.log(JSON.stringify(proof));

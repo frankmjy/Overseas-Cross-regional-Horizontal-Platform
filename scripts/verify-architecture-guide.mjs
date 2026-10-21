@@ -1,0 +1,18 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {BaseAdapter} from '../research/adapter.mjs';
+const dir='reports/project-cleanup-20261018',plan=JSON.parse(await fs.readFile('reports/overseas-directory-20261018/directory-plan.json','utf8'));
+const cli=new BaseAdapter({baseToken:plan.base});
+const doc=await cli.cli('+fetch',['--doc','VDQgdT3wyoWKElxmvFcclf6bnnK','--api-version','v2'],process.cwd(),'docs');
+await fs.writeFile(dir+'/architecture-document-final.json',JSON.stringify(doc,null,2));
+const c=doc.document.content;
+assert.equal((c.match(/<img\b/g)||[]).length,3);
+assert.ok(!c.includes('图示】')&&!c.includes('9行明确示例')&&!c.includes('&lt;p&gt;'));
+for(const t of plan.tables)assert.ok(c.includes(t.id),'missing navigation '+t.name);
+assert.ok(c.includes('FmIwbCqj1ax5MvsTp5OcPO5lnue'));
+const tree=JSON.parse(await fs.readFile(dir+'/directory-proof.json','utf8'));
+assert.deepEqual(tree.errors,[]);
+assert.equal(tree.entries.length,plan.tables.length+plan.folders.length+plan.documents.length);
+const report={document:doc.document.document_id,images:3,tableLinks:plan.tables.length,directoryEntries:tree.entries.length,rootOrder:tree.entries.filter(e=>e.level===0).map(e=>e.name),verifiedAt:new Date().toISOString()};
+await fs.writeFile(dir+'/architecture-proof.json',JSON.stringify(report,null,2));
+console.log(JSON.stringify(report));
