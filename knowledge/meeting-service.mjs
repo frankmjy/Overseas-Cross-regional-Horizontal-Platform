@@ -3,23 +3,26 @@ import {createHash} from 'node:crypto';
 import {MeetingAdapter,validateMeeting,encodeMeeting,matchesMeeting} from './meeting-fields.mjs';
 import {readJson,saveJson,lockWriter,failure} from './storage.mjs';
 import {projectRecord} from './model.mjs';
+import {scopeIdentityCache} from '../auth/identity-cache.mjs';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const digest=value=>createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b))))).digest('hex');
 export class MeetingService{
- constructor({dir,config,adapter=new MeetingAdapter(config),now=Date.now,isMaintenance=()=>false}){
-  this.dir=dir;this.file=path.join(dir,'meeting-ledger.json');this.config=config;this.adapter=adapter;this.now=now;this.isMaintenance=isMaintenance;this.sources=config.sources.filter(s=>s.kind==='meeting');
+ constructor({dir,config,adapter=new MeetingAdapter(config),now=Date.now,isMaintenance=()=>false,appId=()=>process.env.FEISHU_APP_ID||''}){
+  this.dir=dir;this.file=path.join(dir,'meeting-ledger.json');this.config=config;this.adapter=adapter;this.now=now;this.isMaintenance=isMaintenance;this.appId=appId;this.sources=config.sources.filter(s=>s.kind==='meeting');
   this.binding=JSON.stringify([config.baseToken,this.sources.map(s=>[s.project,s.id])]);this.state=readJson(this.file,{version:1,binding:this.binding,schemas:{},people:[],operations:{}});
   if(this.state.version!==1||this.state.binding!==this.binding||!this.state.schemas||!Array.isArray(this.state.people)||!this.state.operations)throw Error('会议台账与当前接表配置不一致，请保留原台账核对。');
  }
  init(){this.unlock=lockWriter(path.join(this.dir,'meetings.lock'));}
+ ensureIdentity(){const next=scopeIdentityCache(this.state,this.appId(),{schemas:{},people:[],schemaUpdatedAt:null});if(next)this.commit(state=>Object.assign(state,next));}
  commit(change){const next=structuredClone(this.state);change(next);saveJson(this.file,next);this.state=next;}
  publicOperation(op){return {id:op.id,project:op.project,status:op.status,error:op.error||'',recordId:op.recordId||'',updatedAt:op.updatedAt};}
  get pending(){return Object.values(this.state.operations).some(o=>['accepted','syncing'].includes(o.status));}
- options(user){return {state:this.refreshing?'loading':this.lastError?'error':'ready',error:this.lastError||'',projects:this.sources.map(s=>({id:s.project,name:/（([^）]+)）/.exec(s.name)?.[1]||s.name,ready:!!this.state.schemas[s.project],status:this.state.schemas[s.project]?.status.options||[],priority:this.state.schemas[s.project]?.priority.options||[]})),people:this.people(user)};}
+ options(user){this.ensureIdentity();return {state:this.refreshing?'loading':this.lastError?'error':'ready',error:this.lastError||'',projects:this.sources.map(s=>({id:s.project,name:/（([^）]+)）/.exec(s.name)?.[1]||s.name,ready:!!this.state.schemas[s.project],status:this.state.schemas[s.project]?.status.options||[],priority:this.state.schemas[s.project]?.priority.options||[]})),people:this.people(user)};}
  people(user){const values=new Map(this.state.people.map(p=>[p.id,p]));if(/^ou_\w+$/.test(user?.openId||'')&&user?.name)values.set(user.openId,{id:user.openId,name:user.name});return [...values.values()].sort((a,b)=>a.name.localeCompare(b.name,'zh-CN'));}
- refresh(){if(this.refreshing)return this.refreshing;this.refreshing=(async()=>{const errors=[];for(const source of this.sources){try{const schema=await this.adapter.schema(source),people=await this.adapter.people(source,schema);this.commit(next=>{next.schemas[source.project]=schema;const merged=new Map([...next.people,...people].map(p=>[p.id,p]));next.people=[...merged.values()];next.schemaUpdatedAt=this.now();});}catch{errors.push(source.name);}}this.lastError=errors.length?'部分会议字段读取失败，可使用已读取的范围，或重试连接。':'';return this.options();})().finally(()=>{this.refreshing=null;});return this.refreshing;}
+ refresh(){if(this.refreshing)return this.refreshing;this.refreshing=(async()=>{this.ensureIdentity();const errors=[];for(const source of this.sources){try{const schema=await this.adapter.schema(source),people=await this.adapter.people(source,schema);this.commit(next=>{next.schemas[source.project]=schema;const merged=new Map([...next.people,...people].map(p=>[p.id,p]));next.people=[...merged.values()];next.schemaUpdatedAt=this.now();});}catch{errors.push(source.name);}}this.lastError=errors.length?'部分会议字段读取失败，可使用已读取的范围，或重试连接。':'';return this.options();})().finally(()=>{this.refreshing=null;});return this.refreshing;}
  accept(raw,user){
+  this.ensureIdentity();
   if(this.closed||this.isMaintenance())throw failure('系统正在更新，请稍后保存。',503);
   if(!user?.openId||!user?.name)throw failure('请先使用飞书登录。',401);
   if(!uuid.test(raw?.clientMutationId||''))throw failure('提交标识无效，请重新打开表单。');
@@ -42,7 +45,7 @@ export class MeetingService{
   return {...snapshot,meetings,sources:snapshot.sources?.map(s=>s.kind==='meeting'?{...s,count:meetings.filter(m=>m.sourceId===s.id).length}:s)};
  }
  flush(){if(this.running)return this.running;if(this.closed||this.isMaintenance())return Promise.resolve();this.running=(async()=>{
-  for(const saved of Object.values(this.state.operations)){
+  this.ensureIdentity();for(const saved of Object.values(this.state.operations)){
    if(this.closed||this.isMaintenance())break;if(saved.status==='success'||saved.nextAttempt>this.now())continue;const id=saved.id,source=this.sources.find(s=>s.project===saved.project);
    try{
     this.commit(next=>{Object.assign(next.operations[id],{status:'syncing',error:'',updatedAt:this.now(),attempts:saved.attempts+1});});

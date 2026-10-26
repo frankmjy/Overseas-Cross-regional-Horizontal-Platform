@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "release": "20261025.1",
-  "sha256": "2b274347ac39ee9dc78e02797e219fd5f74339aec622862d25cf9807ac10aa2d",
-  "manifestSha256": "0075ec505e2c0515c08327c6e3e011fa9a87ed97516e879415e12f6ead2e4915",
+  "release": "20261026.2",
+  "sha256": "4f18262e6a48edef0ee3675ae7d2d497c965f63760cf5d1f43530260a2d64bcf",
+  "manifestSha256": "770ea884e51e8120702e1a60b98dfc680f0e5148ad64a42aa2f86fded81a106e",
   "confirmation": "user-reported-success",
-  "record": "docs/releases/20261025.1.json"
+  "record": "docs/releases/20261026.2.json"
 }

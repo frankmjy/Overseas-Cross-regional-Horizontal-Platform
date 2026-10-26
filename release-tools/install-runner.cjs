@@ -3,7 +3,41 @@ const fs=require('node:fs'),path=require('node:path'),https=require('node:https'
 const {execFileSync,spawn}=require('node:child_process');
 const {install,sha,plain,atomic}=require('./transaction.cjs');
 const confirmedTests=require('./confirmed-test-cleanup.cjs');
+const {X509Certificate}=require('node:crypto');
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function createCertificatePin({domain,fingerprint,environment=process.env}){
+  const center=path.resolve(environment.VNET_TLS_CENTER_ROOT||path.join(environment.ProgramData||'C:\\ProgramData','VNET','TLSCenter'));
+  const preload=path.join(center,'preload.cjs');
+  const required=[...(environment.NODE_OPTIONS||'').matchAll(/(?:^|\s)(?:--require(?:=|\s+)|-r\s+)(?:"([^"]+)"|'([^']+)'|([^\s]+))/g)].map(match=>path.resolve(match[1]||match[2]||match[3]));
+  const same=(a,b)=>process.platform==='win32'?a.toLowerCase()===b.toLowerCase():a===b;
+  const active=required.some(file=>same(file,preload));
+  const fail=(code,actual)=>{const error=new Error(code);error.certificate={source:active?'active-tls-center':'release-baseline',baselineFingerprint:fingerprint,expectedFingerprint:expected,actualFingerprint:actual||null};throw error;};
+  let expected=fingerprint,snapshot;
+  function readSource(){
+    const read=file=>{plain(file);const stat=fs.statSync(file);if(!stat.isFile()||stat.size>131072)throw Error('unsafe certificate source');return fs.readFileSync(file);};
+    plain(preload);if(!fs.statSync(preload).isFile())throw Error('inactive preload');
+    const pointerBytes=read(path.join(center,'current.json')),pointer=JSON.parse(pointerBytes.toString('utf8').replace(/^\uFEFF/,''));
+    if(pointer.schema!==1||!/^[a-f0-9]{64}$/.test(pointer.version||'')||!Array.isArray(pointer.domains)||!pointer.domains.includes(domain))throw Error('invalid certificate pointer');
+    const bytes=read(path.join(center,'versions',pointer.version,'fullchain.pem'));
+    if(sha(bytes)!==pointer.version)throw Error('certificate version mismatch');
+    const chain=(bytes.toString('utf8').match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g)||[]).map(pem=>new X509Certificate(pem));
+    const leaf=chain[0],now=Date.now();
+    if(!leaf||chain.length>10||leaf.ca||!leaf.checkHost(domain)||chain.some(cert=>Date.parse(cert.validFrom)>now||Date.parse(cert.validTo)<=now)||leaf.fingerprint256!==pointer.fingerprint)throw Error('invalid certificate');
+    for(let i=0;i<chain.length-1;i++)if(!chain[i+1].ca||!chain[i].checkIssued(chain[i+1])||!chain[i].verify(chain[i+1].publicKey))throw Error('invalid certificate chain');
+    return{fingerprint:leaf.fingerprint256,identity:sha(pointerBytes)+':'+sha(bytes)};
+  }
+  if(active){try{snapshot=readSource();expected=snapshot.fingerprint;}catch(error){if(error.code==='RELEASE_ADS_PATH'||error.code==='RELEASE_REPARSE_POINT')throw error;fail('RELEASE_CERTIFICATE_SOURCE_INVALID');}}
+  return{fingerprint:expected,verify(actual){
+    if(active){let current;try{current=readSource();}catch{fail('RELEASE_CERTIFICATE_SOURCE_CHANGED',actual);}if(current.identity!==snapshot.identity)fail('RELEASE_CERTIFICATE_SOURCE_CHANGED',actual);}
+    if(actual!==expected)fail('RELEASE_CERTIFICATE_MISMATCH',actual);
+  }};
+}
+function requestHealth({port,domain,pin},route){return new Promise((resolve,reject)=>{
+  const req=https.get({hostname:'127.0.0.1',servername:domain,port,path:route,headers:{host:domain+':3333'},rejectUnauthorized:true,agent:false,timeout:4000},response=>{
+    try{pin.verify(response.socket.getPeerCertificate().fingerprint256);}catch(error){response.destroy();reject(error);return;}
+    const chunks=[];let size=0;response.on('data',chunk=>{size+=chunk.length;if(size>3000000)response.destroy(new Error('RELEASE_HEALTH_TOO_LARGE'));else chunks.push(chunk);});response.on('end',()=>resolve({status:response.statusCode,location:response.headers.location,bytes:Buffer.concat(chunks)}));response.on('error',reject);
+  });req.on('error',reject);req.on('timeout',()=>req.destroy(new Error('RELEASE_HEALTH_TIMEOUT')));
+});}
 async function authenticatedHealth(expected,request){
  const login=await request('/login');if(login.status!==200||sha(login.bytes)!==expected.authSha)throw new Error('RELEASE_LOGIN_HEALTH_MISMATCH');
  for(const route of ['/','/project-management','/knowledge-sharing','/meeting-trail']){const response=await request(route);if(response.status!==303||!/^\/login\?returnTo=/.test(response.location||''))throw new Error('RELEASE_AUTH_REDIRECT_MISMATCH');}
@@ -11,9 +45,9 @@ async function authenticatedHealth(expected,request){
  for(const route of ['/api/research','/api/knowledge','/api/project-tasks','/api/knowledge/meetings/options','/.env','/.runtime/auth/ledger.json','/vendor/lark-cli/run.cjs']){const response=await request(route);let body;try{body=JSON.parse(response.bytes);}catch{}if(response.status!==401||body?.ok!==false)throw new Error('RELEASE_AUTH_GATE_MISMATCH');}
 }
 function windowsOps({root,node,port,domain,fingerprint,cliScript}){
-  const bridge=path.join(__dirname,'WindowsBridge.ps1');let current,cleanupPlan,preparedCleanup;
+  const bridge=path.join(__dirname,'WindowsBridge.ps1');let current,cleanupPlan,preparedCleanup,certificatePin;
   function call(action,args=[]){let output;try{output=execFileSync('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-File',bridge,'-Action',action,'-Port',String(port),...args],{windowsHide:true,encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:15000});}catch{throw Object.assign(new Error('RELEASE_WINDOWS_'+action.toUpperCase()+'_FAILED'),{code:'RELEASE_WINDOWS_'+action.toUpperCase()+'_FAILED'});}return output.trim()?JSON.parse(output.replace(/^\uFEFF/,'')):null;}
-  function request(route){return new Promise((resolve,reject)=>{const req=https.get({hostname:'127.0.0.1',servername:domain,port,path:route,headers:{host:domain+':3333'},agent:false,timeout:4000},response=>{const fp=response.socket.getPeerCertificate().fingerprint256;if(fp!==fingerprint){response.destroy();reject(new Error('RELEASE_CERTIFICATE_MISMATCH'));return;}const chunks=[];let size=0;response.on('data',chunk=>{size+=chunk.length;if(size>3000000)response.destroy(new Error('RELEASE_HEALTH_TOO_LARGE'));else chunks.push(chunk);});response.on('end',()=>resolve({status:response.statusCode,location:response.headers.location,bytes:Buffer.concat(chunks)}));response.on('error',reject);});req.on('error',reject);req.on('timeout',()=>req.destroy(new Error('RELEASE_HEALTH_TIMEOUT')));});}
+  function request(route){certificatePin||=createCertificatePin({domain,fingerprint});return requestHealth({port,domain,pin:certificatePin},route);}
   return {
     ownerActive:owner=>Promise.resolve(call('Owner',['-ProcessId',String(owner.pid),'-StartedAt',String(owner.startedAt)])?.active===true),
     async checkData(){
@@ -49,6 +83,6 @@ function windowsOps({root,node,port,domain,fingerprint,cliScript}){
     async validateStorage(paths){const temporary=path.join(root,'.release-storage-'+process.pid+'.json');atomic(temporary,paths);try{call('Storage',['-InputFile',temporary]);}finally{fs.unlinkSync(temporary);}},
   };
 }
-async function main(){const bundle=path.resolve(process.argv[2]||__dirname),manifest=JSON.parse(fs.readFileSync(path.join(bundle,'release-manifest.json'),'utf8')),root=plain(manifest.targetRoot);const ops=windowsOps({root,node:manifest.node,port:manifest.port,domain:manifest.domain,fingerprint:manifest.fingerprint});let report;try{report=await install({root,payload:path.join(bundle,'payload'),manifest,ops});}catch(error){report={ok:false,error:/^RELEASE_[A-Z_]+$/.test(error.code||error.message)?(error.code||error.message):'RELEASE_FAILED',review:'.hotfix-transaction.json'};}const reports=path.join(root,'.runtime','release-reports');fs.mkdirSync(reports,{recursive:true});atomic(path.join(reports,manifest.id+'.json'),report);console.log(JSON.stringify(report));if(!report.ok)process.exitCode=1;}
+async function main(){const bundle=path.resolve(process.argv[2]||__dirname),manifest=JSON.parse(fs.readFileSync(path.join(bundle,'release-manifest.json'),'utf8')),root=plain(manifest.targetRoot);const ops=windowsOps({root,node:manifest.node,port:manifest.port,domain:manifest.domain,fingerprint:manifest.fingerprint});let report;try{report=await install({root,payload:path.join(bundle,'payload'),manifest,ops});}catch(error){report={ok:false,error:/^RELEASE_[A-Z_]+$/.test(error.code||error.message)?(error.code||error.message):'RELEASE_FAILED',review:'.hotfix-transaction.json',...(error.certificate?{certificate:error.certificate}:{})};}const reports=path.join(root,'.runtime','release-reports');fs.mkdirSync(reports,{recursive:true});atomic(path.join(reports,manifest.id+'.json'),report);console.log(JSON.stringify(report));if(!report.ok)process.exitCode=1;}
 if(require.main===module)main().catch(()=>{console.error('RELEASE_UNEXPECTED_FAILURE');process.exitCode=1;});
-module.exports={windowsOps,authenticatedHealth};
+module.exports={windowsOps,authenticatedHealth,createCertificatePin,requestHealth};

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "appId": "cli_aa547c8de6785ce2",
+  "appName": "定盘星",
+  "recipient": "ou_cc9fe24c613ded770d74f7495b575a3c",
+  "recipientName": "马进宇",
+  "historicalDeliveryIdentities": [
+    {
+      "appId": "cli_a9d1c9fe9d381cee",
+      "recipient": "ou_a6644e62a43b916c6bc26148cf74f208"
+    }
+  ]
+}

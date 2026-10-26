@@ -6,15 +6,17 @@ import { normalizeRows } from '../research/service.mjs';
 import { BASE_TOKEN, TABLE_ID, FIELD_NAMES, normalizeRecords, buildPlan } from '../base-sync.mjs';
 import { columns, text, same, digest, publicRecord, schemaOf, usersOf, validatePatch, encodePatch, appendFeedback, failure } from './model.mjs';
 import { calculatedStatus, chinaDay, nextChinaMidnight } from './status.mjs';
+import { scopeIdentityCache } from '../auth/identity-cache.mjs';
 
 const projected = [...new Set([...FIELD_NAMES, ...Object.values(columns).map(([name]) => name)])];
 export class ProjectTaskService {
-  constructor({ dir, adapter = new BaseAdapter({ baseToken: BASE_TOKEN }), now = Date.now, isMaintenance = () => false } = {}) {
-    this.file = path.join(dir, 'ledger.json'); this.adapter = adapter; this.now = now; this.isMaintenance = isMaintenance;
+  constructor({ dir, adapter = new BaseAdapter({ baseToken: BASE_TOKEN }), now = Date.now, isMaintenance = () => false, appId = () => process.env.FEISHU_APP_ID || '' } = {}) {
+    this.file = path.join(dir, 'ledger.json'); this.adapter = adapter; this.now = now; this.isMaintenance = isMaintenance; this.appId = appId;
     this.state = fs.existsSync(this.file) ? JSON.parse(fs.readFileSync(this.file, 'utf8')) : { version: 1, records: [], schema: null, updatedAt: null, operations: {} };
     if (this.state.version !== 1 || !Array.isArray(this.state.records) || !this.state.operations) throw Error('任务台账不完整，请保留原文件并恢复备份。');
     this.external = Promise.resolve();
   }
+  ensureIdentity() { const next=scopeIdentityCache(this.state,this.appId(),{records:[],schema:null,updatedAt:null,statusRefreshedDay:''});if(next)this.commit(state=>Object.assign(state,next)); }
   commit(change) {
     const next = structuredClone(this.state); change(next); next.revision = (this.state.revision || 0) + 1;
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
@@ -41,6 +43,7 @@ export class ProjectTaskService {
     });
   }
   plan() {
+    this.ensureIdentity();
     const rows = this.currentRecords(), envelope = { data: { fields: projected, record_id_list: rows.map(row => row.recordId), data: rows.map(row => projected.map(name => row[name] ?? null)) } };
     const plan = buildPlan(normalizeRecords(envelope));
     plan.statusRefreshedDay = this.state.statusRefreshedDay || '';
@@ -51,6 +54,7 @@ export class ProjectTaskService {
     return plan;
   }
   snapshot() {
+    this.ensureIdentity();
     return { revision: this.state.revision || 0, ready: !!this.state.schema, refreshing: !!this.refreshing, error: this.lastError || this.statusError || '', updatedAt: this.state.updatedAt,
       schema: this.state.schema, users: usersOf(this.state.records), records: this.currentRecords().map(publicRecord),
       operations: Object.values(this.state.operations).filter(op => op.status !== 'success' || this.now() - op.updatedAt < 600000).map(op => this.publicOperation(op)) };
@@ -58,6 +62,7 @@ export class ProjectTaskService {
   async refresh() {
     if (this.refreshing) return this.refreshing;
     this.refreshing = this.serialize(async () => {
+      this.ensureIdentity();
       const metadata = await this.cli('+field-list', []), schema = schemaOf(metadata.fields);
       const rows = [], ids = new Set(); let revision;
       for (let page = 0, offset = 0; page < 100; page++) {
@@ -139,8 +144,9 @@ export class ProjectTaskService {
     }, needsRefresh ? Math.max(1000, (this.statusRetryAt || 0) - this.now()) : Math.max(20, nextChinaMidnight(this.now()) - this.now() + 20));
     this.dailyTimer.unref();
   }
-  warm() { if (!this.isMaintenance() && !this.refreshing && (!this.state.updatedAt || this.now() - this.state.updatedAt > 300000)) this.refresh().catch(() => {}); }
+  warm() { this.ensureIdentity(); if (!this.isMaintenance() && !this.refreshing && (!this.state.updatedAt || this.now() - this.state.updatedAt > 300000)) this.refresh().catch(() => {}); }
   accept(input, actor) {
+    this.ensureIdentity();
     if (this.isMaintenance()) throw failure('系统正在更新，请稍后保存。', 503);
     if (!input || !/^[a-f0-9]{8}-[a-f0-9-]{27}$/i.test(input.clientMutationId || '')) throw failure('提交标识无效。');
     const hash = digest([input.recordId, input.version, input.patch]), prior = this.state.operations[input.clientMutationId];
@@ -174,6 +180,7 @@ export class ProjectTaskService {
     return this.snapshot();
   }
   async flush() {
+    this.ensureIdentity();
     if (this.flushing || this.isMaintenance()) return;
     this.flushing = this.serialize(async () => {
       const operations = Object.values(this.state.operations).filter(op => ['accepted', 'error', 'syncing'].includes(op.status) && op.nextAttempt <= this.now());

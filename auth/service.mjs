@@ -86,7 +86,7 @@ export class AuthService {
     if (!/^ou_[A-Za-z0-9_-]{3,120}$/.test(identity?.open_id || '') || typeof identity?.name !== 'string' || !identity.name.trim() || identity.name.length > 150) throw authError('飞书身份无效。', 502);
     const token = random(), csrf = random(), now = this.now(), id = randomUUID(), user = { name: identity.name.trim(), openId: identity.open_id };
     this.commit(next => {
-      next.events[id] = { id, user, loginTime: new Date(now).toISOString(), logoutTime: null, entryPage: saved.returnTo.split(/[?#]/)[0], method: '飞书授权', revision: 1, syncStatus: 'pending', attempts: 0, nextAttempt: now };
+      next.events[id] = { id, appId:config.appId, user, loginTime: new Date(now).toISOString(), logoutTime: null, entryPage: saved.returnTo.split(/[?#]/)[0], method: '飞书授权', revision: 1, syncStatus: 'pending', attempts: 0, nextAttempt: now };
       next.sessions[hash(token)] = { user, csrf, eventId: id, appId: config.appId, created: now, expires: now + 12 * 3600_000 };
     });
     return { token, csrf, user, returnTo: saved.returnTo };
@@ -112,6 +112,11 @@ export class AuthService {
     try {
       const pending = Object.values(this.state.events).filter(e => e.syncStatus !== 'synced' && e.nextAttempt <= this.now()).slice(0, 10);
       for (const event of pending) {
+        const eventApp = event.appId || Object.values(this.state.sessions).find(s => s.eventId === event.id)?.appId;
+        if (eventApp !== this.config().appId) {
+          this.commit(next => { const saved = next.events[event.id]; saved.lastError = '登录记录属于原应用，已保留，未使用新应用写入旧人员标识。'; saved.nextAttempt = this.now() + 3600_000; });
+          continue;
+        }
         try {
           const recordId = await this.sink.sync(structuredClone(event));
           this.commit(next => {

@@ -38,8 +38,8 @@ async function applyCredentials({ appId, appSecret }) {
   process.env.FEISHU_APP_ID = appId; process.env.FEISHU_APP_SECRET = appSecret;
 }
 export class ApplicationSettings {
-  constructor({ dir, verify = verifyCredentials, apply = applyCredentials }) {
-    this.file = path.join(dir, 'app-settings.json'); this.verify = verify; this.apply = apply; this.saving = false;
+  constructor({ dir, verify = verifyCredentials, apply = applyCredentials, canSwitchApp = () => true }) {
+    this.file = path.join(dir, 'app-settings.json'); this.verify = verify; this.apply = apply; this.canSwitchApp = canSwitchApp; this.saving = false;
     this.saved = fs.existsSync(this.file) ? JSON.parse(fs.readFileSync(this.file, 'utf8')) : null;
   }
   publicStatus() { return { appId: this.saved?.appId || process.env.FEISHU_APP_ID || '', configured: !!this.saved?.applied, editable: true }; }
@@ -56,6 +56,8 @@ export class ApplicationSettings {
     this.saving = true;
     try {
       try { await this.verify({ appId, appSecret }); } catch (error) { throw error.publicMessage ? error : failure('飞书凭据校验未通过，请核对配置或稍后重试。'); }
+      const previous = this.saved?.appId || process.env.FEISHU_APP_ID;
+      if (previous && previous !== appId && !await this.canSwitchApp(previous, appId)) throw failure('仍有未同步任务，暂不能切换飞书应用。请先核对原应用任务。', 409);
       const next = { appId, appSecret, clientMutationId, digest, applied: false };
       try { writeAtomic(this.file, next); } catch { throw failure('服务器无法保存配置，请检查目录权限和磁盘空间。', 503); }
       this.saved = next;

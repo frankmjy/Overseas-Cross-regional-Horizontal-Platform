@@ -55,6 +55,7 @@ const projectTaskService = new ProjectTaskService({ dir: process.env.PROJECT_TAS
 const handleProjectTasks = createProjectTaskHandler(projectTaskService);
 projectTaskService.start();
 const teamOrganization = new TeamOrganizationService();
+applicationSettings.canSwitchApp = () => !authService.flushing && !Object.values(authService.state.events).some(e => e.syncStatus !== 'synced') && !Object.values(projectTaskService.state.operations).some(op => op.status !== 'success') && !Object.values(meetingService.state.operations).some(op => op.status !== 'success');
 const handleApplicationSettings = createApplicationSettingsHandler(applicationSettings, () => planRequests === 0 && !meetingService.running && !meetingService.refreshing && !meetingService.pending && !minutesService.running.size && !projectTaskService.refreshing && !projectTaskService.flushing && !projectTaskService.statusRefreshing && Object.values(researchServices).every(service => !service.busy && !service.refreshing && !Object.values(service.state.operations).some(op => ['accepted', 'syncing'].includes(op.status))));
 const DEFAULT_PFX_PATH = path.join(ROOT, 'certs', 'localhost.pfx');
 const DEFAULT_PFX_PASSPHRASE_PATH = path.join(ROOT, 'certs', 'localhost.passphrase');
