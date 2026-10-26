@@ -5,7 +5,7 @@ const {createHash,randomUUID}=require('node:crypto');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const fail=code=>{throw Object.assign(new Error(code),{code});};
 const readJson=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
-const allowed=new Set(['server.mjs','base-sync.mjs','application-settings.mjs','package.json','index.html','.env.example','DEPLOY_README.md','RESEARCH_DEPLOY.md','THAI_NEXUSLINK_BOI_bilingual.xlsx','THAI_NEXUSLINK_BOI_original.xlsx','src','assets','research','knowledge','vendor/pdfjs']);
+const allowed=new Set(['server.mjs','base-sync.mjs','application-settings.mjs','team-organization.mjs','package.json','index.html','.env.example','DEPLOY_README.md','RESEARCH_DEPLOY.md','THAI_NEXUSLINK_BOI_bilingual.xlsx','THAI_NEXUSLINK_BOI_original.xlsx','src','assets','research','knowledge','auth','project-tasks','vendor/pdfjs']);
 function plain(target){
   target=path.resolve(target);
   if(target.slice(path.parse(target).root.length).includes(':'))fail('RELEASE_ADS_PATH');

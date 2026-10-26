@@ -1,0 +1,10 @@
+[
+  {"name":"Login ID（登录编号）","type":"text"},
+  {"name":"Feishu Account（飞书账号）","type":"user","multiple":false},
+  {"name":"Full Name（姓名）","type":"text"},
+  {"name":"Open ID（飞书用户标识）","type":"text"},
+  {"name":"Login Time（登录时间）","type":"datetime","style":{"format":"yyyy-MM-dd HH:mm"}},
+  {"name":"Logout Time（退出时间）","type":"datetime","style":{"format":"yyyy-MM-dd HH:mm"}},
+  {"name":"Entry Page（进入页面）","type":"text"},
+  {"name":"Login Method（登录方式）","type":"select","multiple":false,"options":[{"name":"飞书授权","hue":"Blue"}]}
+]

@@ -1,5 +1,9 @@
 import { renderPlatformHeader } from './platform-navigation.js';
 import { legalHolidays as defaultLegalHolidays } from './data.js';
+import { createTeamOrganization } from './team-organization.js';
+import { createTaskEditor } from './task-editor.js';
+import { todayMarker, centeredTimelineScroll } from './gantt-today.js';
+import { attachGanttPan } from './gantt-pan.js';
 
 const root = document.querySelector('#app');
 const today = new Date();
@@ -11,11 +15,16 @@ let phases = [];
 let planState = 'idle';
 let lastSyncedLabel = '';
 let detailReturnFocus = null;
+let organizationChartReturnFocus = null;
+let teamOrganization = null;
+let taskEditor = null;
+let ganttTodayTimer = null;
 let calendarCursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedCalendarDate = dateKey(today);
 let calendarModalOpen = false;
 let detailModalOpen = false;
 let planSyncing = false;
+let planStatusDay = dateKey(today);
 const ganttCollapsedGroups = new Set(['amber', 'green', 'indigo']);
 const completionIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>';
 const projectCatalog = [
@@ -418,10 +427,30 @@ function renderShell() {
           <div class="detail-modal-body" id="detailModalBody"></div>
         </section>
       </div>
+      <dialog class="organization-chart-dialog" id="organizationChartDialog" aria-labelledby="organizationChartTitle">
+        <header class="organization-chart-toolbar">
+          <h3 id="organizationChartTitle">泰国项目组织架构与人员进场计划</h3>
+          <button type="button" class="diagram-tool diagram-sync" id="organizationChartSync" aria-label="同步人员" title="同步人员">${icon('refresh')}</button>
+          <button type="button" class="diagram-tool diagram-close" data-organization-chart-close aria-label="关闭组织架构图" title="关闭" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+        </header>
+        <div class="organization-chart-canvas" id="organizationChartCanvas" data-state="idle">
+          <div class="organization-chart-status" role="status">
+            <span id="organizationChartStatus"></span>
+            <button type="button" id="organizationChartRetry" hidden>重试</button>
+          </div>
+          <img id="organizationChartImage" alt="世纪互联VNET泰国项目组织架构与人员进场计划，含岗位人数、需求到岗日期及用工占比" width="2000" height="1400" hidden>
+        </div>
+      </dialog>
     </div>
   `;
 
   document.querySelector('.refresh').addEventListener('click', syncBitableData);
+  const syncStamp = document.querySelector('.update-time');
+  if (activeProject.connected) {
+    syncStamp.setAttribute('role', 'button'); syncStamp.setAttribute('tabindex', '0'); syncStamp.setAttribute('aria-label', '重新计算并同步任务状态');
+    syncStamp.addEventListener('click', () => syncBitableData(true));
+    syncStamp.addEventListener('keydown', event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); syncBitableData(true); } });
+  }
   document.querySelector('#projectPickerTrigger').addEventListener('click', () => setProjectPickerOpen(!projectPickerOpen));
   document.querySelector('#projectPickerMenu').addEventListener('click', event => {
     const item = event.target.closest('[data-project-id]');
@@ -435,10 +464,37 @@ function renderShell() {
   document.querySelector('.page').addEventListener('click', handleDetailCardActivation);
   document.querySelector('.page').addEventListener('keydown', handleDetailCardActivation);
   document.querySelector('#detailModal').addEventListener('click', (event) => {
+    const chartTrigger = event.target.closest('[data-organization-chart]');
+    if (chartTrigger) { openOrganizationChart(chartTrigger); return; }
     if (!event.target.closest('[data-detail-close]')) return;
     closeDetailModal();
   });
+  setupOrganizationChart();
   document.addEventListener('keydown', handleDetailModalKeydown);
+}
+
+function setupOrganizationChart() {
+  const dialog = document.querySelector('#organizationChartDialog');
+  const canvas = document.querySelector('#organizationChartCanvas');
+  teamOrganization = createTeamOrganization({ dialog, canvas, onClose: closeOrganizationChart });
+  dialog.addEventListener('close', () => {
+    if (organizationChartReturnFocus?.isConnected) organizationChartReturnFocus.focus();
+    organizationChartReturnFocus = null;
+  });
+}
+
+function openOrganizationChart(trigger) {
+  if (activeProject.id !== 'th-001') return;
+  const dialog = document.querySelector('#organizationChartDialog');
+  if (dialog.open) return;
+  organizationChartReturnFocus = trigger;
+  teamOrganization.open();
+  dialog.showModal();
+}
+
+function closeOrganizationChart() {
+  const dialog = document.querySelector('#organizationChartDialog');
+  if (dialog?.open) dialog.close();
 }
 
 function setRefreshButtonState(label, disabled = false) {
@@ -479,7 +535,42 @@ function applySyncedPlan(data) {
   if (updateTime) updateTime.textContent = `飞书同步 ${lastSyncedLabel}`;
 }
 
-async function syncBitableData() {
+function applyEditedPlan(data) {
+  if (activeProject.id !== 'th-001') return;
+  const collapsed = [...ganttCollapsedGroups], filters = getGanttFilterState();
+  const scroll = document.querySelector('.gantt-main'), position = { left: scroll?.scrollLeft || 0, top: scroll?.scrollTop || 0 };
+  applySyncedPlan(data); savePlanCache(data);
+  ganttCollapsedGroups.clear(); collapsed.forEach(tone => ganttCollapsedGroups.add(tone));
+  document.querySelector('#ganttSearch').value = filters.keyword;
+  document.querySelector('#ganttPriority').value = filters.priority;
+  renderGanttRows();
+  const next = document.querySelector('.gantt-main'); if (next) { next.scrollLeft = position.left; next.scrollTop = position.top; }
+}
+
+function updateTodayMarker() {
+  const previousDay = dateKey(today);
+  today.setTime(Date.now()); today.setHours(0, 0, 0, 0);
+  if (previousDay !== dateKey(today) && document.querySelector('#calendarDays')) {
+    renderCalendar();
+    const kpis = document.querySelector('.kpi-grid'); if (kpis) kpis.innerHTML = renderKpiCards();
+  }
+  const main = document.querySelector('.gantt-main'); if (!main || !ganttPlan) return;
+  const marker = todayMarker(ganttPlan.rangeStart, ganttPlan.rangeEnd);
+  main.style.setProperty('--gantt-today-display', marker ? 'block' : 'none');
+  main.style.setProperty('--gantt-today-offset', `${(marker?.offset || 0) * 4.5}px`);
+  const label = main.querySelector('.gantt-today-label'); if (label) { label.textContent = marker?.label || ''; label.title = marker?.date || ''; }
+  const button = document.querySelector('#ganttToday'); if (button) { button.disabled = !marker; button.title = marker ? marker.date : '今天不在当前计划范围内'; }
+  if (activeProject.connected && planStatusDay !== dateKey(today) && !planSyncing) syncBitableData(true, true);
+}
+
+function centerGanttToday(smooth = false) {
+  const main = document.querySelector('.gantt-main'), marker = todayMarker(ganttPlan.rangeStart, ganttPlan.rangeEnd);
+  if (!main || !marker) return;
+  const left = centeredTimelineScroll({ offset: marker.offset, dayWidth: 4.5, viewportWidth: main.clientWidth, frozenWidth: main.querySelector('.gantt-table-head').getBoundingClientRect().width, scrollWidth: main.scrollWidth });
+  main.scrollTo({ left, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+}
+
+async function syncBitableData(manual = false, preserveView = false) {
   if (planSyncing || !activeProject.connected) return;
   const requestId = ++planRequestId;
   const controller = new AbortController();
@@ -497,14 +588,16 @@ async function syncBitableData() {
   setRefreshButtonState('同步中', true);
 
   try {
-    const response = await fetch('/api/base-sync', { cache: 'no-store', signal: controller.signal });
+    const response = await fetch('/api/base-sync', { method: manual ? 'POST' : 'GET', cache: 'no-store', signal: controller.signal });
     const payload = await response.json();
     if (requestId !== planRequestId) return;
     if (!response.ok || !payload.ok) {
       throw new Error(payload.error || `同步失败：HTTP ${response.status}`);
     }
-    applySyncedPlan(payload.data);
-    savePlanCache(payload.data);
+    if (preserveView) applyEditedPlan(payload.data);
+    else { applySyncedPlan(payload.data); savePlanCache(payload.data); }
+    planStatusDay = payload.data.statusRefreshedDay || dateKey(today);
+    taskEditor?.preload().catch(() => {});
     planState = 'ready';
     status.textContent = planCacheNotice;
     status.hidden = !planCacheNotice;
@@ -576,6 +669,7 @@ function handleDetailCardActivation(event) {
 }
 
 function handleDetailModalKeydown(event) {
+  if (document.querySelector('#organizationChartDialog')?.open) return;
   if (!detailModalOpen) return;
   if (event.key === 'Escape') closeDetailModal();
   if (event.key !== 'Tab') return;
@@ -601,6 +695,7 @@ function openDetailModal(cardId) {
 }
 
 function closeDetailModal() {
+  closeOrganizationChart();
   const modal = document.querySelector('#detailModal');
   if (!modal) return;
   modal.hidden = true;
@@ -649,13 +744,15 @@ function renderDetailModal(detail) {
 
 function renderDetailItem(item) {
   return `
-    <li>
+    <li${item.organizationChart ? ' class="detail-item-with-action"' : ''}>
+      ${item.organizationChart ? '<button class="detail-item-action" type="button" data-organization-chart aria-haspopup="dialog">' : ''}
       <i class="${escapeAttribute(item.tone || '')}"></i>
-      <div>
+      <${item.organizationChart ? 'span' : 'div'}>
         ${item.url ? `<a class="deliverable-document" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)} ${icon('external')}</a>` : `<strong>${escapeHtml(item.title)}</strong>`}
         ${item.meta ? `<small>${escapeHtml(item.meta)}</small>` : ''}
-      </div>
+      </${item.organizationChart ? 'span' : 'div'}>
       ${item.tag ? `<em>${escapeHtml(item.tag)}</em>` : ''}
+      ${item.organizationChart ? '</button>' : ''}
     </li>
   `;
 }
@@ -879,6 +976,7 @@ function getPhaseDetail(phaseNo) {
           meta: formatPeriod(row.start, row.end),
           tag: row.priority,
           tone: row.priority === 'P0' ? 'rose' : 'amber',
+          organizationChart: activeProject.id === 'th-001' && (row.recordId === 'reczz28OqA6vFK96' || row.code === '001-20'),
         })),
       },
       {
@@ -940,6 +1038,7 @@ function renderGanttBoard() {
         </select>
         <span class="gantt-range">${ganttPlan.rangeStart.slice(0, 7).replace('-', '.')} - ${ganttPlan.rangeEnd.slice(0, 7).replace('-', '.')}</span>
         <div class="gantt-group-actions" aria-label="甘特分组控制">
+          <button type="button" id="ganttToday">今天</button>
           <button type="button" id="ganttExpandAll">展开</button>
           <button type="button" id="ganttCollapseAll">收起</button>
         </div>
@@ -982,6 +1081,7 @@ function renderGanttBoard() {
           <span>优先级</span>
         </div>
         <div class="gantt-axis">
+          <span class="gantt-today-label" aria-label="今天时间线"></span>
           <div class="gantt-months" style="grid-template-columns:${months.map(month => `${month.days * dayWidth}px`).join(' ')};">
             ${months.map((month) => `<span>${month.label}</span>`).join('')}
           </div>
@@ -1016,6 +1116,10 @@ function renderGanttBoard() {
   `;
 
   renderGanttRows();
+  updateTodayMarker();
+  centerGanttToday();
+  attachGanttPan(document.querySelector('.gantt-main'));
+  document.querySelector('#ganttToday').addEventListener('click', () => centerGanttToday(true));
   document.querySelector('#ganttSearch').addEventListener('input', renderGanttRows);
   document.querySelector('#ganttPriority').addEventListener('change', renderGanttRows);
   document.querySelector('#ganttExpandAll').addEventListener('click', () => {
@@ -1069,6 +1173,8 @@ function renderGanttBoard() {
   });
   document.addEventListener('keydown', handleCalendarModalKeydown);
   document.querySelector('#ganttRows').addEventListener('click', (event) => {
+    const edit = event.target.closest('[data-edit-task]');
+    if (edit) { taskEditor?.open(edit.dataset.editTask, edit, edit.dataset.taskCode); return; }
     const toggle = event.target.closest('[data-gantt-toggle]');
     if (!toggle) return;
     const tone = toggle.dataset.ganttToggle;
@@ -1150,22 +1256,25 @@ function renderGanttRow(row, options = {}) {
         </span>`
         : `<span class="gantt-code gantt-code-child" title="${escapeAttribute(row.code)}"><i></i><b>${escapeHtml(displayCode)}</b></span>`;
 
+  const editable = row.type !== 'phase' && row.recordId;
+  const editAttr = editable ? `data-edit-task="${escapeAttribute(row.recordId)}" data-task-code="${escapeAttribute(row.code)}" aria-haspopup="dialog"` : '';
+  const syncLabel = row.sync && row.sync.status !== 'success' ? `<small class="task-row-sync ${row.sync.status}" title="${escapeAttribute(row.sync.error || '后台同步中')}">${['error', 'blocked'].includes(row.sync.status) ? '待处理' : '同步中'}</small>` : '';
   return `
     <div class="gantt-row ${row.type} tone-${row.phase} ${priorityClass} ${completed ? 'is-complete' : ''} ${options.collapsed ? 'is-collapsed' : ''}">
       <div class="gantt-row-info">
         ${completion}
         ${codeCell}
-        <span class="gantt-task-label"><span class="gantt-name" title="${escapeAttribute(typeText)}" data-full="${fullAttr}"><span>${escapeHtml(typeText)}</span></span>${renderDeliverableEntry(row)}</span>
+        <span class="gantt-task-label">${editable ? `<button type="button" class="gantt-name gantt-edit-name" ${editAttr} title="${escapeAttribute(typeText)}"><span>${escapeHtml(typeText)}</span></button>` : `<span class="gantt-name" title="${escapeAttribute(typeText)}"><span>${escapeHtml(typeText)}</span></span>`}${syncLabel}${renderDeliverableEntry(row)}</span>
         <span class="gantt-priority">${escapeHtml(row.priority)}</span>
       </div>
       <div class="gantt-track">
         ${
           !scheduled ? '<span class="gantt-unscheduled">未排期</span>' : milestone
-            ? `<span class="gantt-diamond" style="--start:${pos.left}" title="${escapeAttribute(row.title)} · ${row.start}" data-full="${fullAttr}"></span>`
-            : `<span class="gantt-bar ${compactBar ? 'compact' : ''}" style="--start:${pos.left};--width:${pos.width};--progress:${row.progress}" title="${fullAttr}" data-full="${fullAttr}">
+            ? `<button type="button" class="gantt-diamond" ${editAttr} style="--start:${pos.left}" aria-label="编辑任务：${escapeAttribute(row.title)}" title="${escapeAttribute(row.title)} · ${row.start}" data-full="${fullAttr}"></button>`
+            : `<${editable ? 'button type="button"' : 'span'} class="gantt-bar ${compactBar ? 'compact' : ''}" ${editAttr} style="--start:${pos.left};--width:${pos.width};--progress:${row.progress}" title="${fullAttr}" data-full="${fullAttr}">
                 <b>${escapeHtml(barLabel)}</b>
                 ${barDate}
-              </span>`
+              </${editable ? 'button' : 'span'}>`
         }
       </div>
     </div>
@@ -1534,6 +1643,10 @@ function boot() {
   renderGanttBoard();
   renderCompactPhases();
   renderCalendar();
+  taskEditor = createTaskEditor({ onPlan: applyEditedPlan });
+  ganttTodayTimer = window.setInterval(updateTodayMarker, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) updateTodayMarker(); });
+  window.addEventListener('focus', updateTodayMarker);
   syncBitableData();
 }
 

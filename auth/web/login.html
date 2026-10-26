@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>飞书登录 · 海外业务协作平台</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/src/platform-navigation.css"><link rel="stylesheet" href="/auth/login.css"></head>
+<body>
+  <main class="login-experience">
+    <svg class="login-visual" viewBox="0 0 1440 1024" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <radialGradient id="orbLight"><stop stop-color="#168cdd" stop-opacity=".42"/><stop offset="1" stop-color="#07458f" stop-opacity="0"/></radialGradient>
+        <linearGradient id="orbLine" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#86dfff" stop-opacity=".08"/><stop offset=".48" stop-color="#5cbfea" stop-opacity=".6"/><stop offset="1" stop-color="#5180dc" stop-opacity=".04"/></linearGradient>
+        <linearGradient id="orbSurface" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#0b386d"/><stop offset=".5" stop-color="#0c65a5" stop-opacity=".7"/><stop offset="1" stop-color="#143d80" stop-opacity=".15"/></linearGradient>
+        <linearGradient id="routeLight"><stop stop-color="#2490da" stop-opacity="0"/><stop offset=".5" stop-color="#8af0e5"/><stop offset="1" stop-color="#338fe1" stop-opacity=".1"/></linearGradient>
+        <clipPath id="orbClip"><circle cx="1015" cy="505" r="330"/></clipPath>
+      </defs>
+      <circle cx="1050" cy="510" r="640" fill="url(#orbLight)"/>
+      <g fill="none" stroke="url(#orbLine)" stroke-width="1"><ellipse cx="1015" cy="505" rx="510" ry="190" transform="rotate(-35 1015 505)"/><ellipse cx="1015" cy="505" rx="560" ry="240" transform="rotate(32 1015 505)"/><circle cx="1015" cy="505" r="420"/><circle cx="1015" cy="505" r="480" stroke-opacity=".35"/></g>
+      <circle cx="1015" cy="505" r="330" fill="url(#orbSurface)" stroke="url(#orbLine)" stroke-width="1.4"/>
+      <g clip-path="url(#orbClip)" fill="none" stroke="#8ecde9" stroke-opacity=".16"><ellipse cx="1015" cy="505" rx="262" ry="330"/><ellipse cx="1015" cy="505" rx="145" ry="330"/><path d="M1015 175v660M685 505h660"/><ellipse cx="1015" cy="505" rx="330" ry="90"/><ellipse cx="1015" cy="505" rx="330" ry="190"/><ellipse cx="1015" cy="505" rx="330" ry="270"/><path d="m760 290 135 42 72-56 131 88 113-18 72 120-83 75-22 124-138 67-129-86-96-24-58-130 84-72z" stroke-dasharray="2 8"/><path d="m760 290 207-14 131 88 185 102-222 266-150-235-16-165 305 209-385 81 152-346 94 456M685 505l126-8 272-298 128 147-350 300 200 86 117-67-163-160 96-159" stroke-opacity=".13"/></g>
+      <g fill="none" stroke="url(#routeLight)" stroke-width="2"><path d="M507 710C646 333 943 227 1218 431"/><path d="M754 349c83 250 256 420 587 356"/><path d="M630 786c269-228 535-297 810-227" stroke-width="1"/></g>
+      <g fill="#a1eee5"><circle cx="754" cy="349" r="4"/><circle cx="1218" cy="431" r="4"/><circle cx="1061" cy="732" r="5"/><circle cx="754" cy="349" r="12" fill-opacity=".12"/><circle cx="1218" cy="431" r="12" fill-opacity=".12"/><circle cx="1061" cy="732" r="15" fill-opacity=".1"/></g>
+    </svg>
+    <header class="login-header"><img src="/assets/vnet-official-logo.png" alt="世纪互联 VNET"><button type="button" class="login-configuration" data-application-settings aria-label="应用配置" title="应用配置" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
+    <section class="login-content" aria-labelledby="loginTitle"><p class="login-kicker">OVERSEAS OPERATIONS</p><h1 id="loginTitle">海外业务<br>协作平台</h1><div class="login-panel" aria-label="飞书登录"><a class="login-primary" id="feishuLogin" href="/api/auth/feishu/authorize"><svg class="feishu-symbol" viewBox="0 0 48 48" aria-hidden="true"><path fill="#3370ff" d="M5 13h17l11 9-10 10z"/><path fill="#00cbb0" d="m22 13 21 1-10 8z"/><path fill="#2489ee" d="m23 32 10-10 10-8-5 18-15 8z"/></svg><span>使用飞书登录</span><svg class="login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><p id="loginStatus" role="status" aria-live="polite"></p></div></section>
+    <footer class="login-modules"><span>项目管理</span><span>调研工作台</span><span>知识共享</span></footer>
+  </main><script type="module" src="/auth/login.js"></script>
+</body></html>

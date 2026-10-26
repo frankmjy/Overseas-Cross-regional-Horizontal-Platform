@@ -7,8 +7,9 @@ export function projectRecord(source,row,baseUrl){
  const c=row.cells,t=n=>text(c[n]),sourceLink=`${baseUrl}?table=${source.id}&record=${row.id}`,id=source.id+':'+row.id;
  if(source.kind==='meeting'){
   const stamp=t('Meeting Date'),date=/^\d{4}-\d\d-\d\d/.exec(stamp)?.[0]||'',time=t('Meeting Time')||/[T ](\d\d:\d\d)/.exec(stamp)?.[1]||'',timezone=/(Z|[+-]\d\d:\d\d)$/.exec(stamp)?.[1]||'';
-  const action=t('Action Items');
-  return {id,sourceId:source.id,sourceName:source.name,sourceLink,project:source.project,title:t('Meeting Title')||'未命名会议',type:t('Status'),date,time,timezone,summary:t('Summary'),participants:[],decisions:[],actions:action?[{title:action,owner:'',due:'',status:'未标注',structured:false}]:[],links:[...safeLinks(c['Minutes Link'],'会议纪要'),...safeLinks(c['Recording Link'],'会议妙记')],sections:[],tags:[]};
+  const actions=t('Action Items').split(/\r?\n|\s+(?=\d+[.、]\s)|(?<=[。；;])(?=\d+[.、]\s)/).map(v=>v.replace(/^\d+[.、]\s*/,'').trim()).filter(Boolean);
+  const participants=Array.isArray(c.Participants)?c.Participants.map(p=>typeof p==='object'?p.name:'').filter(Boolean):[];
+  return {id,sourceId:source.id,sourceName:source.name,sourceLink,project:source.project,title:t('Meeting Title')||'未命名会议',type:t('Status'),date,time,timezone,summary:t('Summary'),participants,decisions:[],actions:actions.map(title=>({title,owner:'',due:'',status:'未标注',structured:false})),links:[...safeLinks(c['Minutes Link'],'会议纪要'),...safeLinks(c['Recording Link'],'会议妙记')],sections:[],tags:[]};
  }
  let title,summary,sections=[],subcategory=t('Category'),specialty=t('Discipline');
  if(source.kind==='lesson'){title=t('Title');summary=t('Key Points');subcategory=t('Lesson Type');sections=[['经验要点',summary],['现场核查要点',t('Checkpoints')],['适用场景',t('Scenario')],['原始场景',t('Source Context')]];}

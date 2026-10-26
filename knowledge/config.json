@@ -302,6 +302,10 @@
         "Meeting Title": {
           "id": "fldIjqBP7w",
           "name": "Meeting Title（会议名称）"
+        },
+        "Participants": {
+          "id": "fldZzuXq3E",
+          "name": "Participants（参与人）"
         }
       }
     },
@@ -343,6 +347,55 @@
         "Meeting Title": {
           "id": "fldudyxREK",
           "name": "Meeting Title（会议名称）"
+        },
+        "Participants": {
+          "id": "fldruNFZVt",
+          "name": "Participants（参与人）"
+        }
+      }
+    },
+    {
+      "id": "tblCdANuL6HutEy1",
+      "name": "Team Meetings（海外运维团队会议）",
+      "category": "meetings",
+      "kind": "meeting",
+      "project": "overseas",
+      "fields": {
+        "Summary": {
+          "id": "fldEehAGx5",
+          "name": "Summary（会议概要）"
+        },
+        "Recording Link": {
+          "id": "fldGp5B27W",
+          "name": "Recording Link（妙记链接）"
+        },
+        "Meeting Date": {
+          "id": "fldNHeYRI0",
+          "name": "Meeting Date（会议日期）"
+        },
+        "Participants": {
+          "id": "fldAzqlHhY",
+          "name": "Participants（参与人）"
+        },
+        "Meeting Title": {
+          "id": "fldtJtQWX5",
+          "name": "Meeting Title（会议名称）"
+        },
+        "Meeting Time": {
+          "id": "fldypW0hiS",
+          "name": "Meeting Time（会议时间）"
+        },
+        "Minutes Link": {
+          "id": "fldtGqTejI",
+          "name": "Minutes Link（纪要链接）"
+        },
+        "Action Items": {
+          "id": "fldWu7z4m7",
+          "name": "Action Items（待办事项）"
+        },
+        "Status": {
+          "id": "fldcJchSIG",
+          "name": "Status（状态）"
         }
       }
     }

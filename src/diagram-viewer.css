@@ -1,0 +1,27 @@
+.diagram-tool { display:inline-flex; align-items:center; justify-content:center; flex:none; cursor:pointer; color:#526b8e; border:0; background:transparent; border-radius:7px; }
+.diagram-tool:hover { background:#edf3fb; color:#235ca7; }
+.diagram-tool:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+.diagram-tool svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; }
+.diagram-tool:disabled { opacity:.5; cursor:default; }
+.diagram-canvas-active { position:relative; overflow:hidden!important; touch-action:none; cursor:grab; overscroll-behavior:contain; }
+.diagram-canvas-active:focus-visible { outline:2px solid #9eb9dd; outline-offset:-2px; border-radius:7px; }
+.diagram-canvas-active > .org-stage,.diagram-canvas-active > .image-diagram-stage { position:absolute; inset:0 auto auto 0; margin:0; max-width:none; min-width:0; transform-origin:0 0; user-select:none; }
+.diagram-canvas-active img { -webkit-user-drag:none; user-select:none; }
+.diagram-canvas-active.is-dragging,.diagram-canvas-active.is-dragging * { cursor:grabbing!important; user-select:none; }
+.image-diagram-dialog { width:min(1540px,calc(100vw - 32px)); max-width:none; max-height:calc(100dvh - 32px); padding:16px; border:1px solid #dbe6fa; border-radius:18px; box-sizing:border-box; color:#172541; background:white; box-shadow:0 30px 82px #1e448c3d; }
+.image-diagram-dialog[open] { display:grid; grid-template-rows:auto minmax(0,1fr); gap:10px; }
+.image-diagram-dialog::backdrop { background:#09153076; backdrop-filter:blur(6px); }
+.image-diagram-toolbar { display:flex; gap:12px; align-items:center; }
+.image-diagram-toolbar h3 { flex:1; margin:0; font:600 16px/1.5 'Microsoft YaHei',sans-serif; }
+.image-diagram-toolbar .diagram-tool { width:32px; height:32px; padding:6px; }
+.image-diagram-canvas { min-width:0; height:min(80dvh,1120px); }
+.image-diagram-stage img { width:100%; height:auto; display:block; }
+.image-diagram-stage[hidden],.image-diagram-status[hidden] { display:none; }
+.image-diagram-status { display:grid; place-content:center; justify-items:center; gap:14px; height:100%; font-size:14px; color:#526b8e; }
+.image-diagram-status button { padding:6px 14px; background:white; border:1px solid #c5d3ec; border-radius:8px; cursor:pointer; color:#235ca7; }
+@media(max-width:600px) {
+  .image-diagram-dialog { padding:12px; }
+  .image-diagram-toolbar h3 { font-size:14px; }
+  .image-diagram-toolbar .diagram-tool { width:40px; height:40px; }
+  .image-diagram-canvas { height:70dvh; }
+}

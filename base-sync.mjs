@@ -5,12 +5,12 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-const BASE_TOKEN = 'CID8b8V7CaCtKesWGFKcHTdqnlc';
-const TABLE_ID = 'tblSpSvqS2FMpHks';
+export const BASE_TOKEN = 'CID8b8V7CaCtKesWGFKcHTdqnlc';
+export const TABLE_ID = 'tblSpSvqS2FMpHks';
 const BASE_URL =
   'https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblSpSvqS2FMpHks';
 
-const FIELD_NAMES = [
+export const FIELD_NAMES = [
   'Task Code（任务编号）',
   'Process Group Link（所属项目）',
   'Team Setup Phase（团队组建小阶段）',
@@ -227,7 +227,7 @@ function extractDeliverables(values, recordId) {
   return [...files.values()];
 }
 
-function normalizeRecords(envelope) {
+export function normalizeRecords(envelope) {
   const fields = envelope.data?.fields || FIELD_NAMES;
   const rows = envelope.data?.data || [];
 
@@ -264,7 +264,7 @@ function normalizeRecords(envelope) {
   });
 }
 
-function buildPlan(records) {
+export function buildPlan(records) {
   const stageNames = [...new Set(records.map((record) => record.stage))];
   const sortedStageNames = [
     ...STAGE_META.map((stage) => stage.source).filter((stage) => stageNames.includes(stage)),

@@ -2624,11 +2624,111 @@ main {
   background: rgba(255, 255, 255, 0.76);
 }
 
+.detail-list li.detail-item-with-action {
+  display: block;
+  padding: 0;
+}
+
+.detail-item-action {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: inherit;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.detail-item-action:hover { background: #edf3ff; }
+.detail-item-action:focus-visible { outline: 2px solid #2f64ff; outline-offset: 3px; }
+
+.organization-chart-dialog {
+  width: min(1480px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid #dbe6fa;
+  border-radius: 18px;
+  background: #fff;
+  color: #172541;
+  box-shadow: 0 30px 82px rgba(30, 68, 140, 0.24);
+}
+
+.organization-chart-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
+.organization-chart-dialog::backdrop { background: rgba(9, 21, 48, 0.46); backdrop-filter: blur(7px); }
+.organization-chart-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.organization-chart-toolbar h3 { flex: 1; min-width: 180px; margin: 0; font-size: 16px; }
+.organization-chart-toolbar .diagram-tool { width:30px; height:30px; min-height:30px; padding:6px; border:0; }
+.organization-chart-toolbar .diagram-sync { background:#edf4fc; color:#3566a5; }
+.organization-chart-status button { min-height:36px; padding:6px 14px; border:1px solid #c5d3ec; border-radius:8px; color:#2f64ff; background:#fff; font:inherit; cursor:pointer; }
+.organization-chart-canvas { height: min(76dvh, 1036px); min-width: 0; overflow: auto; }
+.organization-chart-canvas img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.organization-chart-canvas img[hidden], .organization-chart-status[hidden] { display: none; }
+.organization-chart-status { display: grid; place-content: center; justify-items: center; gap: 14px; height: 100%; }
+
+@media (max-width: 600px) {
+  .organization-chart-dialog { padding: 12px; }
+  .organization-chart-toolbar { gap: 8px; }
+  .organization-chart-toolbar h3 { flex-basis: 100%; font-size: 15px; }
+  .organization-chart-toolbar .diagram-tool { width:40px; height:40px; min-height:40px; }
+  .organization-chart-canvas { height: auto; min-height: 180px; max-height: 68dvh; }
+  .organization-chart-canvas img { height: auto; }
+}
+
 .detail-list i {
   width: 7px;
   height: 7px;
   border-radius: 999px;
   background: var(--blue);
+}
+
+.org-stage { position: relative; width: min(100%, calc(min(76dvh, 1036px) * 1.428571)); margin-inline: auto; aspect-ratio: 10 / 7; container-type: inline-size; }
+.org-stage[hidden], .org-roster[hidden] { display: none; }
+.organization-chart-canvas .org-stage img { width: 100%; height: auto; }
+.org-overlay { position: absolute; inset: 0; }
+.org-node-hit { position: absolute; padding: 0; border: 0; border-radius: 0.8cqw; background: transparent; cursor: pointer; color: #1a5e52; font: inherit; }
+.org-node-hit:hover { outline: 2px solid #3d85b5; outline-offset: 2px; background: #2b78b408; }
+.org-node-hit:focus-visible, .org-overlay button:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.org-confirmed { position: absolute; right: 1.2cqw; top: 31%; padding: 0.08cqw 0.55cqw; border: 1px solid #bbded1; border-radius: 1cqw; background: #e7f6ef; font-size: 0.9cqw; line-height: 1.1; white-space: nowrap; }
+.org-confirmed b { font-weight: 800; }
+.org-node-dark .org-confirmed { border-color: #91cdb5; background: #e2f5ec; }
+.org-overfilled .org-confirmed { color: #a3540a; background: #fff3db; border-color: #ecd09c; }
+.org-live-totals { position: absolute; right: 2.7%; top: 2.4%; width: 24%; background: #fff; text-align: right; color: #173f7b; }
+.org-live-totals > span { display: block; font-size: 1.6cqw; font-weight: 700; }
+.org-live-totals > div { display: flex; justify-content: flex-end; gap: 0.9cqw; margin-top: 0.35cqw; }
+.org-live-totals button { display: grid; gap: 0.2cqw; min-width: 8cqw; padding: 0.3cqw 0.7cqw; border: 1px solid #d4e3ef; border-radius: 0.6cqw; background: #f6f9ff; color: #173f7b; cursor: pointer; }
+.org-live-totals button:last-child { background: #eaf7f1; color: #167c6a; border-color: #b8dcd0; }
+.org-live-totals small { font-size: 1.1cqw; }
+.org-live-totals strong { font-size: 2.1cqw; line-height: 1; }
+.org-live-totals em { font-size: 1.1cqw; font-style: normal; margin-left: 0.3cqw; }
+.org-extra-managers, .org-unassigned { position: absolute; left: 3.5%; top: 33%; width: 25%; height: 5%; display: flex; align-items: center; justify-content: space-between; padding: 0 1.2cqw; border: 1px solid #b9d5e7; border-radius: 0.7cqw; background: #f0f6fc; color: #193f70; font: 600 1.25cqw 'Microsoft YaHei',sans-serif; cursor: pointer; }
+.org-extra-managers span:last-child { font-weight: 400; color: #167c6a; font-size: 1.1cqw; }
+.org-unassigned { left: 70%; top: 28%; width: 26%; font-size: 1.1cqw; }
+.org-roster { min-width: 0; height: 100%; }
+.org-roster > header { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; padding: 10px 2px 18px; }
+.org-roster h4 { margin: 0; font-size: 20px; color: #193f70; }
+.org-roster h4 span { margin-left: 12px; color: #167c6a; }
+.org-roster button { padding: 8px 14px; border: 1px solid #c5d3ec; background: #fff; color: #245ca7; border-radius: 8px; font: inherit; cursor: pointer; }
+.org-roster-scroll { overflow: auto; max-height: calc(100% - 70px); border: 1px solid #dce6f1; border-radius: 10px; }
+.org-roster-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 14px; }
+.org-roster-table th, .org-roster-table td { padding: 13px 16px; white-space: nowrap; border-bottom: 1px solid #e5ecf4; }
+.org-roster-table th { position: sticky; top: 0; background: #edf3fb; color: #23446f; font-weight: 600; z-index: 1; }
+.org-roster-table tbody tr:nth-child(even) { background: #f8fafd; }
+.org-roster-table tbody tr:hover { background: #edf6f4; }
+.org-roster-table tfoot td, .org-roster-table tfoot th { background: #edf7f2; font-weight: 700; }
+.org-empty { text-align: center; color: #71829a; height: 160px; }
+@media (max-width: 600px) {
+  .organization-chart-canvas { height: 68dvh; }
+
+  .org-roster-table th, .org-roster-table td { padding: 11px 12px; }
 }
 
 .detail-list i.rose {
