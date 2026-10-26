@@ -94,7 +94,11 @@ export class ResearchService {
           this.base.setSubjectLabels?.({[op.payload.company]:op.payload.oldName});
           this.base.subjectAliases?.set(op.payload.name,op.payload.company);
         }
-        for (const table of ['questions', 'findings', 'evidence', 'topics']) raw[table] = await this.base.list(table);
+        const load = async tables => { for (const table of tables) raw[table] = await this.base.list(table); };
+        // Evidence uses the subject aliases discovered by findings; the other reads are independent.
+        const reads = await Promise.allSettled([load(['questions', 'topics']), load(['findings', 'evidence'])]);
+        const failed = reads.find(result => result.status === 'rejected');
+        if (failed) throw failed.reason;
         const questionIds = new Set();
         for (const row of raw.questions) {
           const id = text(row.问题编号), title = text(row.问题列表);

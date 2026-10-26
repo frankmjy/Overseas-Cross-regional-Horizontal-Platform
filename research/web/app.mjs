@@ -1,6 +1,7 @@
 // Shared visual elements from the approved A template.
 import { groupTopics } from '/research/topics.mjs';
 import { topicProgress } from '/research/topic-progress.mjs';
+import { loadWorkspace } from '/research/startup.mjs';
 import { nextPollDelay } from '/research/sync-policy.mjs';
 import { renderPlatformHeader } from '/src/platform-navigation.js';
 import { renderComparisonEntry, comparisonForQuestion, createImageDiagram } from '/src/diagram-viewer.js';
@@ -13,6 +14,8 @@ const snapshots = {};
 let projectOptions = [];
 let data = null;
 const app = document.querySelector('#app');
+const startupTemplate = app.innerHTML;
+let startupSlowTimer = null;
 const dialog = document.querySelector('#detailDialog');
 const editor = document.querySelector('#editDialog');
 let teamComparisonViewer = null;
@@ -572,27 +575,29 @@ function pollDelay() {
   const pending = operations.some(o => ['accepted', 'syncing'].includes(o.status)) || formState?.operationId && !operations.some(o => o.id === formState.operationId) && ['accepted', 'syncing'].includes(formState.phase);
   return nextPollDelay({ hasData: !!data, refreshing: refreshPending, pending, initialAttempts, failures: pollFailures });
 }
-async function poll() {
-  if (polling) return; polling = true;
-  clearTimeout(pollTimer);
-  try {
-    const batches=await Promise.all(researchProjects.map(async p=>{
-      const [result,jobs]=await Promise.all([request('/api/research',{},p.key),request('/api/research/operations',{},p.key)]);
-      if(result.data&&result.data.project?.key!==p.key)throw Error(`${p.name}正式数据源不匹配。`);
-      if(result.data)snapshots[p.key]=result.data;
-      const items=jobs.operations.map(o=>({...o,project:p.key}));
-      for(const key of Object.keys(localStorage).filter(k=>k.startsWith(pendingPrefix(p.key))&&/^[a-f0-9-]{36}$/i.test(k.slice(pendingPrefix(p.key).length)))){
-        const id=key.slice(pendingPrefix(p.key).length);
-        if(items.some(o=>o.id===id)){localStorage.removeItem(key);continue;}
-        try{const known=await request(`/api/research/operations/${id}`,{},p.key);items.unshift({...known.operation,project:p.key});localStorage.removeItem(key);}
-        catch(e){if(e.status!==404)throw e;const payload=JSON.parse(localStorage.getItem(key));items.unshift({id,project:p.key,kind:payload.kind,label:payload.title||payload.name||payload.questionId,status:'unconfirmed',error:'上次提交未查到受理记录，请重试核对。'});}
-      }
-      return {result,items};
-    }));
-    projectOptions=batches[0].result.projects||[];pollFailures=0;operations=batches.flatMap(b=>b.items);
+function renderStartup({ failed = false, slow = false, timedOut = false } = {}) {
+  if (failed || timedOut) { clearTimeout(startupSlowTimer); startupSlowTimer = null; }
+  if (!document.querySelector('.workspace-startup') || !document.querySelector('.platform-header')) app.innerHTML = renderPlatformHeader('research') + startupTemplate;
+  const surface = document.querySelector('.workspace-startup');
+  surface.dataset.state = failed || timedOut ? 'error' : slow ? 'slow' : 'loading';
+  surface.setAttribute('aria-busy', String(!failed && !timedOut));
+  document.querySelector('#startupTitle').textContent = timedOut ? '准备时间超出预期' : failed ? '连接暂时中断' : '正在准备你的协作空间';
+  document.querySelector('#startupMessage').textContent = timedOut ? '可以重新连接，或先浏览其他工作区' : failed ? '请重新连接，继续你的工作' : slow ? '内容仍在准备，你也可以先浏览其他工作区' : '项目进展、团队洞察，即将就绪';
+  const retry = document.querySelector('[data-initial-retry]');
+  retry.hidden = !failed && !slow && !timedOut;
+  retry.onclick = async () => {
+    initialAttempts = 0; pollFailures = 0; renderStartup();
+    try { await Promise.all(researchProjects.map(p => post('/api/research/refresh', {}, p.key))); await poll(); }
+    catch { renderStartup({ failed: true }); }
+  };
+}
+function publishResearch(results) {
+    results.forEach((result, index) => { if (result.data) snapshots[researchProjects[index].key] = result.data; });
+    projectOptions = results[0].projects || [];
     const complete=researchProjects.every(p=>snapshots[p.key]);
-    const result={data:complete?mergeProjectSnapshots(snapshots):null,refreshing:batches.some(b=>b.result.refreshing),state:batches.some(b=>b.result.state==='error')?'error':'loading',error:batches.map((b,i)=>b.result.error?`${researchProjects[i].name}：${b.result.error}`:'').filter(Boolean).join('；')};
+    const result={data:complete?mergeProjectSnapshots(snapshots):null,refreshing:results.some(result=>result.refreshing),state:results.some(result=>result.state==='error')?'error':'loading',error:results.map((result,i)=>result.error?`${researchProjects[i].name}：${result.error}`:'').filter(Boolean).join('；')};
     if (result.data) {
+      clearTimeout(startupSlowTimer); startupSlowTimer = null;
       const changed = lastSync !== (result.data.revision || result.data.syncedAt), first = !data;
       indexData(result.data); lastSync = data.revision || data.syncedAt;
       if (dialog.open && [currentDetail?.id, attachmentContext?.id].some(id => id && !questionMap.has(id))) { dialog.close(); disposePreview?.(); disposePreview = null; currentDetail = null; attachmentContext = null; }
@@ -602,9 +607,28 @@ async function poll() {
       if (changed || first) renderPage(); else { renderSyncStatus(); const b = document.querySelector('[data-refresh]'); if (b) { b.disabled = refreshPending; b.innerHTML = `${icon('activity')}${refreshPending ? '正在同步…' : '手动同步'}`; } }
     } else {
       initialAttempts++;
-      app.innerHTML = `<div class="initial-loading" role="status"><h2>${result.state === 'error' || initialAttempts >= 15 ? '暂时无法读取调研数据' : '正在读取飞书多维表…'}</h2><p>${esc(result.error || (initialAttempts >= 15 ? '同步耗时较长，请检查服务器应用和多维表配置。' : '首次读取完成后即可使用工作台。'))}</p><button class="secondary-button" data-initial-retry>重新读取</button></div>`;
-      document.querySelector('[data-initial-retry]').onclick = async () => { try { initialAttempts = 0; pollFailures = 0; await Promise.all(researchProjects.map(p=>post('/api/research/refresh',{},p.key))); await poll(); } catch (e) { toast(e.message); } };
+      renderStartup({ failed: result.state === 'error', slow: initialAttempts >= 4, timedOut: initialAttempts >= 15 });
     }
+}
+async function poll() {
+  if (polling) return; polling = true;
+  clearTimeout(pollTimer);
+  if (!data) { renderStartup(); startupSlowTimer ||= setTimeout(() => { if (!data) renderStartup({ slow: true }); }, 8000); }
+  try {
+    const batches = await loadWorkspace({ projects: researchProjects, read: (route, key) => request(route, {}, key), onSnapshot: publishResearch });
+    const taskBatches = await Promise.all(batches.map(async ({ result, jobs }, index) => {
+      const p = researchProjects[index];
+      const items=jobs.operations.map(o=>({...o,project:p.key}));
+      for(const key of Object.keys(localStorage).filter(k=>k.startsWith(pendingPrefix(p.key))&&/^[a-f0-9-]{36}$/i.test(k.slice(pendingPrefix(p.key).length)))){
+        const id=key.slice(pendingPrefix(p.key).length);
+        if(items.some(o=>o.id===id)){localStorage.removeItem(key);continue;}
+        try{const known=await request(`/api/research/operations/${id}`,{},p.key);items.unshift({...known.operation,project:p.key});localStorage.removeItem(key);}
+        catch(e){if(e.status!==404)throw e;const payload=JSON.parse(localStorage.getItem(key));items.unshift({id,project:p.key,kind:payload.kind,label:payload.title||payload.name||payload.questionId,status:'unconfirmed',error:'上次提交未查到受理记录，请重试核对。'});}
+      }
+      return {result,items};
+    }));
+    pollFailures = 0; operations = taskBatches.flatMap(batch => batch.items);
+    if (data) renderSyncStatus();
     if (formState?.operationId && editor.open) {
       const op = operations.find(o => o.id === formState.operationId&&o.project===formState.payload?.project);
       if (op && op.status !== formState.phase) {
@@ -615,7 +639,7 @@ async function poll() {
       }
     }
     if (dialog.open && dialog.querySelector('.task-list') && taskSignature !== JSON.stringify(operations)) showTasks();
-  } catch (e) { pollFailures++; statusMessage = pollFailures >= 3 ? `${e.message} 已暂停自动查询，请手动同步重试。` : e.message; if (data) { if (pollFailures >= 3) { refreshPending = false; renderPage(); } else renderSyncStatus(); } else { app.innerHTML = `<div class="initial-loading"><h2>连接失败</h2><p>${esc(statusMessage)}</p><button class="secondary-button" id="retryConnection">刷新页面</button></div>`; document.querySelector('#retryConnection').addEventListener('click', () => location.reload()); } }
+  } catch (e) { pollFailures++; statusMessage = pollFailures >= 3 ? `${e.message} 已暂停自动查询，请手动同步重试。` : e.message; if (data) { if (pollFailures >= 3) { refreshPending = false; renderPage(); } else renderSyncStatus(); } else { renderStartup({ failed: true }); } }
   finally { polling = false; const delay = pollDelay(); if (delay !== null && !document.hidden) pollTimer = setTimeout(poll, delay); }
 }
 poll();
