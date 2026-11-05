@@ -18,7 +18,7 @@ test('knowledge search combines category, specialty and case-insensitive full te
 });
 
 test('meeting project filters and metrics use only the selected project', () => {
-  assert.deepEqual(projects.map(p => p.name), ['Thailand Project', 'Malaysia Project']);
+  assert.deepEqual(projects.map(p => p.name), ['Thailand Project', 'Malaysia Project', 'Overseas Team']);
   for (const project of projects) {
     const shown = filterMeetings(meetings,{ project: project.id });
     assert.ok(shown.length > 0);
@@ -28,6 +28,8 @@ test('meeting project filters and metrics use only the selected project', () => 
   }
   assert.ok(filterMeetings(meetings,{ query: 'malaysia' }).every(m => m.project === 'malaysia'));
   assert.deepEqual(filterMeetings(meetings,{ project: 'unknown' }), []);
+  assert.equal(filterMeetings(meetings,{date:'2026-10-16'}).length,3);
+  assert.equal(filterMeetings(meetings,{date:'2026-10-15'}).length,0);
   assert.deepEqual(filterMeetings(meetings,{ query: '不存在的会议xyz' }), []);
   assert.deepEqual(meetingMetrics([]), { total: 0, decisions: 0, pending: 0, completed: 0 });
   assert.equal(new Set([...documents, ...meetings].map(r => r.id)).size, documents.length + meetings.length);
@@ -39,9 +41,12 @@ test('knowledge routes serve only explicit public assets and support direct relo
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
   const origin = `http://127.0.0.1:${server.address().port}`;
-  for (const route of ['/knowledge-sharing', '/knowledge-sharing?view=meetings&project=thailand', '/knowledge/app.mjs', '/knowledge/data.mjs', '/knowledge/styles.css']) {
+  for (const route of ['/knowledge-sharing', '/meeting-trail', '/knowledge-sharing?view=meetings&project=thailand', '/knowledge-sharing?scope=handover&stage=1&group=s1g3&folder=S1.3.3', '/knowledge/app.mjs', '/knowledge/data.mjs', '/knowledge/lifecycle.mjs', '/knowledge/meetings-overview.mjs', '/knowledge/styles.css']) {
     assert.equal((await fetch(origin + route)).status, 200, route);
   }
+  const legacy=await fetch(origin+'/knowledge-sharing?view=meetings&project=malaysia&q=review&date=2026-10-16',{redirect:'manual'});
+  assert.equal(legacy.status,303);
+  assert.equal(legacy.headers.get('location'),'/meeting-trail?project=malaysia&q=review&date=2026-10-16');
   const head = await fetch(origin + '/knowledge-sharing', { method: 'HEAD' });
   assert.equal(head.status, 200); assert.equal(await head.text(), '');
   assert.equal((await fetch(origin + '/knowledge-sharing', { method: 'POST' })).status, 405);

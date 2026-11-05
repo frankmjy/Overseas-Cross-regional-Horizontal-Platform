@@ -30,7 +30,7 @@ export async function processRename(service,op,questionVersion){
    const question=(await read('questions')).find(q=>text(q.问题编号)===p.questionId);
    if(!question||questionVersion(question)!==p.version)fail('问题已被修改，请刷新后重新编辑。');
    const old=text(question.问题列表);add('questions',question,'问题列表',old,p.name);
-   for(const row of await read('findings'))if(text(row.明细编号).startsWith(p.questionId+':')&&text(row.明细名称).endsWith('｜'+old))add('findings',row,'明细名称',text(row.明细名称),text(row.明细名称).slice(0,-old.length)+p.name);
+   for(const row of await read('findings'))if((row.关联问题?.some(link=>link.id===question.recordId)||text(row.明细编号).split(/[｜:]/)[0]===p.questionId)&&text(row.明细名称).endsWith('｜'+old))add('findings',row,'明细名称',text(row.明细名称),text(row.明细名称).slice(0,-old.length)+p.name);
   }else if(p.kind==='topic-rename'){
    for(const [table,field]of [['questions','一级分类'],['findings','一级分类'],['topics','专题名称']])for(const row of await read(table))if(text(row[field])===p.oldName)add(table,row,field,p.oldName,p.name);
    if(!items.length)fail('原专题已变化，请刷新后重试。');

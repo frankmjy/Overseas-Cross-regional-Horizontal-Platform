@@ -14,6 +14,18 @@ const instant = value => {
 };
 export class LoginAuditSink {
   constructor(config, adapter = new BaseAdapter(config)) { this.config = config; this.adapter = adapter; }
+  async list() {
+    if (!/^tbl[\w]+$/.test(this.config.tableId)) throw Error('登录记录表尚未配置。');
+    const result=[],seen=new Set();let offset=0;
+    for(let page=0;page<100;page++){
+      const data=await this.adapter.cli('+record-list',['--table-id',this.config.tableId,'--limit','200','--offset',String(offset),'--format','json']);
+      const rows=normalizeRows(data);
+      for(const row of rows){if(!row.recordId||seen.has(row.recordId))throw Error('登录记录分页未前进。');seen.add(row.recordId);const time=value=>{const n=instant(value);return Number.isFinite(n)?new Date(n).toISOString():null;};const account=Array.isArray(row[auditFields.account])?row[auditFields.account].find(person=>/^ou_/.test(person.id||person.open_id||'')):null;result.push({id:text(row[auditFields.id])||'record:'+row.recordId,name:text(row[auditFields.name]),openId:account?(account.id||account.open_id):text(row[auditFields.openId]),loginTime:time(row[auditFields.login]),logoutTime:time(row[auditFields.logout]),entryPage:text(row[auditFields.entry]),method:text(row[auditFields.method])});}
+      if(!data.has_more)return result;
+      if(!rows.length)throw Error('登录记录分页未前进。');offset+=rows.length;
+    }
+    throw Error('登录记录超过读取上限，未返回不完整历史。');
+  }
   async sync(event) {
     const tableId = this.config.tableId;
     if (!/^tbl[\w]+$/.test(tableId)) throw Error('登录记录表尚未配置。');

@@ -1,0 +1,17 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {HandoverAdapter} from '../project-tasks/handover/adapter.mjs';
+import {fields,binding,schemaOf} from '../project-tasks/handover/model.mjs';
+const apply=process.argv.includes('--apply'),adapter=new HandoverAdapter(),before=await adapter.rawSchema();
+schemaOf(before);
+const definitions=[{...fields.order,style:{type:'plain',precision:4}},fields.displayCode];
+const additions=definitions.filter(d=>!before.some(f=>f.name===d.name));
+const dir=path.resolve('reports/gantt-row-actions-20261105');await fs.mkdir(dir,{recursive:true});
+const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+await fs.writeFile(path.join(dir,`schema-before-${stamp}.json`),JSON.stringify(before,null,2),{flag:'wx'});
+if(apply&&additions.length)await adapter.call('+field-create',['--json',JSON.stringify(additions)]);
+const after=await adapter.rawSchema();schemaOf(after);
+if(before.some(old=>{const next=after.find(f=>f.id===old.id);return !next||next.name!==old.name||next.type!==old.type||JSON.stringify(next.options||[])!==JSON.stringify(old.options||[]);}))throw Error('原字段回读不一致，已保留变更前快照。');
+if(apply&&definitions.some(d=>!after.some(f=>f.name===d.name&&f.type===d.type)))throw Error('排序字段未全部就绪，请回读核对，不重复创建。');
+await fs.writeFile(path.join(dir,apply?'schema-after.json':'schema-preflight.json'),JSON.stringify(after,null,2));
+console.log(JSON.stringify({applied:apply,table:binding.table,addFields:additions.map(f=>f.name),preservedFields:before.length,recordWrites:0}));

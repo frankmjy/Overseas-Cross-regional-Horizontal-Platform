@@ -22,6 +22,10 @@ export function normalizeRows(data) {
   return data.data.map((row, i) => ({ recordId: data.record_id_list[i], ...Object.fromEntries(data.fields.map((key, j) => [key, row[j]])) }));
 }
 export const versionOf = row => sha(JSON.stringify([text(row.调研内容), text(row.举证原文)]));
+const validQuestionId=value=>/^(?:Q-[a-z0-9-]{1,90}|\d+(?:\.\d+){1,12})$/i.test(value);
+const detailQuestionId=value=>text(value).split(/[｜:]/)[0];
+const detailMatches=(row,qid,company,recordId)=>text(row.调研对象)===company&&(row.关联问题?.some(link=>link.id===recordId)||detailQuestionId(row.明细编号)===qid);
+const evidenceType=file=>/^image\//.test(file.mime)||/\.(png|jpe?g|webp)$/i.test(file.name)?'截图':/\.(pdf|docx?|xlsx?|pptx?|txt|csv|md)$/i.test(file.name)?'文档':'其他';
 const legacyQuestionVersion = row => sha(JSON.stringify([row.recordId, text(row.问题编号), text(row.问题列表), text(row.一级分类), row.重点标记 === true, row.已删除 === true]));
 export const questionVersion = row => sha(JSON.stringify([text(row.问题编号), text(row.问题列表), text(row.一级分类), row.重点标记 === true, row.已删除 === true, text(row.适用范围) || '本项目']));
 export const attachmentVersion = file => sha(JSON.stringify([file.file_token, file.name, file.size]));
@@ -103,7 +107,7 @@ export class ResearchService {
         for (const row of raw.questions) {
           const id = text(row.问题编号), title = text(row.问题列表);
           if (!id && !title) continue;
-          if (!/^Q-[a-z0-9-]{1,90}$/i.test(id) || !title || questionIds.has(id)) throw new Error('飞书问题编号缺失、格式不合法或重复，请在多维表核对后重新同步。');
+          if (!validQuestionId(id) || !title || questionIds.has(id)) throw new Error('飞书问题编号缺失、格式不合法或重复，请在多维表核对后重新同步。');
           questionIds.add(id);
         }
         this.state.cache = { raw, subjectLabels:{...this.base.subjectLabels}, syncedAt: new Date().toISOString() }; this.syncError = ''; this.persist();
@@ -126,10 +130,14 @@ export class ResearchService {
     const questions = allQuestions.filter(q => !q.deleted), deletedQuestions = allQuestions.filter(q => q.deleted);
     const qByRecord = new Map(questions.map(q => [q.recordId, q.id]));
     const ids = new Set(questions.map(q => q.id));
-    const findings = raw.findings.map(f => ({ id: text(f.明细编号), questionId: qByRecord.get(f.关联问题?.[0]?.id) || text(f.明细编号).split(':')[0], company: text(f.调研对象), content: text(f.调研内容), proof: text(f.举证原文), hasMaterial: text(f.材料状态) === '有原始材料' || !!text(f.调研内容) || !!text(f.举证原文), version: versionOf(f), sync: f.__sync, sourceUrl: safeUrl(f.源表链接) || this.baseUrl })).filter(f => ids.has(f.questionId) && companies.some(c => c.name === f.company));
+    const detailByRecord=new Map(raw.findings.map(f=>[f.recordId,f]));
+    const questionOfDetail=f=>f?qByRecord.get(f.关联问题?.[0]?.id)||detailQuestionId(f.明细编号):'';
+    const findings = raw.findings.map(f => ({ id: text(f.明细编号), questionId: questionOfDetail(f), company: text(f.调研对象), content: text(f.调研内容), proof: text(f.举证原文), hasMaterial: ['有原始材料','已填写内容'].includes(text(f.材料状态)) || !!text(f.调研内容) || !!text(f.举证原文), version: versionOf(f), sync: f.__sync, sourceUrl: safeUrl(f.源表链接) || this.baseUrl })).filter(f => ids.has(f.questionId) && companies.some(c => c.name === f.company));
     for (const q of questions) for (const c of companies) if (!findings.some(f => f.questionId === q.id && f.company === c.name)) findings.push({ id: `${q.id}:${c.name}`, questionId: q.id, company: c.name, content: '', proof: '', hasMaterial: false, version: versionOf({}), sourceUrl: this.baseUrl });
     const evidence = raw.evidence.flatMap(e => {
-      const common = { questionId: text(e.问题编号), company: text(e.调研对象), type: text(e.资料类型), sourceUrl: safeUrl(e.源表链接) || this.baseUrl };
+      const detail=detailByRecord.get(e.所属明细?.[0]?.id),direct=qByRecord.get(e.关联问题?.[0]?.id),indirect=questionOfDetail(detail);
+      if(direct&&indirect&&direct!==indirect)throw new Error('证据的问题与明细关联冲突，请核对多维表。');
+      const common = { questionId: direct||indirect||text(e.问题编号), company: text(e.调研对象)||text(detail?.调研对象), type: text(e.资料类型), sourceUrl: safeUrl(e.源表链接) || this.baseUrl };
       if (!ids.has(common.questionId)) return [];
       const files = Array.isArray(e.附件) ? e.附件 : [];
       if (files.length) return files.map((f, i) => ({ ...common, id: `${e.recordId}-${i}`, name: f.name || text(e.资料名称), size: f.size || Number(e.原文件大小) || 0, mime: text(e.MIME类型) || mimeFor(f.name), downloadable: true, url: apiUrl(`/api/research/files/${e.recordId}/${i}?v=${attachmentVersion(f)}`), feishuUrl: apiUrl(`/api/research/files/${e.recordId}/${i}/feishu`) }));
@@ -154,7 +162,7 @@ export class ResearchService {
       data.title = limited(input.title, 1000, '问题', true); data.category = limited(input.category, 60, '专题', true); data.priority = input.priority === true;
       if (this.project) {
         if (!['本项目', '通用'].includes(input.applicability)) throw error('请选择问题适用范围。');
-        if (input.applicability === '通用' && this.project.key !== 'malaysia') throw error('新增通用问题应保存到马来项目正式表。');
+        if (input.applicability === '通用' && this.project.key === 'thailand') throw error('新增通用问题应保存到马来项目正式表。');
         data.applicability = input.applicability;
       }
       if (!replay && !this.snapshot()?.categories.includes(data.category)) throw error('请先新增或选择已有专题。');
@@ -250,6 +258,7 @@ export class ResearchService {
     return op;
   }
   async ensure(op, step, table, fields, match = r => text(r.迁移键) === fields.迁移键) {
+    fields=this.base.supported?.(table,fields)||fields;
     const rows = await this.base.list(table); const found = rows.filter(match);
     if (found.length > 1) throw error('飞书存在重复业务键，已停止同步，请核对重复记录。', 409);
     const prior = op.steps[step];
@@ -292,20 +301,27 @@ export class ResearchService {
     if (p.kind === 'topic') {
       const existing = (await this.base.list('topics')).find(r => text(r.专题名称) === p.name);
       if (existing && text(existing.迁移键) !== `web:${op.id}`) throw new Error('专题名称已存在，请选择现有专题。');
-      await this.ensure(op, 'topic', 'topics', { 专题名称: p.name, 专题说明: p.description, 迁移键: `web:${op.id}` });
+      await this.ensure(op, 'topic', 'topics', { 专题名称: p.name, 专题说明: p.description, 层级:'一级', 迁移键: `web:${op.id}` });
       op.result.category = p.name;
     }
     if (p.kind === 'question') {
       const qid = `Q-${op.id.toUpperCase()}`; op.result.questionId = qid;
       const qrec = await this.ensure(op, 'question', 'questions', { 问题列表: p.title, 问题编号: qid, 一级分类: p.category, 重点标记: p.priority, 分类待确认: p.category === '待确认分类', ...(this.project ? {适用范围:p.applicability} : {}), 迁移键: `web:${op.id}` });
-      for (const c of companies) await this.ensure(op, `finding:${c.name}`, 'findings', { 明细名称: `${c.name}｜${p.title}`, 明细编号: `${qid}:${c.name}`, 关联问题: [{ id: qrec }], 一级分类: p.category, 调研对象: c.name, 调研内容: '', 举证原文: '', 材料状态: '待调研', 迁移键: `web:${op.id}:${c.code}` });
+      for (const c of companies) await this.ensure(op, `finding:${c.name}`, 'findings', { 明细名称: `${c.name}｜${p.title}`, 明细编号: `${qid}:${c.name}`, 关联问题: [{ id: qrec }], 一级分类: p.category, 调研对象: c.name, 调研内容: '', 举证原文: '', 材料状态: '待调研', 迁移键: `web:${op.id}:${c.code}` },r=>detailMatches(r,qid,c.name,qrec));
     }
     if (p.kind === 'finding') {
       const q = (await this.base.list('questions')).find(row => text(row.问题编号) === p.questionId);
       if (!q || q.已删除 === true && op.steps.content?.status !== 'success') throw new Error('该问题已删除或不存在，请先恢复后再编辑。');
-      const f = (await this.base.list('findings')).find(r => text(r.明细编号) === `${p.questionId}:${p.company}`);
-      if (!f) throw new Error('飞书中缺少此问题的调研明细，请先修复问题同步。');
-      const fields = { 调研内容: p.content, 举证原文: p.proof, 材料状态: p.content || p.proof || p.uploadIds.some(id => this.state.uploads[id]?.ready !== false) || (await this.base.list('evidence')).some(e => text(e.问题编号) === p.questionId && text(e.调研对象) === p.company && (e.附件?.length || safeUrl(e.原始链接))) ? '有原始材料' : '待调研' };
+      let matching=(await this.base.list('findings')).filter(r=>detailMatches(r,p.questionId,p.company,q.recordId));
+      if(matching.length>1)throw new Error('该问题与调研对象存在重复明细，已停止写入。');
+      if(!matching.length){
+        if(p.version!==versionOf({}))throw new Error('原明细已移除，请刷新后核对。');
+        await this.ensure(op,'finding-record','findings',{明细名称:`${p.company}｜${text(q.问题列表)}`,明细编号:`${p.questionId}｜${p.company}`,关联问题:[{id:q.recordId}],一级分类:text(q.一级分类),调研对象:p.company,调研内容:'',举证原文:'',材料状态:'待调研',迁移键:`web:${op.id}:finding`},r=>detailMatches(r,p.questionId,p.company,q.recordId));
+        matching=(await this.base.list('findings')).filter(r=>detailMatches(r,p.questionId,p.company,q.recordId));
+      }
+      const f=matching[0];if(!f)throw new Error('调研明细暂未回读，请重试核对。');
+      const hasEvidence=(await this.base.list('evidence')).some(e=>(text(e.问题编号)===p.questionId||e.所属明细?.some(link=>link.id===f.recordId)||e.关联问题?.some(link=>link.id===q.recordId))&&text(e.调研对象)===p.company&&(e.附件?.length||safeUrl(e.原始链接)));
+      const fields = { 调研内容: p.content, 举证原文: p.proof, 材料状态: p.content || p.proof || p.uploadIds.some(id => this.state.uploads[id]?.ready !== false) || hasEvidence ? '有原始材料' : '待调研' };
       if (!op.steps.content) {
         if (versionOf(f) !== p.version && versionOf(f) !== versionOf(fields)) throw new Error('该内容已被修改，请刷新详情并合并最新内容后重新提交。');
         op.steps.content = { status: 'started', recordId: f.recordId }; this.persist();
@@ -319,7 +335,8 @@ export class ResearchService {
       for (const uploadId of p.uploadIds) {
         const file = this.state.uploads[uploadId];
         if (file?.ready === false) return 'waiting_upload';
-        const rec = await this.ensure(op, `evidence:${uploadId}`, 'evidence', { 资料名称: file.name, 资料编号: `E-${uploadId}`, 所属明细: [{ id: f.recordId }], 问题编号: p.questionId, 调研对象: p.company, 资料类型: '文件附件', 迁移状态: '已迁移', 原文件大小: file.size, MIME类型: file.mime, SHA256: file.sha256, 迁移键: `web:${op.id}:${uploadId}` });
+        const modern=!!this.base.config?.fieldIds?.evidence?.关联问题;
+        const rec = await this.ensure(op, `evidence:${uploadId}`, 'evidence', { 资料名称: file.name, 资料编号: `E-${uploadId}`, 所属明细: [{ id: f.recordId }], ...(modern?{关联问题:[{id:q.recordId}]}:{}), 问题编号: p.questionId, 调研对象: p.company, 资料类型: modern?evidenceType(file):'文件附件', 迁移状态: '已迁移', 原文件大小: file.size, MIME类型: file.mime, SHA256: file.sha256, 迁移键: `web:${op.id}:${uploadId}` });
         const step = `upload:${uploadId}`;
         if (op.steps[step]?.status === 'success') continue;
         let remote = (await this.base.list('evidence')).find(e => e.recordId === rec);

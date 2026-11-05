@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {researchProjectConfigs,resolveResearchProject,createProjectResearchHandler} from '../research/projects.mjs';
-import {questionDestination,researchApiUrl,pendingPrefix} from '../research/web/project-scope.mjs';
+import {questionDestination as destination,researchApiUrl as apiUrl,pendingPrefix} from '../research/web/project-scope.mjs';
 
+const legacyProjects=[{key:'thailand',name:'泰国项目'},{key:'malaysia',name:'马来项目'}];
+const questionDestination=scope=>destination(scope,legacyProjects),researchApiUrl=(value,key)=>apiUrl(value,key,legacyProjects);
 const config=()=>({baseToken:'base',defaultProject:'malaysia',projects:Object.fromEntries(['thailand','malaysia'].map(key=>[key,{tables:Object.fromEntries(['questions','findings','evidence','topics'].map(t=>[t,`${key}-${t}`])),fieldIds:{}}]))});
 test('official projects require disjoint tables and a known default; no reference fallback',()=>{
  const c=config(),projects=researchProjectConfigs(c);assert.equal(projects.malaysia.tables.findings,'malaysia-findings');
@@ -30,4 +32,12 @@ test('the router selects the project for every operation, retry and file request
  assert(calls.every(([p])=>p==='thailand'));assert.equal(calls.length,4);
  const response={writeHead(status){this.status=status;},end(body){this.body=JSON.parse(body);}};
  await router({url:'/api/research/operations',method:'POST'},response);assert.equal(response.status,400);assert.equal(calls.length,4);
+});
+
+
+test('dedicated research page reaches the project router without claiming the login portal',async()=>{
+ const calls=[],router=createProjectResearchHandler({handlers:{overseas:async req=>{calls.push(req.url);return true;}},defaultProject:'overseas'});
+ assert.equal(await router({url:'/research?project=overseas',method:'GET'},{}),true);
+ assert.deepEqual(calls,['/research?project=overseas']);
+ assert.equal(await router({url:'/login',method:'GET'},{}),false);
 });

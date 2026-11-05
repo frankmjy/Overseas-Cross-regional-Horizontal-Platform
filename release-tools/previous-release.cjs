@@ -13,13 +13,16 @@ function previousRelease(source,id=process.env.OVERSEAS_PREVIOUS_RELEASE||'20261
  for(const[name,hash]of Object.entries(manifest.files))assert.equal(sha(fs.readFileSync(path.join(bundle,'payload',name))),hash);
  return{bundle,manifest,proof};
 }
-async function seedBaseline({source,root,auditFile}){
+async function seedBaseline({source,root,auditFile,frozenBaseline=false}){
+ if(frozenBaseline){const tmp=path.resolve(require('node:os').tmpdir());assert(path.resolve(root).startsWith(tmp+path.sep)&&path.basename(root)==='app','Frozen baseline seeding is restricted to isolated temporary apps');require('./transaction.cjs').plain(root);}
  const previous=previousRelease(source),audit=JSON.parse(fs.readFileSync(auditFile,'utf8'));fs.mkdirSync(root,{recursive:true});
  for(const[file,info]of Object.entries(audit.publicFiles)){const bytes=fs.readFileSync(path.join(source,'dist/overseas-project-management-deploy-20260605-163554',file));assert.equal(sha(bytes),info.sha256);const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,bytes);}
  const chain=[],seen=new Set();let release=previous;
- while(release){assert(!seen.has(release.manifest.id),'Previous release cycle');seen.add(release.manifest.id);chain.unshift(release);release=release.manifest.predecessor?.id?previousRelease(source,release.manifest.predecessor.id):null;}
+ while(release){assert(!seen.has(release.manifest.id),'Previous release cycle');seen.add(release.manifest.id);chain.unshift(release);release=!frozenBaseline&&release.manifest.predecessor?.id?previousRelease(source,release.manifest.predecessor.id):null;}
  const health=expected=>{const file=fs.existsSync(path.join(root,'research/web/index.html'))?'research/web/index.html':'index.html';assert.equal(sha(fs.readFileSync(path.join(root,file))),expected.rootSha);};
- for(const item of chain){const old=require(path.join(item.bundle,'transaction.cjs'));await old.install({root,payload:path.join(item.bundle,'payload'),manifest:item.manifest,ops:{ownerActive:async()=>false,checkData:async()=>{},validateStorage:async()=>{},captureHealth:async()=>({rootSha:sha(fs.readFileSync(path.join(root,fs.existsSync(path.join(root,'research/web/index.html'))?'research/web/index.html':'index.html')))}),stop:async()=>{},start:async()=>{},health:async expected=>health(expected)}});}
+ // Fixture construction only: verify the exported starting bytes, then seed the approved runtime once.
+ for(const item of chain){const old=require(path.join(item.bundle,'transaction.cjs'));const manifest=frozenBaseline?{...item.manifest,baselineCore:old.core(root,Object.keys(item.manifest.core))}:item.manifest;await old.install({root,payload:path.join(item.bundle,'payload'),manifest,ops:{ownerActive:async()=>false,checkData:async()=>{},validateStorage:async()=>{},captureHealth:async()=>({rootSha:sha(fs.readFileSync(path.join(root,fs.existsSync(path.join(root,'research/web/index.html'))?'research/web/index.html':'index.html')))}),stop:async()=>{},start:async()=>{},health:async expected=>health(expected)}});}
+ if(frozenBaseline){for(const [file,hash]of Object.entries({...previous.manifest.files,...previous.manifest.dependencies}))assert.equal(sha(fs.readFileSync(path.join(root,file))),hash,'Frozen baseline fixture bytes differ: '+file);const tx=JSON.parse(fs.readFileSync(path.join(root,'.hotfix-transaction.json')));assert.equal(tx.phase,'committed');assert.equal(tx.release,previous.manifest.id);assert.deepEqual(tx.targetCore,previous.manifest.core);}
  return previous;
 }
 function seedFormalCaches(root,source){

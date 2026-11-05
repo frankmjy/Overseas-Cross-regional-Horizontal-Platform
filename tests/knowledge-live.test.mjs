@@ -11,6 +11,11 @@ test('meeting classification follows its table and preserves source times withou
  const r=projectRecord(source,{id:'rec1',cells:{'Meeting Title':'技术沟通','Meeting Date':'2026-10-15T16:12:00.000+08:00',Project:['Malaysia（马来）'],'Minutes Link':'[纪要](https://vnet.feishu.cn/docx/abc)','Action Items':null}},'https://vnet.feishu.cn/base/abc');
  assert.equal(r.project,'thailand');assert.equal(r.date,'2026-10-15');assert.equal(r.time,'16:12');assert.match(r.timezone,/08:00/);assert.deepEqual(r.decisions,[]);assert.deepEqual(r.actions,[]);assert.equal(r.links[0].url,'https://vnet.feishu.cn/docx/abc');assert.ok(!JSON.stringify(r).includes('ou_'));
 });
+test('overseas team projection keeps names and splits numbered followups without user identifiers',()=>{
+ const r=projectRecord({...source,project:'overseas'},{id:'team',cells:{'Meeting Title':'海外例会','Participants':[{id:'ou_private',name:'测试人员'}],'Action Items':'1. 核对排期。2. 补充清单。\n3. 评审方案。'}},'https://vnet.feishu.cn/base/abc');
+ assert.equal(r.project,'overseas');assert.deepEqual(r.participants,['测试人员']);assert.equal(r.actions.length,3);
+ assert.doesNotMatch(JSON.stringify(r),/ou_private/);assert.equal(r.actions[1].title,'补充清单。');
+});
 test('knowledge API exposes the service projection and rejects write methods',async t=>{
  const service={read:()=>({state:'ready',documents:[],meetings:[],categories:[]})};const handler=createKnowledgeHandler({root:process.cwd(),service});const server=createServer(async(req,res)=>{if(!await handler(req,res)){res.writeHead(404);res.end();}});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));const url=`http://127.0.0.1:${server.address().port}/api/knowledge`;
  assert.equal((await fetch(url)).status,200);assert.equal((await (await fetch(url)).json()).state,'ready');assert.equal((await fetch(url,{method:'POST'})).status,405);assert.equal((await fetch(url,{method:'HEAD'})).status,200);

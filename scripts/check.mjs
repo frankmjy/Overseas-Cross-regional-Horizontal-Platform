@@ -1,5 +1,21 @@
 import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
-const files = ['server.mjs', 'base-sync.mjs', 'application-settings.mjs', 'src/data.js', 'src/app.js', 'src/platform-navigation.js', 'src/application-settings.js', ...['research', 'research/web', 'knowledge', 'knowledge/web', 'scripts', 'tests'].flatMap(dir => readdirSync(dir).filter(f => /\.mjs$/.test(f)).map(f => `${dir}/${f}`))];
+const files = ['server.mjs', 'base-sync.mjs', 'team-organization.mjs', 'src/team-organization.js', 'src/diagram-canvas.js', 'src/diagram-viewer.js', 'src/task-editor.js', 'src/gantt-today.js', 'application-settings.mjs', 'src/data.js', 'src/app.js', 'src/platform-navigation.js', 'src/platform-account.js', 'src/application-settings.js', 'auth/web/login.js', ...['auth', 'project-tasks', 'research', 'research/web', 'knowledge', 'knowledge/web', 'scripts', 'tests'].flatMap(dir => readdirSync(dir).filter(f => /\.mjs$/.test(f)).map(f => `${dir}/${f}`))];
+files.push('src/gantt-pan.js');
+files.push('src/platform-context.js','src/project-context-model.mjs');
+files.push('src/admin.js','src/admin-settings.js','src/admin-permissions.js','src/page-permissions.js');
+files.push('src/project-focus.js');
+files.push('src/project-workspace.js');
+files.push(...readdirSync('project-tasks/handover').filter(file=>file.endsWith('.mjs')).map(file=>`project-tasks/handover/${file}`));
+files.push(...readdirSync('samples/handover-preview').filter(file=>file.endsWith('.mjs')).map(file=>`samples/handover-preview/${file}`));
+files.push('src/project-weekly.js');
+files.push('src/weekly-priorities.js');
+files.push('src/priority-resources.js');
+files.push('src/priority-live.js');
+files.push('src/staffing.js');
+files.push('src/staffing-model.js','src/staffing-explorer.js','src/staffing-overview.js');
+files.push(...readdirSync('project-tasks/staffing').filter(file=>file.endsWith('.mjs')).map(file=>`project-tasks/staffing/${file}`));
+files.push(...readdirSync('priorities').filter(file => file.endsWith('.mjs')).map(file => `priorities/${file}`));
+files.push('src/coordination.js','src/coordination-editor.js','src/coordination-list.js',...readdirSync('coordination').filter(file=>file.endsWith('.mjs')).map(file=>`coordination/${file}`));
 for (const file of files) { const result = spawnSync(process.execPath, ['--check', file], { stdio: 'inherit', windowsHide: true }); if (result.status !== 0) process.exit(result.status || 1); }
 console.log(`${files.length} JavaScript files: syntax OK`);

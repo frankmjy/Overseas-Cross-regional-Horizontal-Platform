@@ -1,19 +1,20 @@
 import { researchProjects } from './project-scope.mjs';
-export const rangeOptions=[{key:'thailand',name:'泰国项目'},{key:'malaysia',name:'马来项目'},{key:'common',name:'通用'}];
-export function questionTarget(value){
+export const rangeOptions=[...researchProjects,{key:'common',name:'通用'}];
+export function questionTarget(value,projects=researchProjects){
  const at=String(value).indexOf(':'),project=String(value).slice(0,at),questionId=String(value).slice(at+1);
- if(at<0||!researchProjects.some(p=>p.key===project)||!/^Q-[a-z0-9-]{1,90}$/i.test(questionId))throw Error('调研问题归属不合法，请刷新后重试。');
+ if(at<0||!projects.some(p=>p.key===project)||!/^(?:Q-[a-z0-9-]{1,90}|\d+(?:\.\d+){1,12})$/i.test(questionId))throw Error('调研问题归属不合法，请刷新后重试。');
  return {project,questionId};
 }
 export const questionRange=q=>q.applicability==='通用'?'common':q.projectKey;
-export function rangeProjectKeys(ranges){const selected=researchProjects.filter(p=>ranges.includes(p.key)).map(p=>p.key);return selected.length?selected:ranges.includes('common')?researchProjects.map(p=>p.key):[];}
-export function matchesResearchRange(q,ranges){
- const countries=researchProjects.filter(p=>ranges.includes(p.key)).map(p=>p.key);
- if(countries.length)return countries.includes(q.projectKey)&&(q.applicability!=='通用'||ranges.includes('common'));
+export function rangeProjectKeys(ranges,projects=researchProjects){const selected=projects.filter(p=>ranges.includes(p.key)).map(p=>p.key);return selected.length?selected:ranges.includes('common')?projects.map(p=>p.key):[];}
+export function matchesResearchRange(q,ranges,projects=researchProjects){
+ const countries=projects.filter(p=>ranges.includes(p.key)).map(p=>p.key);
+ if(countries.length)return countries.includes(q.projectKey);
  return ranges.includes('common')&&q.applicability==='通用';
 }
-export function mergeProjectSnapshots(snapshots){
- const sources=researchProjects.map(p=>{const data=snapshots[p.key];if(!data||data.project?.key!==p.key)throw Error(`${p.name}数据尚未就绪。`);return {data,project:p};});
+export function mergeProjectSnapshots(snapshots,projects=researchProjects){
+ const sources=projects.flatMap(p=>{const data=snapshots[p.key];if(!data)return [];if(data.project?.key!==p.key)throw Error(`${p.name}项目数据来源不匹配。`);return [{data,project:p}];});
+ if(!sources.length)throw Error('调研数据尚未就绪。');
  const result={...sources[0].data,baseUrl:sources[0].data.baseUrl.split('?')[0],project:null,questions:[],deletedQuestions:[],findings:[],evidence:[],categories:[],topicSync:{},projects:sources.map(s=>s.project)};
  for(const {data,project}of sources){
   const id=value=>`${project.key}:${value}`;
@@ -25,9 +26,10 @@ export function mergeProjectSnapshots(snapshots){
  const ordered=sources.map(({project})=>result.questions.filter(q=>q.projectKey===project.key));
  result.questions=Array.from({length:Math.max(...ordered.map(rows=>rows.length))},(_,i)=>ordered.flatMap(rows=>rows[i]?[rows[i]]:[])).flat();
  result.categories=[...new Set(result.categories)];
- result.companies=sources[1].data.companies.map(c=>({...c,labels:Object.fromEntries(sources.map(s=>[s.project.key,s.data.companies.find(v=>v.code===c.code)?.displayName||c.name]))}));
+ result.companies=sources.at(-1).data.companies.map(c=>({...c,labels:Object.fromEntries(sources.map(s=>[s.project.key,s.data.companies.find(v=>v.code===c.code)?.displayName||c.name]))}));
  result.syncedAt=sources.map(s=>s.data.syncedAt).sort()[0];result.date=result.syncedAt?.slice(0,10);
  result.revision=JSON.stringify(sources.map(s=>s.data.revision||s.data.syncedAt));
- result.syncError=sources.filter(s=>s.data.syncError).map(s=>`${s.project.name}：${s.data.syncError}`).join('；');
+ result.missingSources=projects.filter(p=>!sources.some(s=>s.project.key===p.key)).map(p=>p.name);
+ result.syncError=[...sources.filter(s=>s.data.syncError).map(s=>`${s.project.name}：${s.data.syncError}`),...result.missingSources.map(name=>`${name}数据未就绪，当前统计不完整`)].join('；');
  return result;
 }

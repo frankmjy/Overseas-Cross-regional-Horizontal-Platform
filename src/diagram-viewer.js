@@ -2,7 +2,7 @@ import { createDiagramCanvas, containDiagramFocus } from './diagram-canvas.js';
 
 const comparison={title:'马来数据中心 · 团队人员配置',src:'/assets/malaysia-team-comparison.svg',width:2400,height:1840};
 export function comparisonForQuestion(question) {
-  return question?.projectKey==='malaysia'&&question.sourceId==='Q-001'?comparison:null;
+  return question?.projectKey==='malaysia'&&question.sourceId==='Q-001'||question?.projectKey==='overseas'&&question.sourceId==='2.1.1'?comparison:null;
 }
 export function renderComparisonEntry(question) {
   return comparisonForQuestion(question)?'<button type="button" class="rename-button row-comparison" data-team-comparison aria-label="查看团队人员配置横向对比" title="人员配置对比"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 20V10h4v10M10 20V4h4v16M16 20V7h4v13M2 20h20"/></svg></button>':'';

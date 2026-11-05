@@ -1,9 +1,10 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
-const appId='cli_a9d1c9fe9d381cee',recipient='ou_a6644e62a43b916c6bc26148cf74f208';
+const binding=JSON.parse(fs.readFileSync(path.join(__dirname,'../auth/application.json'),'utf8'));
+const {appId,recipient}=binding;
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 function deliveryIdentity(id,hash){assert.match(id,/^\d{8}\.\d+$/);assert.match(hash,/^[a-f0-9]{64}$/);return sha([appId,recipient,id,hash].join(':')).slice(0,40);}
-function validateReceipt(receipt,id,hash){deliveryIdentity(id,hash);assert.equal(receipt.status,'sent');assert.equal(receipt.release,id);assert.equal(receipt.sha256,hash);assert.equal(receipt.appId,appId);assert.equal(receipt.recipient,recipient);assert.match(receipt.messageId||'',/^om_/);assert.match(receipt.proofSha256||'',/^[a-f0-9]{64}$/);}
+function validateReceipt(receipt,id,hash){deliveryIdentity(id,hash);assert.equal(receipt.status,'sent');assert.equal(receipt.release,id);assert.equal(receipt.sha256,hash);assert([binding,...binding.historicalDeliveryIdentities].some(pair=>pair.appId===receipt.appId&&pair.recipient===receipt.recipient),'Receipt app and recipient are not an approved pair');assert.match(receipt.messageId||'',/^om_/);assert.match(receipt.proofSha256||'',/^[a-f0-9]{64}$/);}
 function atomic(file,value){fs.mkdirSync(path.dirname(file),{recursive:true});const tmp=file+'.new';fs.writeFileSync(tmp,JSON.stringify(value,null,2),{flag:'wx'});fs.renameSync(tmp,file);}
 function receiptPath(root,id){deliveryIdentity(id,'0'.repeat(64));return path.join(root,'.runtime/release-delivery',id+'.json');}
 function cleanupArchives(root,id,receipt){validateReceipt(receipt,id,receipt.sha256);const targets=[['reports/overseas-project-hotfix-'+id+'.zip',receipt.sha256],['.runtime/project-release-'+id+'/outer/project-payload.zip',receipt.payloadSha256]];const files=[];for(const[name,expected]of targets){const file=path.join(root,name);if(!fs.existsSync(file))continue;let cursor=root;for(const part of name.split('/')){cursor=path.join(cursor,part);assert(!fs.lstatSync(cursor).isSymbolicLink(),'Archive path must not traverse a link');}assert(fs.lstatSync(file).isFile());assert.equal(sha(fs.readFileSync(file)),expected,'Archive bytes changed; retain for review');files.push(file);}for(const file of files)fs.unlinkSync(file);return files.length;}

@@ -5,7 +5,7 @@ const {createHash,randomUUID}=require('node:crypto');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const fail=code=>{throw Object.assign(new Error(code),{code});};
 const readJson=file=>JSON.parse(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));
-const allowed=new Set(['server.mjs','base-sync.mjs','application-settings.mjs','team-organization.mjs','package.json','index.html','.env.example','DEPLOY_README.md','RESEARCH_DEPLOY.md','THAI_NEXUSLINK_BOI_bilingual.xlsx','THAI_NEXUSLINK_BOI_original.xlsx','src','assets','research','knowledge','auth','project-tasks','vendor/pdfjs']);
+const allowed=new Set(['server.mjs','base-sync.mjs','application-settings.mjs','team-organization.mjs','package.json','index.html','.env.example','DEPLOY_README.md','RESEARCH_DEPLOY.md','THAI_NEXUSLINK_BOI_bilingual.xlsx','THAI_NEXUSLINK_BOI_original.xlsx','src','assets','research','knowledge','auth','project-tasks','coordination','priorities','samples/handover-preview/index.html','samples/handover-preview/app.mjs','samples/handover-preview/editor.mjs','samples/handover-preview/inline.mjs','samples/handover-preview/model.mjs','samples/handover-preview/pages.mjs','samples/handover-preview/styles.css','vendor/pdfjs']);
 function plain(target){
   target=path.resolve(target);
   if(target.slice(path.parse(target).root.length).includes(':'))fail('RELEASE_ADS_PATH');
@@ -69,7 +69,7 @@ async function install({root,payload,manifest,ops,fault=()=>{}}){
     if(fs.existsSync(journalFile)){plain(journalFile);previousBytes=fs.readFileSync(journalFile);previous=readJson(journalFile);await recover(previous);}
     if(fs.existsSync(marker)&&(!previous||markerRole(marker)!=='release'))fail('RELEASE_UNOWNED_MAINTENANCE');
     if(!verifyCore(root,manifest.baselineCore)){
-      if(!previous||!verifyCore(root,previous.targetCore)){
+      if(!previous||!verifyCore(root,previous.phase==='rolled-back'?previous.beforeCore:previous.targetCore)){
         if(previous&&!['committed','rolled-back'].includes(previous.phase)&&previous.units.every(unit=>{const current=tree(inside(root,unit));return !current.exists||current.hash===previous.before[unit].hash||current.hash===previous.target[unit].hash;})){
           tx=previous;await ops.stop();stopped=true;await rollback();tx=null;stopped=false;started=false;
           if(!verifyCore(root,manifest.baselineCore))fail('RELEASE_CORE_DRIFT');

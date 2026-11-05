@@ -92,6 +92,12 @@ function firstText(value) {
   return String(value).trim();
 }
 
+function joinedText(value) {
+  if (Array.isArray(value)) return value.map(joinedText).join('');
+  if (value && typeof value === 'object') return joinedText(value.text ?? value.name ?? '');
+  return String(value ?? '');
+}
+
 function getField(record, fields, fieldName) {
   const index = fields.findIndex(name => name === fieldName || name.endsWith(`（${fieldName}）`));
   return index < 0 ? undefined : record[index];
@@ -260,6 +266,8 @@ export function normalizeRecords(envelope) {
       type: isMilestone ? 'milestone' : 'task',
       progressNote: firstText(getField(row, fields, '进展说明')),
       remark: firstText(getField(row, fields, '交付物&备注')),
+      owner: [getField(row, fields, '责任人')].flat().filter(value => value && typeof value === 'object').map(value => value.name || value.text || '').filter(Boolean).join('、'),
+      feedback: joinedText(getField(row, fields, '最新进展反馈')),
     };
   });
 }
@@ -355,6 +363,9 @@ export function buildPlan(records) {
         priority: record.priority,
         status: record.status,
         sourceStatus: record.sourceStatus,
+        owner: record.owner,
+        feedback: record.feedback,
+        requirements: record.remark,
         progress: record.progress,
         phase: meta.tone,
       });

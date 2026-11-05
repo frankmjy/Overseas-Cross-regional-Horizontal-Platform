@@ -26,3 +26,6 @@ test('revised source categories stay in their business sections', () => {
   assert.deepEqual(groups[0].topics.map(t => t.name), ['组织与人才', '运维与验证']);
   assert.equal(groups[1].topics[0].name, '友商与市场');
 });
+test('the reviewed source keeps priority lessons first and retail in business topics',()=>{
+ const groups=groupTopics(['组织与人才','零售','海外项目实际问题与教训（重点关注）']);assert.equal(groups[0].topics[0].name,'海外项目实际问题与教训（重点关注）');assert(groups.find(g=>g.name==='业务与合规').topics.some(t=>t.name==='零售'));
+});

@@ -40,7 +40,7 @@ function requestHealth({port,domain,pin},route){return new Promise((resolve,reje
 });}
 async function authenticatedHealth(expected,request){
  const login=await request('/login');if(login.status!==200||sha(login.bytes)!==expected.authSha)throw new Error('RELEASE_LOGIN_HEALTH_MISMATCH');
- for(const route of ['/','/project-management','/knowledge-sharing','/meeting-trail']){const response=await request(route);if(response.status!==303||!/^\/login\?returnTo=/.test(response.location||''))throw new Error('RELEASE_AUTH_REDIRECT_MISMATCH');}
+ for(const route of ['/','/project-management','/knowledge-sharing','/meeting-trail']){const response=await request(route),portal=route==='/'&&response.location==='/login';if(response.status!==303||!portal&&!/^\/login\?returnTo=/.test(response.location||''))throw new Error('RELEASE_AUTH_REDIRECT_MISMATCH');}
  const session=await request('/api/auth/session');let status;try{status=JSON.parse(session.bytes);}catch{}if(session.status!==200||status?.ok!==true||status.authenticated!==false||status.user!==null)throw new Error('RELEASE_AUTH_SESSION_MISMATCH');
  for(const route of ['/api/research','/api/knowledge','/api/project-tasks','/api/knowledge/meetings/options','/.env','/.runtime/auth/ledger.json','/vendor/lark-cli/run.cjs']){const response=await request(route);let body;try{body=JSON.parse(response.bytes);}catch{}if(response.status!==401||body?.ok!==false)throw new Error('RELEASE_AUTH_GATE_MISMATCH');}
 }
@@ -51,7 +51,7 @@ function windowsOps({root,node,port,domain,fingerprint,cliScript}){
   return {
     ownerActive:owner=>Promise.resolve(call('Owner',['-ProcessId',String(owner.pid),'-StartedAt',String(owner.startedAt)])?.active===true),
     async checkData(){
-      const newLedgers=[['PROJECT_TASK_DATA_DIR','project-tasks','ledger.json','operations','status','success'],['KNOWLEDGE_DATA_DIR','knowledge','meeting-ledger.json','operations','status','success'],['AUTH_DATA_DIR','auth','ledger.json','events','syncStatus','synced']];
+      const newLedgers=[['HANDOVER_DATA_DIR','handover','ledger.json','operations','status','success'],['KNOWLEDGE_DATA_DIR','knowledge','document-ledger.json','operations','status','success'],['PROJECT_TASK_DATA_DIR','project-tasks','ledger.json','operations','status','success'],['KNOWLEDGE_DATA_DIR','knowledge','meeting-ledger.json','operations','status','success'],['AUTH_DATA_DIR','auth','ledger.json','events','syncStatus','synced']];
       const configured={};const environmentFile=path.join(root,'.env');if(fs.existsSync(environmentFile))for(const line of fs.readFileSync(environmentFile,'utf8').split(/\r?\n/)){const match=/^\s*([A-Z_]+)\s*=(.*)$/.exec(line);if(match)configured[match[1]]=match[2].trim().replace(/^['"]|['"]$/g,'');}
       for(const [variable,folder,name,collection,key,settled]of newLedgers){const dirs=[path.join(root,'.runtime',folder),...[configured[variable],process.env[variable]].filter(Boolean).map(v=>path.resolve(root,v))];for(const dir of new Set(dirs)){plain(dir);const file=path.join(dir,name);if(!fs.existsSync(file))continue;plain(file);let state;try{state=JSON.parse(fs.readFileSync(file,'utf8'));}catch{throw new Error('RELEASE_LEDGER_UNREADABLE');}if(!state[collection]||Object.values(state[collection]).some(op=>op[key]!==settled))throw new Error('RELEASE_OUTBOX_NOT_SETTLED');}}
       const dirs=[path.join(root,'.runtime','research')];

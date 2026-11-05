@@ -1,3 +1,5 @@
+import { requirePlatformProject } from '/src/platform-context.js';
+const platformProject = await requirePlatformProject();
 // Shared visual elements from the approved A template.
 import { groupTopics } from '/research/topics.mjs';
 import { topicProgress } from '/research/topic-progress.mjs';
@@ -7,8 +9,9 @@ import { renderPlatformHeader } from '/src/platform-navigation.js';
 import { renderComparisonEntry, comparisonForQuestion, createImageDiagram } from '/src/diagram-viewer.js';
 import { researchProjects, questionDestination, researchApiUrl, pendingPrefix } from '/research/project-scope.mjs';
 import { rangeOptions, matchesResearchRange, rangeProjectKeys, questionTarget, mergeProjectSnapshots } from '/research/unified-research.mjs';
-const requestedProject=new URLSearchParams(location.search).get('project');
-const project=researchProjects.some(p=>p.key===requestedProject)?requestedProject:'malaysia';
+import { overviewModel, renderOverview } from '/research/overview.mjs';
+import { openStaffingChart } from '/research/staffing.mjs';
+const project=platformProject.researchKey;
 const defaultScope=()=>rangeProjectKeys(state.ranges).length===1?rangeProjectKeys(state.ranges)[0]:project;
 const snapshots = {};
 let projectOptions = [];
@@ -19,8 +22,10 @@ let startupSlowTimer = null;
 const dialog = document.querySelector('#detailDialog');
 const editor = document.querySelector('#editDialog');
 let teamComparisonViewer = null;
+let staffingChart = null;
+const isStaffingQuestion=q=>q?.projectKey==='overseas'&&q.sourceId==='2.1.1'||q?.projectKey==='malaysia'&&q.sourceId==='Q-001';
 let questionMap = new Map(), findingsByQuestion = new Map(), evidenceByQuestion = new Map(), companyMap = new Map();
-let state = { category: '全部专题', categories: null, ranges: rangeOptions.map(r=>r.key), query: '', filter: 'all', companies: [], page: 1, pageSize: 0, density: 'compact' };
+let state = { view:'overview', pivotDimension:'category', pivotMetric:'rate', category: '全部专题', categories: null, ranges: rangeOptions.map(r=>r.key), query: '', filter: 'all', companies: [], page: 1, pageSize: 0, density: 'compact' };
 let renderedViewKey = '';
 let operations = [], currentDetail = null, formState = null, refreshPending = false;
 let lastSync = '', statusMessage = '', polling = false, initialAttempts = 0;
@@ -152,6 +157,9 @@ function indexData(next) {
 }
 function readState() {
   const p = new URLSearchParams(location.search);
+  state.view=p.get('view')==='list'?'list':'overview';
+  state.pivotDimension=p.get('pivot')==='project'?'project':'category';
+  state.pivotMetric=['covered','gap'].includes(p.get('metric'))?p.get('metric'):'rate';
   state.category = data.categories.includes(p.get('category')) ? p.get('category') : '全部专题';
   state.categories=p.has('categories')?p.get('categories').split('|').filter(c=>data.categories.includes(c)):state.category==='全部专题'?null:[state.category];
   state.ranges=p.has('ranges')?rangeOptions.filter(r=>p.get('ranges').split(',').includes(r.key)).map(r=>r.key):rangeOptions.map(r=>r.key);
@@ -165,6 +173,9 @@ function readState() {
 }
 function updateUrl() {
   const p = new URLSearchParams();
+  if(state.view==='list')p.set('view','list');
+  if(state.pivotDimension==='project')p.set('pivot','project');
+  if(state.pivotMetric!=='rate')p.set('metric',state.pivotMetric);
   if(state.ranges.length!==rangeOptions.length)p.set('ranges',state.ranges.join(','));
   if(state.categories!==null)p.set('categories',state.categories.join('|'));
   if (state.query) p.set('q', state.query);
@@ -179,13 +190,13 @@ function renderActions() {
   return `<div class="workspace-actions heading-actions">${link(data.baseUrl, `查看多维表 ${icon('external')}`, 'secondary-button')}<button class="secondary-button" data-refresh aria-label="手动同步飞书" ${refreshPending ? 'disabled' : ''}>${icon('activity')}${refreshPending ? '正在同步…' : '手动同步'}</button><button class="secondary-button" data-new-content>补充内容</button><button class="primary-button" data-new-question>＋ 新增问题</button><button class="secondary-button export-button" data-export aria-label="导出当前视图">${icon('download')}</button></div>`;
 }
 function renderHeader() {
-  return `${renderPlatformHeader('research')}<section class="research-heading"><div class="research-project-title"><h1>海外项目调研</h1><fieldset class="research-range"><legend class="sr-only">筛选范围</legend>${rangeOptions.map(p => `<label><input type="checkbox" data-range="${p.key}" ${state.ranges.includes(p.key)?'checked':''}>${esc(p.name)}</label>`).join('')}</fieldset></div>${renderActions()}</section>`;
+  return `${renderPlatformHeader('research')}<section class="research-heading"><div class="research-project-title"><h1>海外项目调研</h1><span class="research-project-context">${esc(platformProject.name)}</span></div>${renderActions()}</section>`;
 }
 function renderSidebar() {
   return `<aside class="sidebar"><div class="sidebar-heading"><span>专题目录</span><span class="subtle">${data.categories.length} 组</span></div><div class="sidebar-shortcuts"><button class="priority-shortcut ${state.filter === 'priority' ? 'selected' : ''}" data-priority>${icon('star')}优先关注<span>${data.questions.filter(q => q.priority&&matchesResearchRange(q,state.ranges)).length}</span></button></div>${renderCategories()}<div class="sidebar-footer"><button class="new-topic" data-new-topic>＋ 新增专题</button></div></aside>`;
 }
 function renderControls() {
-  return `<div class="workspace-heading"><div class="workspace-title"><h2>调研清单<span id="resultCount" class="count-badge"></span></h2><div id="syncStatus" class="sync-status" role="status"></div><div class="density-picker" role="group" aria-label="表格显示密度"><button data-density="compact" aria-pressed="${state.density==='compact'}" title="紧凑：显示两行摘要">紧凑</button><button data-density="comfortable" aria-pressed="${state.density==='comfortable'}" title="舒展：显示四行摘要">舒展</button></div></div></div><div class="controls"><label class="search-field">${icon('search')}<input id="search" type="search" aria-label="搜索问题、调研内容或资料" placeholder="搜索问题、调研内容或附件…" value="${esc(state.query)}" maxlength="200"><kbd>/</kbd></label><label class="select-control">${icon('filter')}<select id="filter" aria-label="筛选问题状态"><option value="all">全部问题</option><option value="priority">重点问题</option><option value="gaps">未收录完整</option><option value="unclassified">分类待确认</option></select></label><details class="company-picker"><summary>${icon('building')}调研对象 <b>${state.companies.length}</b><span class="down-chevron">⌄</span></summary><div class="company-options"><p>至少选择一个调研对象</p>${data.companies.map(c => `<label><input type="checkbox" data-company="${esc(c.name)}" ${state.companies.includes(c.name) ? 'checked' : ''}>${companyMark(c.name)}<span>${esc(companyLabel(c.name))}</span></label>`).join('')}</div></details></div>`;
+  return `<div class="research-toolbar"><div class="workspace-heading"><div class="workspace-title"><h2 class="sr-only">${state.view==='overview'?'总览分析':'调研清单'}</h2><div class="research-view-picker" role="group" aria-label="工作台视图"><button data-research-view="overview" aria-pressed="${state.view==='overview'}">总览分析</button><button data-research-view="list" aria-pressed="${state.view==='list'}">调研清单</button></div><span id="resultCount" class="count-badge"></span><div id="syncStatus" class="sync-status" role="status"></div><div class="density-picker" role="group" aria-label="表格显示密度"><button data-density="compact" aria-pressed="${state.density==='compact'}" title="紧凑：显示两行摘要">紧凑</button><button data-density="comfortable" aria-pressed="${state.density==='comfortable'}" title="舒展：显示四行摘要">舒展</button></div></div></div><div class="controls"><label class="search-field">${icon('search')}<input id="search" type="search" aria-label="搜索问题、调研内容或资料" placeholder="搜索问题、调研内容或附件…" value="${esc(state.query)}" maxlength="200"><kbd>/</kbd></label><label class="select-control">${icon('filter')}<select id="filter" aria-label="筛选问题状态"><option value="all">全部问题</option><option value="priority">重点问题</option><option value="gaps">未收录完整</option><option value="unclassified">分类待确认</option></select></label><details class="company-picker"><summary>${icon('building')}调研对象 <b>${state.companies.length}</b><span class="down-chevron">⌄</span></summary><div class="company-options"><p>至少选择一个调研对象</p>${data.companies.map(c => `<label><input type="checkbox" data-company="${esc(c.name)}" ${state.companies.includes(c.name) ? 'checked' : ''}>${companyMark(c.name)}<span>${esc(companyLabel(c.name))}</span></label>`).join('')}</div></details></div></div>`;
 }
 function renderTopicProgress(items) {
   const summary = topicProgress({ questions: items, findings: data.findings, categories: data.categories, companies: state.companies });
@@ -195,11 +206,12 @@ function renderTopicProgress(items) {
 function renderResults() {
   const scroll = document.querySelector('.table-scroll');
   const position = { top: scroll?.scrollTop || 0, left: scroll?.scrollLeft || 0 };
-  const viewKey = JSON.stringify([state.categories,state.ranges,state.query,state.filter,state.companies,state.page,state.pageSize,state.density]);
+  const viewKey = JSON.stringify([state.view,state.categories,state.ranges,state.query,state.filter,state.companies,state.page,state.pageSize,state.density]);
   const items = filteredQuestions();
   document.querySelector('#resultCount').textContent = `${items.length} 项`;
   document.querySelector('#topicProgress').innerHTML = renderTopicProgress(items);
-  document.querySelector('#results').innerHTML = items.length ? renderMatrix(items) : `<div class="comparison-shell">${renderEmpty()}${renderPagination(0,state.pageSize)}</div>`;
+  document.querySelector('#topicProgress').hidden=state.view==='overview';
+  document.querySelector('#results').innerHTML = state.view==='overview'?renderOverview(overviewModel({questions:items,findings:data.findings,evidence:data.evidence,companies:data.companies.filter(c=>state.companies.includes(c.name))}),{dimension:state.pivotDimension,metric:state.pivotMetric}):items.length ? renderMatrix(items) : `<div class="comparison-shell">${renderEmpty()}${renderPagination(0,state.pageSize)}</div>`;
   const nextScroll = document.querySelector('.table-scroll');
   if (nextScroll && viewKey === renderedViewKey) { nextScroll.scrollTop = position.top; nextScroll.scrollLeft = position.left; }
   renderedViewKey = viewKey;
@@ -238,7 +250,7 @@ function showQuestion(id, company) {
   currentDetail = { id, company: companyMap.has(company) ? company : state.companies[0] };
   const qurl = q.baseUrl;
   dialog.className = 'detail-dialog';
-  dialog.innerHTML = `<div class="dialog-heading"><div><span class="question-kicker"><span class="category-chip">${esc(q.category)}</span>${q.priority ? '<span class="priority-tag">重点</span>' : ''}</span><h2 id="dialogTitle">${esc(q.title)}</h2></div><button class="icon-button dialog-close" data-close aria-label="关闭问题详情">${icon('close')}</button></div><div class="detail-company-tabs" role="tablist" aria-label="选择调研对象">${data.companies.map(c => `<button role="tab" id="detail-tab-${c.code}" aria-controls="detail-company-panel" aria-selected="${c.name === currentDetail.company}" tabindex="${c.name === currentDetail.company ? 0 : -1}" data-tab-company="${esc(c.name)}">${companyMark(c.name)}${esc(c.labels?.[q.projectKey]||c.short)}<i class="material-dot ${getFinding(q.id, c.name).hasMaterial ? 'available' : ''}"></i></button>`).join('')}</div><div id="detail-company-panel" class="dialog-body" role="tabpanel" aria-labelledby="detail-tab-${meta(currentDetail.company).code}">${renderCompanyArticle(q.id, currentDetail.company)}</div><div class="dialog-footer">${renderQuestionStepper(q.id)}<button class="danger-link" data-delete-question="${q.id}">删除问题</button><button class="primary-button" data-edit-content>补充 / 编辑调研内容</button>${link(qurl, `查看多维表 ${icon('external')}`, 'secondary-button')}</div>`;
+  dialog.innerHTML = `<div class="dialog-heading"><div><span class="question-kicker"><span class="category-chip">${esc(q.category)}</span>${q.priority ? '<span class="priority-tag">重点</span>' : ''}</span><h2 id="dialogTitle">${esc(q.title)}</h2></div>${isStaffingQuestion(q)?'<button class="secondary-button" data-staffing title="查看人员配置图" aria-label="查看人员配置图">人员配置图</button>':''}<button class="icon-button dialog-close" data-close aria-label="关闭问题详情">${icon('close')}</button></div><div class="detail-company-tabs" role="tablist" aria-label="选择调研对象">${data.companies.map(c => `<button role="tab" id="detail-tab-${c.code}" aria-controls="detail-company-panel" aria-selected="${c.name === currentDetail.company}" tabindex="${c.name === currentDetail.company ? 0 : -1}" data-tab-company="${esc(c.name)}">${companyMark(c.name)}${esc(c.labels?.[q.projectKey]||c.short)}<i class="material-dot ${getFinding(q.id, c.name).hasMaterial ? 'available' : ''}"></i></button>`).join('')}</div><div id="detail-company-panel" class="dialog-body" role="tabpanel" aria-labelledby="detail-tab-${meta(currentDetail.company).code}">${renderCompanyArticle(q.id, currentDetail.company)}</div><div class="dialog-footer">${renderQuestionStepper(q.id)}<button class="danger-link" data-delete-question="${q.id}">删除问题</button><button class="primary-button" data-edit-content>补充 / 编辑调研内容</button>${link(qurl, `查看多维表 ${icon('external')}`, 'secondary-button')}</div>`;
   if (!dialog.open) dialog.showModal();
 }
 function showDeletedQuestions() {
@@ -330,7 +342,7 @@ function showNameEditor(kind,key){
   const value=q?.title||(kind==='company-rename'?meta(key).displayName||key:key);
   formState={kind,renameKey:key,id:crypto.randomUUID(),phase:'ready',uploads:[],version:q?.version};
   const title=kind==='question-title'?'修改问题标题':kind==='topic-rename'?'修改专题名称':'修改调研对象名称';
-  editor.innerHTML=`<div class="dialog-heading"><h2 id="editTitle">${title}</h2><button class="icon-button" data-form-close aria-label="关闭编辑">${icon('close')}</button></div><form><div class="dialog-body form-fields">${q?`<p class="row-project">${esc(q.projectName)}</p>`:`<label>同步范围<select name="renameProject"><option value="all">泰国、马来项目</option>${researchProjects.map(p=>`<option value="${p.key}">${esc(p.name)}</option>`).join('')}</select></label>`}<label>名称<input name="name" required maxlength="${q?1000:60}" value="${esc(value)}"></label><div id="formStatus" class="form-status" role="status" aria-live="polite"></div></div><div class="dialog-footer"><button type="button" class="secondary-button" data-form-close>取消</button><button id="submitForm" class="primary-button" type="submit">保存并同步</button></div></form>`;
+  editor.innerHTML=`<div class="dialog-heading"><h2 id="editTitle">${title}</h2><button class="icon-button" data-form-close aria-label="关闭编辑">${icon('close')}</button></div><form><div class="dialog-body form-fields">${q?`<p class="row-project">${esc(q.projectName)}</p>`:`<label>同步范围<select name="renameProject"><option value="all">全部范围</option>${researchProjects.map(p=>`<option value="${p.key}">${esc(p.name)}</option>`).join('')}</select></label>`}<label>名称<input name="name" required maxlength="${q?1000:60}" value="${esc(value)}"></label><div id="formStatus" class="form-status" role="status" aria-live="polite"></div></div><div class="dialog-footer"><button type="button" class="secondary-button" data-form-close>取消</button><button id="submitForm" class="primary-button" type="submit">保存并同步</button></div></form>`;
   editor.showModal();editor.querySelector('[name="name"]').focus();
 }
 async function submitNameEdit(form){
@@ -481,6 +493,13 @@ app.addEventListener('click', async event => {
     const entry=[...questionMap.values()].find(q=>comparisonForQuestion(q));
     if(entry){teamComparisonViewer ||= createImageDiagram();teamComparisonViewer.open(comparisonForQuestion(entry),b);}
   }
+  else if (b.dataset.researchView) { state.view=b.dataset.researchView; state.page=1; renderPage(); }
+  else if (b.dataset.pivotDimension) { state.pivotDimension=b.dataset.pivotDimension; renderPage(); }
+  else if (b.dataset.pivotMetric) { state.pivotMetric=b.dataset.pivotMetric; renderPage(); }
+  else if (b.dataset.drillCategory) { state.categories=[b.dataset.drillCategory]; state.view='list'; state.page=1; renderPage(); }
+  else if (b.dataset.drillCompany) { state.companies=[b.dataset.drillCompany]; state.view='list'; state.page=1; renderPage(); }
+  else if (b.dataset.drillProject) { state.ranges=[b.dataset.drillProject]; state.view='list'; state.page=1; renderPage(); }
+  else if (b.dataset.overviewQuestion) showQuestion(b.dataset.overviewQuestion,b.dataset.detailCompany);
   else if (b.dataset.renameTopic) showNameEditor('topic-rename', b.dataset.renameTopic);
   else if(b.dataset.renameCompany) showNameEditor('company-rename', b.dataset.renameCompany);
   else if(b.dataset.renameQuestion) showNameEditor('question-title', b.dataset.renameQuestion);
@@ -517,6 +536,9 @@ app.addEventListener('change', e => {
 });
 dialog.addEventListener('click', async e => {
   const b = e.target.closest('button');
+  if (b?.hasAttribute('data-staffing') && currentDetail) { staffingChart=openStaffingChart(dialog,findingsByQuestion.get(currentDetail.id),{backQuestion:currentDetail.id,backCompany:currentDetail.company}); return; }
+  if (b?.dataset.staffingScope && staffingChart) { staffingChart.setScope(b.dataset.staffingScope); return; }
+  if (b?.dataset.staffingRole && staffingChart) { staffingChart.setRole(b.dataset.staffingRole); return; }
   if (b?.hasAttribute('data-close')) dialog.close();
   else if (b?.dataset.detailStep) { const items = filteredQuestions(), index = items.findIndex(q => q.id === currentDetail?.id), next = items[index + Number(b.dataset.detailStep)]; if (next) showQuestion(next.id, currentDetail.company); }
   else if (b?.hasAttribute('data-tasks')) showTasks();
@@ -537,7 +559,7 @@ dialog.addEventListener('click', async e => {
     await poll(); showTasks();
   } catch (error) { toast(error.message); b.disabled = false; } }
 });
-dialog.addEventListener('close', () => { currentDetail = null; attachmentContext = null; disposePreview?.(); disposePreview = null; });
+dialog.addEventListener('close', () => { staffingChart=null; currentDetail = null; attachmentContext = null; disposePreview?.(); disposePreview = null; });
 dialog.addEventListener('keydown', e => {
   if (e.target.getAttribute('role') !== 'tab' || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
   e.preventDefault(); const n = data.companies.length, i = data.companies.findIndex(c => c.name === currentDetail.company);
@@ -594,7 +616,7 @@ function renderStartup({ failed = false, slow = false, timedOut = false } = {}) 
 function publishResearch(results) {
     results.forEach((result, index) => { if (result.data) snapshots[researchProjects[index].key] = result.data; });
     projectOptions = results[0].projects || [];
-    const complete=researchProjects.every(p=>snapshots[p.key]);
+    const complete=researchProjects.some(p=>snapshots[p.key]);
     const result={data:complete?mergeProjectSnapshots(snapshots):null,refreshing:results.some(result=>result.refreshing),state:results.some(result=>result.state==='error')?'error':'loading',error:results.map((result,i)=>result.error?`${researchProjects[i].name}：${result.error}`:'').filter(Boolean).join('；')};
     if (result.data) {
       clearTimeout(startupSlowTimer); startupSlowTimer = null;

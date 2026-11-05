@@ -19,10 +19,10 @@ try {
     }
     'Stop' {
       $owner=Get-Owner
-      if(-not $owner){$process=Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId";if($process){if($process.Name -ne 'node.exe' -or [math]::Abs(([DateTimeOffset]$process.CreationDate).ToUnixTimeMilliseconds()-$StartedAt) -gt 1000){throw 'Process identity changed.'};Stop-Process -Id $ProcessId -ErrorAction Stop}}
+      if(-not $owner){$process=Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId";if($process){if($process.Name -ne 'node.exe' -or [math]::Abs(([DateTimeOffset]$process.CreationDate).ToUnixTimeMilliseconds()-$StartedAt) -gt 1000){throw 'Process identity changed.'};Stop-Process -Id $ProcessId -Force -Confirm:$false -ErrorAction Stop}}
       if($owner) {
         if($owner.pid -ne $ProcessId -or [math]::Abs($owner.created-$StartedAt) -gt 1000){throw 'Port owner changed; stopping was refused.'}
-        Stop-Process -Id $ProcessId -ErrorAction Stop
+        Stop-Process -Id $ProcessId -Force -Confirm:$false -ErrorAction Stop
         $process=Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
         if($process){$process.WaitForExit(7000)|Out-Null}
         if(Get-Owner){throw 'Target port did not stop.'}

@@ -1,4 +1,5 @@
 const text = value => Array.isArray(value) ? text(value[0]) : value == null ? '' : typeof value === 'object' ? value.text || value.name || '' : String(value);
+const matchesDetail=(row,qid,company)=>text(row.明细编号).split(/[｜:]/)[0]===qid&&text(row.调研对象)===company;
 
 // Durable outbox payloads remain the local record until Feishu acknowledges them.
 export function projectLocalRecords(state, companies) {
@@ -29,14 +30,14 @@ export function projectLocalRecords(state, companies) {
       else if (q) { raw.questions.splice(raw.questions.indexOf(q), 1); raw.questions.unshift(q); }
       if (q && pending) {
         q.__sync = sync;
-        for (const c of companies) if (!raw.findings.some(f => text(f.明细编号) === `${qid}:${c.name}`)) raw.findings.push({ recordId: `local:${op.id}:${c.code}`, 明细编号: `${qid}:${c.name}`, 关联问题: [{ id: q.recordId }], 调研对象: c.name, 调研内容: '', 举证原文: '' });
+        for (const c of companies) if (!raw.findings.some(f => matchesDetail(f,qid,c.name))) raw.findings.push({ recordId: `local:${op.id}:${c.code}`, 明细编号: `${qid}:${c.name}`, 关联问题: [{ id: q.recordId }], 调研对象: c.name, 调研内容: '', 举证原文: '' });
       }
     }
     const q = raw.questions.find(row => text(row.问题编号) === qid);
     if (!pending || !q) continue;
     if (p.kind === 'question-visibility' && latest.get(keyOf(p)) === op.id) { q.已删除 = p.deleted; q.__sync = sync; }
     if (p.kind === 'finding') {
-      let f = raw.findings.find(row => text(row.明细编号) === `${qid}:${p.company}`);
+      let f = raw.findings.find(row => matchesDetail(row,qid,p.company)||row.关联问题?.[0]?.id===q.recordId&&text(row.调研对象)===p.company);
       if (!f) { f = { recordId: `local:${op.id}`, 明细编号: `${qid}:${p.company}`, 关联问题: [{ id: q.recordId }], 调研对象: p.company }; raw.findings.push(f); }
       if (latest.get(keyOf(p)) === op.id) Object.assign(f, { 调研内容: p.content, 举证原文: p.proof, __sync: sync });
       q.__sync = sync;

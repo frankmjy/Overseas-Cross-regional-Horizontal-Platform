@@ -3,7 +3,21 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { fetchBasePlan } from '../base-sync.mjs';
+import { fetchBasePlan, normalizeRecords, buildPlan } from '../base-sync.mjs';
+
+test('focus projection preserves follow-up and requirements without exposing account identifiers as names', () => {
+  const fields = ['任务编号', '任务详情', '责任人', '最新进展反馈', '交付物&备注'];
+  const records = normalizeRecords({ data: { fields, record_id_list: ['rec1', 'rec2'], data: [
+    ['1', '任务甲', [{ id: 'ou_internal', name: '负责人甲' }], [{ text: '最新' }, { text: '跟进' }], '交付要求'],
+    ['2', '任务乙', [{ id: 'ou_private' }], '', ''],
+  ] } });
+  const rows = buildPlan(records).ganttPlan.keyRows.filter(row => row.type !== 'phase');
+  assert.equal(rows[0].owner, '负责人甲');
+  assert.equal(rows[0].feedback, '最新跟进');
+  assert.equal(rows[0].requirements, '交付要求');
+  assert.equal(rows[1].owner, '');
+  assert.ok(!JSON.stringify(rows).includes('ou_private'));
+});
 
 async function runner(t, source) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'plan-cli-'));

@@ -68,12 +68,12 @@ export class ApplicationSettings {
     } finally { this.saving = false; }
   }
 }
-export function createApplicationSettingsHandler(settings, canConfigure = () => true) {
+export function createApplicationSettingsHandler(settings, canConfigure = () => true, authorize = isLocalConfigurationRequest) {
   return async (req, res) => {
     if (new URL(req.url, 'http://localhost').pathname !== '/api/application-settings') return false;
     const send = (status, payload) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(payload)); };
     try {
-      if (!isLocalConfigurationRequest(req)) throw failure('请在服务器本机浏览器中使用 localhost 打开应用配置。', 403);
+      if (!authorize(req)) throw failure('仅管理员可维护应用配置。', 403);
       if (req.method === 'GET') send(200, { ok: true, ...settings.publicStatus() });
       else if (req.method === 'POST') {
         if (!canConfigure()) throw failure('数据正在同步，请等待完成后再修改应用配置。', 409);

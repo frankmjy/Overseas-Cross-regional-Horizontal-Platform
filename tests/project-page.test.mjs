@@ -2,11 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
+import { buildProjectFocus, focusDemoRows, renderProjectFocus } from '../src/project-focus.js';
+import { platformProjects } from '../src/project-context-model.mjs';
 
 async function page({ storage = new Map(), fetchPlan = () => { throw new Error('Unexpected request'); } } = {}) {
   const source = (await fs.readFile(new URL('../src/app.js', import.meta.url), 'utf8'))
     .replace(/^import .+;\r?$/gm, '')
-    .replace(/\nboot\(\);\s*$/, '');
+    .replace(/\nboot\(\)(?:\.catch\([^\n]+\))?;\s*$/, '');
   const cards = { innerHTML: '' };
   const month = { textContent: '' };
   const days = { innerHTML: '' };
@@ -16,11 +18,11 @@ async function page({ storage = new Map(), fetchPlan = () => { throw new Error('
   const refresh = { innerHTML: '', disabled: false };
   const update = { textContent: '' };
   const context = vm.createContext({
-    defaultLegalHolidays: [], URL, AbortController, DOMException, fetch: fetchPlan,
+    platformProjects, defaultLegalHolidays: [], buildProjectFocus, focusDemoRows, renderProjectFocus, URL, AbortController, DOMException, fetch: fetchPlan,
     window: { setTimeout() {}, clearTimeout() {}, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) } },
     document: { querySelector: selector => ({ '#phaseCards': cards, '#calendarMonth': month, '#calendarDays': days, '#calendarSummary': summary, '#planSyncStatus': status, '#ganttBoard': board, '.refresh': refresh, '.update-time': update })[selector] || null },
   });
-  vm.runInContext(`${source}\nglobalThis.page = { renderKpiCards, renderGanttRow, renderDeliverableEntry, renderCompactPhases, getDetailCardData, getCalendarDayData, renderCalendarMarkers, renderCalendar, ganttPosition, restorePlanCache, savePlanCache, renderPlanSkeleton, syncBitableData, renderProjectPicker,
+  vm.runInContext(`${source}\nglobalThis.page = { renderKpiCards, renderGanttRow, renderDeliverableEntry, renderCompactPhases, getDetailCardData, renderDetailItem, getCalendarDayData, renderCalendarMarkers, renderCalendar, ganttPosition, restorePlanCache, savePlanCache, renderPlanSkeleton, syncBitableData, renderProjectPicker,
     selectProject(id) { resetProjectState(projectCatalog.find(project => project.id === id)); },
     load(data) { ganttPlan = data.ganttPlan; phases = data.phases; milestones = data.milestones; },
     snapshot() { return { ganttPlan, phases, milestones, project: activeProject.id, planState, planCacheNotice }; } };`, context);
@@ -32,21 +34,42 @@ const row = { type: 'task', code: '001-62', recordId: 'recTask', title: '源表�
 const data = { ganttPlan: { totalTasks: 3, completedTasks: 1, p0Tasks: 1, milestoneCount: 0, durationDays: 5, rangeStart: '2026-06-01', rangeEnd: '2026-06-05', keyRows: [row], phases: [phase], riskRadar: [], gaps: [] }, phases: [phase], milestones: [] };
 const cacheData = { ...data, syncedAtLabel: '10/21 08:00', ganttPlan: { ...data.ganttPlan, source: { baseUrl: 'https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblSpSvqS2FMpHks', tableId: 'tblSpSvqS2FMpHks' } } };
 
-test('one compact project trigger exposes grouped options with exactly one current selection', async () => {
+test('the Thailand core-team task opens its organization chart by stable task identity only', async () => {
   const { app } = await page();
-  for (const id of ['th-001', 'th-002', 'my-001', 'my-002']) {
+  const target = { ...row, recordId: 'reczz28OqA6vFK96', code: '001-20', title: '筛选录用并确认核心团队名单' };
+  const unrelated = { ...row, title: target.title };
+  const load = rows => app.load({ ...data, ganttPlan: { ...data.ganttPlan, keyRows: rows } });
+  load([target, unrelated]);
+  const items = app.getDetailCardData('phase-01').sections.find(section => section.title === '关键工作').items;
+  assert.equal(items[0].organizationChart, true);
+  assert.equal(items[1].organizationChart, false);
+  const html = app.renderDetailItem(items[0]);
+  assert.match(html, /<button[^>]*type="button"[^>]*data-organization-chart[^>]*aria-haspopup="dialog"/);
+  assert.match(html, /筛选录用并确认核心团队名单/);
+  assert.doesNotMatch(app.renderDetailItem(items[1]), /data-organization-chart/);
+
+  load([{ ...target, title: '核心团队名单确认', code: 'changed' }]);
+  assert.equal(app.getDetailCardData('phase-01').sections[1].items[0].organizationChart, true);
+  load([{ ...target, recordId: 'new-record' }]);
+  assert.equal(app.getDetailCardData('phase-01').sections[1].items[0].organizationChart, true);
+  app.selectProject('my-001');
+  load([target]);
+  assert.equal(app.getDetailCardData('phase-01').sections[1].items[0].organizationChart, false);
+});
+
+test('workspace shows login project as a read-only label without another project picker', async () => {
+  const { app } = await page();
+  for (const id of ['th-001', 'my-001']) {
     app.selectProject(id);
     const html = app.renderProjectPicker();
-    assert.equal((html.match(/id="projectPickerTrigger"/g) || []).length, 1);
-    assert.match(html, /aria-haspopup="menu" aria-expanded="false"/);
-    assert.match(html, /role="menu"[^>]*hidden/);
-    assert.equal((html.match(/role="menuitemradio"/g) || []).length, 4);
-    assert.equal((html.match(/aria-checked="true"/g) || []).length, 1);
-    assert.match(html, new RegExp(`aria-checked="true"[^>]*data-project-id="${id}"`));
-    assert.match(html, /project-group-TH/);
-    assert.match(html, /project-group-MY/);
-    assert.doesNotMatch(html, /<select|projectCountry|projectSelect/);
+    assert.match(html, /project-context-label/);
+    assert.match(html, new RegExp(platformProjects.find(project=>project.id===id).shortName));
+    assert.doesNotMatch(html, /<select|projectPickerTrigger|role="menu"|menuitemradio/);
   }
+});
+
+test('核心骨干图标进入当前项目人员储备页，其他阶段仍保留详情',async()=>{
+ const {app,cards}=await page();const core={...phase,no:'02',tone:'amber'};app.load({...data,phases:[phase,core]});app.renderCompactPhases();assert.equal((cards.innerHTML.match(/data-staffing-link/g)||[]).length,1);assert.match(cards.innerHTML,/href="\/staffing-reserve\?project=th-001"/);assert.match(cards.innerHTML,/data-detail-card="phase-01"/);app.selectProject('my-001');app.load({...data,phases:[phase,core]});app.renderCompactPhases();assert.match(cards.innerHTML,/href="\/staffing-reserve\?project=my-001"/);
 });
 
 test('a successful snapshot restores real source values before the next refresh', async () => {
@@ -81,7 +104,7 @@ test('unconnected projects cannot reuse the Thailand snapshot or trigger a Thail
   const { app } = await page({ fetchPlan: () => { calls++; } });
   app.savePlanCache(cacheData);
   assert.equal(app.restorePlanCache(), true);
-  for (const id of ['th-002', 'my-001', 'my-002']) {
+  for (const id of ['my-001']) {
     app.selectProject(id);
     assert.equal(app.restorePlanCache(), false);
     assert.equal(app.snapshot().ganttPlan, null);

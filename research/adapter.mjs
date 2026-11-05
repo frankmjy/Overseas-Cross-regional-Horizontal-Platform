@@ -10,11 +10,18 @@ export class BaseAdapter {
   constructor(config) { this.config = config; this.subjectLabels={};this.subjectAliases=new Map(companies.map(c=>[c.name,c.name])); }
   setSubjectLabels(labels){for(const [key,value]of Object.entries(labels||{})){this.subjectLabels[key]=value;this.subjectAliases.set(value,key);}}
   resetSubjectLabels(labels){this.subjectLabels={};this.subjectAliases=new Map(companies.map(c=>[c.name,c.name]));this.setSubjectLabels(labels);}
+  supported(table,fields){
+    const ids=this.config.fieldIds?.[table];if(!ids||!Object.keys(ids).length)return fields;
+    const optional={questions:['分类待确认','源行号','源表链接','原序号'],findings:['源行号','源表链接','源内容单元格','源举证单元格'],evidence:['问题编号','原文件大小','MIME类型','SHA256','迁移状态','关联问题'],topics:['层级']}[table]||[];
+    const kept={};
+    for(const [name,value]of Object.entries(fields)){const key=canonicalFieldName(name);if(Object.hasOwn(ids,key))kept[key]=value;else if(!optional.includes(key))throw new Error(`飞书必需字段“${key}”未绑定，已停止写入。`);}
+    return kept;
+  }
   normalizeSubjects(table,rows){
     const text=v=>Array.isArray(v)?text(v[0]):v==null?'':typeof v==='object'?v.text||v.name||'':String(v);
     if(table==='findings'){
       const labels=new Map();
-      for(const row of rows){const key=companies.find(c=>text(row.明细编号).endsWith(':'+c.name))?.name,label=text(row.调研对象);if(!key||!label)continue;if(this.subjectAliases.has(label)&&this.subjectAliases.get(label)!==key)throw Error('调研对象名称存在冲突，请核对正式明细。');this.subjectAliases.set(label,key);if(!labels.has(key))labels.set(key,new Set());labels.get(key).add(label);}
+      for(const row of rows){const key=companies.find(c=>[':','｜'].some(delimiter=>text(row.明细编号).endsWith(delimiter+c.name)))?.name,label=text(row.调研对象);if(!key||!label)continue;if(this.subjectAliases.has(label)&&this.subjectAliases.get(label)!==key)throw Error('调研对象名称存在冲突，请核对正式明细。');this.subjectAliases.set(label,key);if(!labels.has(key))labels.set(key,new Set());labels.get(key).add(label);}
       for(const [key,values]of labels)this.subjectLabels[key]=values.has(this.subjectLabels[key])?this.subjectLabels[key]:[...values][0];
     }
     if(['findings','evidence'].includes(table))for(const row of rows){const label=text(row.调研对象),key=this.subjectAliases.get(label);if(key){row.__subjectLabel=label;row.调研对象=key;}}
@@ -22,7 +29,7 @@ export class BaseAdapter {
   }
   writeFields(fields,literalSubject=false){return encodeFields({...fields,...(!literalSubject&&Object.hasOwn(fields,'调研对象')?{调研对象:this.subjectLabels[fields.调研对象]||fields.调研对象}:{})},{});}
   async cli(command, args = [], cwd = process.cwd(), domain = 'base') {
-    const configured = process.env.LARK_CLI_SCRIPT;
+    const configured = process.env.LARK_CLI_SCRIPT || this.config.cliScript;
     const installed = path.join(path.dirname(process.execPath), 'node_modules/@larksuite/cli/scripts/run.js');
     const vendor = path.resolve('vendor/lark-cli/run.cjs');
     const script = path.resolve(configured || (existsSync(vendor) ? vendor : installed));
@@ -56,6 +63,7 @@ export class BaseAdapter {
       fields = await read();
     }
     if (fields.length !== 1 || fields[0].type !== 'checkbox') throw new Error('飞书“已删除”字段缺失、重名或类型不兼容，请核对字段配置。');
+    if(fields[0].id){this.config.fieldIds||={};this.config.fieldIds.questions||={};this.config.fieldIds.questions['已删除']=fields[0].id;}
   }
   async recordUrl(recordId) {
     const data = await this.cli('GET', [`/open-apis/bitable/v1/apps/${this.config.baseToken}/tables/${this.table('evidence')}/records/${recordId}`, '--params', JSON.stringify({ with_shared_url: true })], process.cwd(), 'api');
@@ -75,13 +83,13 @@ export class BaseAdapter {
     throw new Error('飞书数据超过本应用单次读取上限，未返回不完整数据。');
   }
   async create(table, fields) {
-    const data = await this.cli('+record-upsert', ['--table-id', this.table(table), '--json', JSON.stringify(encodeFields(this.writeFields(fields), this.config.fieldIds?.[table]))]);
+    const data = await this.cli('+record-upsert', ['--table-id', this.table(table), '--json', JSON.stringify(encodeFields(this.writeFields(this.supported(table,fields)), this.config.fieldIds?.[table]))]);
     const id = data.record?.record_id_list?.[0];
     if (!id) throw new Error('飞书创建结果未包含记录 ID，需先核对同步结果。');
     return id;
   }
   async update(table, id, fields,{literalSubject=false}={}) {
-    await this.cli('+record-upsert', ['--table-id', this.table(table), '--record-id', id, '--json', JSON.stringify(encodeFields(this.writeFields(fields,literalSubject), this.config.fieldIds?.[table]))]);
+    await this.cli('+record-upsert', ['--table-id', this.table(table), '--record-id', id, '--json', JSON.stringify(encodeFields(this.writeFields(this.supported(table,fields),literalSubject), this.config.fieldIds?.[table]))]);
   }
   async upload(recordId, file) {
     await this.cli('+record-upload-attachment', ['--table-id', this.table('evidence'), '--record-id', recordId, '--field-id', this.config.fieldIds?.evidence?.附件 || '附件', '--file', path.basename(file)], path.dirname(path.resolve(file)));

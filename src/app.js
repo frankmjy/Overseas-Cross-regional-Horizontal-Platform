@@ -1,9 +1,13 @@
+import { requirePlatformProject } from './platform-context.js';
+import { platformProjects } from './project-context-model.mjs';
 import { renderPlatformHeader } from './platform-navigation.js';
 import { legalHolidays as defaultLegalHolidays } from './data.js';
 import { createTeamOrganization } from './team-organization.js';
 import { createTaskEditor } from './task-editor.js';
 import { todayMarker, centeredTimelineScroll } from './gantt-today.js';
 import { attachGanttPan } from './gantt-pan.js';
+import { buildProjectFocus, focusDemoRows, renderProjectFocus } from './project-focus.js';
+import { renderWorkspaceSidebar, createProjectWorkspace } from './project-workspace.js';
 
 const root = document.querySelector('#app');
 const today = new Date();
@@ -18,21 +22,18 @@ let detailReturnFocus = null;
 let organizationChartReturnFocus = null;
 let teamOrganization = null;
 let taskEditor = null;
+let projectWorkspace = null;
 let ganttTodayTimer = null;
 let calendarCursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let selectedCalendarDate = dateKey(today);
 let calendarModalOpen = false;
 let detailModalOpen = false;
+let focusView = null;
 let planSyncing = false;
 let planStatusDay = dateKey(today);
 const ganttCollapsedGroups = new Set(['amber', 'green', 'indigo']);
 const completionIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>';
-const projectCatalog = [
-  { id: 'th-001', country: 'TH', countryName: '泰国', code: 'TH-001', name: 'Araya / Rojana', connected: true },
-  { id: 'th-002', country: 'TH', countryName: '泰国', code: 'TH-002', name: 'TH-002', connected: false },
-  { id: 'my-001', country: 'MY', countryName: '马来西亚', code: 'MY-001', name: 'MY-001', connected: false },
-  { id: 'my-002', country: 'MY', countryName: '马来西亚', code: 'MY-002', name: 'MY-002', connected: false },
-];
+const projectCatalog = platformProjects.map(project => ({ ...project, name:project.shortName, connected:project.planConnected }));
 let activeProject = projectCatalog[0];
 let planRequestId = 0;
 let planRequestController = null;
@@ -83,25 +84,7 @@ function savePlanCache(data) {
   }
 }
 
-function renderProjectPicker() {
-  const groups = ['TH', 'MY'].map(country => {
-    const projects = projectCatalog.filter(project => project.country === country);
-    return `<div class="project-picker-group" role="group" aria-labelledby="project-group-${country}">
-      <h3 id="project-group-${country}">${projects[0].countryName}<small>${projects.length} 个项目</small></h3>
-      ${projects.map(project => `<button class="project-picker-option" type="button" role="menuitemradio" aria-checked="${project.id === activeProject.id}" tabindex="-1" data-project-id="${project.id}">
-        <i class="project-country-code">${country}</i>
-        <div><strong>${project.name}</strong><small>${project.code}${project.connected ? ' · 共享团队计划' : ' · 待接入任务表'}</small></div>
-        ${project.id === activeProject.id ? `<b class="project-picker-check">${completionIcon}</b>` : ''}
-      </button>`).join('')}
-    </div>`;
-  }).join('');
-  return `<div class="project-picker" data-open="false">
-    <button class="project-picker-trigger" id="projectPickerTrigger" type="button" aria-label="切换项目，当前${activeProject.countryName} ${activeProject.name}" aria-haspopup="menu" aria-expanded="false" aria-controls="projectPickerMenu"><b>${activeProject.countryName} · ${activeProject.name}</b>${icon('chevron-right')}</button>
-    <div class="project-picker-menu" id="projectPickerMenu" role="menu" aria-label="切换海外项目" hidden>
-      <div class="project-picker-heading"><strong>切换项目</strong><small>按国家浏览项目工作区</small></div>${groups}
-    </div>
-  </div>`;
-}
+function renderProjectPicker() { return `<span class="project-context-label">${activeProject.countryName} · ${activeProject.name}</span>`; }
 
 function setProjectPickerOpen(open, returnFocus = false) {
   projectPickerOpen = open;
@@ -398,9 +381,13 @@ function getGanttGroups() {
 }
 
 function renderShell() {
+  projectWorkspace?.destroy?.();
   root.innerHTML = `
     ${renderPlatformHeader('projects')}
-    <div class="page">
+    <div class="page project-workspace-page">
+      <div class="workspace-frame">
+      ${renderWorkspaceSidebar()}
+      <div class="workspace-content">
       <header class="hero project-command">
         <div class="hero-inner project-command-inner">
           <div class="hero-title">
@@ -411,7 +398,7 @@ function renderShell() {
         </div>
       </header>
 
-      <main>
+      <main id="projectOverview" tabindex="-1">
         <div id="planSyncStatus" class="plan-sync-status" role="status" hidden></div>
         <section class="kpi-grid" aria-label="项目指标"${activeProject.connected ? '' : ' hidden'}>
           ${ganttPlan ? renderKpiCards() : renderKpiSkeletons()}
@@ -419,6 +406,9 @@ function renderShell() {
 
         <section class="gantt-shell" id="ganttBoard" aria-label="项目甘特计划总览"></section>
       </main>
+      <section id="workspacePage" class="workspace-page" tabindex="-1" hidden></section>
+      </div>
+      </div>
 
       <div class="detail-modal" id="detailModal" hidden>
         <div class="detail-modal-backdrop" data-detail-close></div>
@@ -444,6 +434,17 @@ function renderShell() {
     </div>
   `;
 
+  projectWorkspace = createProjectWorkspace({ root: document.querySelector('.page'), today: dateKey(today), getToday: () => dateKey(today), getPlan: () => ganttPlan, connected: activeProject.connected,
+    onOverviewVisible: () => centerGanttToday(),
+    onOpenPlan: (id, trigger) => {
+      const row = ganttPlan?.keyRows.find(row => row.recordId === id);
+      if (row && taskEditor) taskEditor.open(id, trigger, row.code);
+    },
+    onUpdate: (id, trigger) => {
+      const row = ganttPlan?.keyRows.find(row => row.recordId === id);
+      if (activeProject.connected && row && taskEditor) taskEditor.open(row.recordId, trigger, row.code, { followupOnly: true });
+    } });
+
   document.querySelector('.refresh').addEventListener('click', syncBitableData);
   const syncStamp = document.querySelector('.update-time');
   if (activeProject.connected) {
@@ -451,8 +452,8 @@ function renderShell() {
     syncStamp.addEventListener('click', () => syncBitableData(true));
     syncStamp.addEventListener('keydown', event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); syncBitableData(true); } });
   }
-  document.querySelector('#projectPickerTrigger').addEventListener('click', () => setProjectPickerOpen(!projectPickerOpen));
-  document.querySelector('#projectPickerMenu').addEventListener('click', event => {
+  document.querySelector('#projectPickerTrigger')?.addEventListener('click', () => setProjectPickerOpen(!projectPickerOpen));
+  document.querySelector('#projectPickerMenu')?.addEventListener('click', event => {
     const item = event.target.closest('[data-project-id]');
     if (!item) return;
     setProjectPickerOpen(false, true);
@@ -464,6 +465,24 @@ function renderShell() {
   document.querySelector('.page').addEventListener('click', handleDetailCardActivation);
   document.querySelector('.page').addEventListener('keydown', handleDetailCardActivation);
   document.querySelector('#detailModal').addEventListener('click', (event) => {
+    const mode = event.target.closest('[data-focus-mode]');
+    const filter = event.target.closest('[data-focus-filter]');
+    const page = event.target.closest('[data-focus-page]');
+    if (focusView && (mode || filter || page)) {
+      if (mode) { focusView.mode = mode.dataset.focusMode; focusView.filter = 'all'; focusView.page = 1; }
+      if (filter) { focusView.filter = filter.dataset.focusFilter; focusView.page = 1; }
+      if (page) focusView.page = Number(page.dataset.focusPage);
+      document.querySelector('#detailModalBody').innerHTML = renderFocusView();
+      const selector = mode ? `[data-focus-mode="${focusView.mode}"]` : `[data-focus-filter="${focusView.filter}"]`;
+      document.querySelector('#detailModalBody').querySelector(selector)?.focus();
+      return;
+    }
+    const task = event.target.closest('[data-focus-task]');
+    if (focusView?.mode === 'live' && task) {
+      const row = ganttPlan.keyRows.find(row => row.recordId === task.dataset.focusTask);
+      if (row && taskEditor) { const origin = detailReturnFocus; closeDetailModal(); taskEditor.open(row.recordId, origin, row.code); }
+      return;
+    }
     const chartTrigger = event.target.closest('[data-organization-chart]');
     if (chartTrigger) { openOrganizationChart(chartTrigger); return; }
     if (!event.target.closest('[data-detail-close]')) return;
@@ -531,6 +550,7 @@ function applySyncedPlan(data) {
   renderCompactPhases();
   renderCalendar();
 
+  projectWorkspace?.refresh();
   const updateTime = document.querySelector('.update-time');
   if (updateTime) updateTime.textContent = `飞书同步 ${lastSyncedLabel}`;
 }
@@ -552,6 +572,7 @@ function updateTodayMarker() {
   today.setTime(Date.now()); today.setHours(0, 0, 0, 0);
   if (previousDay !== dateKey(today) && document.querySelector('#calendarDays')) {
     renderCalendar();
+    projectWorkspace?.refresh();
     const kpis = document.querySelector('.kpi-grid'); if (kpis) kpis.innerHTML = renderKpiCards();
   }
   const main = document.querySelector('.gantt-main'); if (!main || !ganttPlan) return;
@@ -564,8 +585,10 @@ function updateTodayMarker() {
 }
 
 function centerGanttToday(smooth = false) {
-  const main = document.querySelector('.gantt-main'), marker = todayMarker(ganttPlan.rangeStart, ganttPlan.rangeEnd);
-  if (!main || !marker) return;
+  const main = document.querySelector('.gantt-main');
+  if (!main || !ganttPlan) return;
+  const marker = todayMarker(ganttPlan.rangeStart, ganttPlan.rangeEnd);
+  if (!marker) return;
   const left = centeredTimelineScroll({ offset: marker.offset, dayWidth: 4.5, viewportWidth: main.clientWidth, frozenWidth: main.querySelector('.gantt-table-head').getBoundingClientRect().width, scrollWidth: main.scrollWidth });
   main.scrollTo({ left, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
 }
@@ -638,7 +661,7 @@ function renderKpiCards() {
   const deliverableCount = getDeliverableRows().reduce((count, row) => count + row.deliverables.length, 0);
   const cards = [
     { id: 'deliverables', label: '交付物', value: ganttPlan ? deliverableCount : '—', unit: '份', iconName: 'file', tone: '' },
-    { id: 'p0', label: 'P0 高优风险', value: ganttPlan?.p0Tasks ?? '—', unit: '项', iconName: 'alert', tone: 'tone-rose' },
+    { id: 'p0', label: '项目攻坚', value: ganttPlan ? buildProjectFocus(ganttPlan, dateKey(today)).counts.all : '—', unit: '项', iconName: 'alert', tone: 'tone-rose' },
     { id: 'milestones', label: '关键里程碑', value: ganttPlan?.milestoneCount ?? '—', unit: '个', iconName: 'calendar', tone: 'tone-amber' },
     { id: 'duration', label: '计划周期', value: ganttPlan?.durationDays ?? '—', unit: '天', iconName: 'clock', tone: 'tone-green' },
     { id: 'overdue', label: '已逾期', value: ganttPlan ? overdueRows.length : '—', unit: '项', iconName: 'alert', tone: 'tone-overdue' },
@@ -660,6 +683,7 @@ function renderKpiCards() {
 }
 
 function handleDetailCardActivation(event) {
+  if(event.target.closest('[data-staffing-link]'))return;
   if (!ganttPlan) return;
   if (event.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
   const card = event.target.closest('[data-detail-card]');
@@ -673,7 +697,7 @@ function handleDetailModalKeydown(event) {
   if (!detailModalOpen) return;
   if (event.key === 'Escape') closeDetailModal();
   if (event.key !== 'Tab') return;
-  const controls = [...document.querySelector('#detailModal').querySelectorAll('button, a[href]')];
+  const controls = [...document.querySelector('#detailModal').querySelectorAll('button, a[href], summary, input, select, textarea')].filter(node => !node.disabled && node.getClientRects().length);
   const first = controls[0];
   const last = controls.at(-1);
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
@@ -687,7 +711,9 @@ function openDetailModal(cardId) {
   closeCalendarModal();
   const modal = document.querySelector('#detailModal');
   const body = document.querySelector('#detailModalBody');
-  body.innerHTML = renderDetailModal(detail);
+  focusView = cardId === 'p0' ? { mode: 'live', filter: 'all', page: 1 } : null;
+  modal.classList.toggle('is-focus', !!focusView);
+  body.innerHTML = focusView ? renderFocusView() : renderDetailModal(detail);
   modal.hidden = false;
   detailModalOpen = true;
   document.body.classList.add('detail-modal-open');
@@ -701,7 +727,14 @@ function closeDetailModal() {
   modal.hidden = true;
   if (detailModalOpen && detailReturnFocus?.isConnected) detailReturnFocus.focus();
   detailModalOpen = false;
+  focusView = null;
   document.body.classList.remove('detail-modal-open');
+}
+
+function renderFocusView() {
+  const date = dateKey(today), demo = focusView.mode === 'demo';
+  const plan = demo ? { keyRows: focusDemoRows(date), phases: [] } : ganttPlan;
+  return renderProjectFocus(buildProjectFocus(plan, date, demo), { ...focusView, projectName: `${activeProject.countryName} · ${activeProject.name}` });
 }
 
 function renderDetailModal(detail) {
@@ -758,6 +791,7 @@ function renderDetailItem(item) {
 }
 
 function getDetailCardData(cardId) {
+  if (cardId === 'p0') return { kind: 'focus', title: '项目攻坚' };
   if (cardId === 'deliverables') {
     const rows = getDeliverableRows();
     const count = rows.reduce((sum, row) => sum + row.deliverables.length, 0);
@@ -788,7 +822,6 @@ function getDetailCardData(cardId) {
   const p0Rows = taskRows.filter((row) => row.priority === 'P0');
   const p1Rows = taskRows.filter((row) => row.priority === 'P1');
   const overdueRows = getOverdueRows();
-  const p0Risks = ganttPlan.riskRadar.filter((risk) => risk.level === 'P0');
   const projectStart = ganttPlan.rangeStart;
   const projectEnd = ganttPlan.rangeEnd;
   const holidayCounts = legalHolidays.reduce(
@@ -823,38 +856,6 @@ function getDetailCardData(cardId) {
         {
           title: '当前缺口',
           items: ganttPlan.gaps.slice(0, 4).map((gap) => ({ title: gap, tone: 'amber' })),
-        },
-      ],
-    },
-    p0: {
-      tone: 'rose',
-      iconName: 'alert',
-      eyebrow: '风险关注',
-      title: 'P0 高优风险',
-      body: '优先关注会影响合规、签证、宿舍通勤和关键人员进场的高优事项。',
-      stats: [
-        { label: 'P0 任务', value: p0Rows.length },
-        { label: '风险雷达', value: p0Risks.length },
-        { label: '覆盖阶段', value: phases.length },
-      ],
-      sections: [
-        {
-          title: '风险雷达',
-          items: p0Risks.map((risk) => ({
-            title: risk.title,
-            meta: risk.body,
-            tag: risk.level,
-            tone: 'rose',
-          })),
-        },
-        {
-          title: '高优任务样例',
-          items: p0Rows.slice(0, 6).map((row) => ({
-            title: row.title,
-            meta: `${getPhaseShortName(row.phase)} · ${formatPeriod(row.start, row.end)}`,
-            tag: row.code,
-            tone: 'rose',
-          })),
         },
       ],
     },
@@ -1349,7 +1350,7 @@ function renderPhases() {
             <div>
               <h3>${phase.title}</h3>
             </div>
-            <span class="phase-mark" title="阶段标识">${icon(getPhaseCardCopy(phase).iconName)}</span>
+            ${phase.no==='02'?`<a class="phase-mark staffing-icon-link" data-staffing-link href="/staffing-reserve?project=${encodeURIComponent(activeProject.id)}" aria-label="打开人员储备跟踪" title="人员储备跟踪">${icon(getPhaseCardCopy(phase).iconName)}</a>`:`<span class="phase-mark" title="阶段标识">${icon(getPhaseCardCopy(phase).iconName)}</span>`}
           </div>
           <div class="phase-dashboard">
             <div class="phase-big">
@@ -1403,7 +1404,7 @@ function renderCompactPhases() {
               <h3 title="${escapeAttribute(copy.title)}">${escapeHtml(copy.title)}</h3>
               <div class="phase-subtitle" title="${escapeAttribute(copy.subtitle)}">${escapeHtml(summarizeText(copy.subtitle, 13))}</div>
             </div>
-            <span class="phase-mark" title="阶段标识">${icon(copy.iconName)}</span>
+            ${phase.no==='02'?`<a class="phase-mark staffing-icon-link" data-staffing-link href="/staffing-reserve?project=${encodeURIComponent(activeProject.id)}" aria-label="打开人员储备跟踪" title="人员储备跟踪">${icon(copy.iconName)}</a>`:`<span class="phase-mark" title="阶段标识">${icon(copy.iconName)}</span>`}
           </div>
           <div class="phase-dashboard">
             <div class="phase-big">
@@ -1635,8 +1636,10 @@ function renderCalendar() {
   if (calendarModalOpen) renderCalendarDetail();
 }
 
-function boot() {
-  const selected = new URL(window.location.href).searchParams.get('project');
+async function boot() {
+  const context = await requirePlatformProject();
+  document.title = `${context.name} · 海外业务协作平台`;
+  const selected = context.id;
   activeProject = projectCatalog.find(project => project.id === selected) || projectCatalog[0];
   restorePlanCache();
   renderShell();
@@ -1650,4 +1653,4 @@ function boot() {
   syncBitableData();
 }
 
-boot();
+boot().catch(error => console.error(error.message));

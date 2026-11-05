@@ -1,10 +1,14 @@
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const closeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>';
+export function taskEditorPatch(values, current, followupOnly = false) {
+  if (followupOnly) { const feedback = String(values.feedback || '').trim(); return feedback ? { feedback } : {}; }
+  return Object.fromEntries(Object.entries(values).filter(([key, value]) => !equal(value, key === 'feedback' ? current.latestFeedback ?? current.values.feedback : current.values[key])));
+}
 export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
   const dialog = document.createElement('dialog'); dialog.className = 'task-editor'; dialog.setAttribute('aria-labelledby', 'taskEditorTitle'); document.body.append(dialog);
   const notice = document.createElement('div'); notice.className = 'task-save-notice'; notice.setAttribute('role', 'status'); notice.setAttribute('aria-live', 'polite'); notice.hidden = true; document.body.append(notice);
-  let cache = null, current = null, trigger = null, submission = null, submitting = false, draft = false, generation = 0, timer = null, refreshing = null, noticeTimer = null;
+  let cache = null, current = null, trigger = null, submission = null, submitting = false, draft = false, generation = 0, timer = null, refreshing = null, noticeTimer = null, followupOnly = false;
   function notify(message, recordId = '') {
     clearTimeout(noticeTimer); notice.hidden = false; notice.dataset.state = recordId ? 'error' : 'success';
     notice.innerHTML = `<span aria-hidden="true">${recordId ? '!' : '✓'}</span><span>${esc(message)}</span>${recordId ? `<button type="button" data-notice-task="${esc(recordId)}">查看</button>` : ''}<button type="button" data-notice-close aria-label="关闭提示">×</button>`;
@@ -24,7 +28,7 @@ export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
   function controls() {
     const pending = current && operation(current.id);
     dialog.querySelectorAll('input,textarea,select').forEach(node => { node.disabled = submitting || !!pending || !!submission?.uncertain; });
-    const save = dialog.querySelector('[data-task-save]'); if (save) { save.disabled = submitting || !!pending; save.textContent = submitting ? '保存中…' : submission?.uncertain ? '重试保存' : '保存'; }
+    const save = dialog.querySelector('[data-task-save]'); if (save) { save.disabled = submitting || !!pending; save.textContent = submitting ? '保存中…' : submission?.uncertain ? '重试保存' : followupOnly ? '保存进展' : '保存'; }
     const close = dialog.querySelector('[data-task-close]'); if (close) close.disabled = submitting;
   }
   async function preload() {
@@ -45,6 +49,12 @@ export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
   }
   function render() {
     const op = operation(current.id);
+    if (followupOnly) {
+      const owners = current.values.owner.map(id => cache.users.find(user => user.id === id)?.name).filter(Boolean).join('、');
+      dialog.innerHTML = `<form class="task-editor-form"><header class="task-editor-header"><div><span class="task-editor-code">${esc(current.code)}</span><h2 id="taskEditorTitle">更新进展</h2></div><button type="button" class="task-editor-close" data-task-close aria-label="关闭任务编辑">${closeIcon}</button></header><div class="task-editor-body"><section class="task-followup-context"><h3>${esc(current.values.title)}</h3><div><span>${esc(owners || '责任人待定')}</span><span>${esc(current.values.due || '未排期')}</span></div></section>${current.latestFeedback ? `<section class="task-previous-feedback"><h3>上一条进展</h3><p>${esc(current.latestFeedback)}</p></section>` : ''}${area('feedback', '本次进展', 5, '')}<details class="task-editor-more"><summary>历史跟进</summary>${history() || '<p class="task-history-empty">暂无历史跟进</p>'}</details>${op ? `<div class="task-sync-state" data-operation="${esc(op.id)}"><span>${esc(op.error || '修改已保存，后台同步中')}</span>${op.status === 'error' ? '<button type="button" data-task-retry>重试同步</button>' : op.status === 'blocked' ? '<button type="button" data-task-discard>放弃待同步修改</button>' : ''}</div>` : ''}</div><footer class="task-editor-footer"><span role="status" data-task-status></span><button class="task-editor-submit" type="submit" data-task-save>保存进展</button></footer></form>`;
+      if (op) status(op.error || '已保存，后台同步中', op.status);
+      draft = false; controls(); return;
+    }
     const owner = current.values.owner[0] || '';
     dialog.innerHTML = `<form class="task-editor-form"><header class="task-editor-header"><div><span class="task-editor-code">${esc(current.code)}</span><h2 id="taskEditorTitle">编辑任务</h2></div><button type="button" class="task-editor-close" data-task-close aria-label="关闭任务编辑">${closeIcon}</button></header><div class="task-editor-body"><label class="task-title-field">任务详情<textarea name="title" rows="2" maxlength="2000" required>${esc(current.values.title)}</textarea></label><div class="task-editor-grid">${select('status', '项目进度')}${select('priority', '优先级')}<label class="task-owner-field">责任人<select name="owner"><option value="">未指定</option>${cache.users.map(user => `<option value="${esc(user.id)}"${user.id === owner ? ' selected' : ''}>${esc(user.name)}</option>`).join('')}</select></label>${date('start', '开始日期')}${date('due', '截止日期')}${date('actualCompletion', '实际完成日期')}</div>${area('feedback', '最新进展反馈', 3, current.latestFeedback ?? current.values.feedback)}<details class="task-editor-more"><summary>更多信息</summary>${history()}<div class="task-editor-grid">${select('stage', '团队组建阶段')}${select('construction', '现场建设阶段')}${select('milestone', '里程碑')}</div><fieldset class="task-participants"><legend>参与人</legend><input type="search" data-person-search placeholder="搜索已接入人员" aria-label="搜索参与人"><div class="task-person-options">${cache.users.map(user => `<label data-person-name="${esc(user.name)}"><input type="checkbox" name="participants" value="${esc(user.id)}"${current.values.participants.includes(user.id) ? ' checked' : ''}><span>${esc(user.name)}</span></label>`).join('')}</div></fieldset>${area('requirements', '交付要求')}${area('links', '交付物链接', 2)}</details>${op ? `<div class="task-sync-state" data-operation="${esc(op.id)}"><span>${esc(op.error || '修改已保存，后台同步中')}</span>${op.status === 'error' ? '<button type="button" data-task-retry>重试同步</button>' : op.status === 'blocked' ? '<button type="button" data-task-discard>放弃待同步修改</button>' : ''}</div>` : ''}</div><footer class="task-editor-footer"><span role="status" data-task-status></span><button class="task-editor-submit" type="submit" data-task-save${op ? ' disabled' : ''}>保存</button></footer></form>`;
     if (op) status(op.error || '已保存，后台同步中', op.status);
@@ -53,7 +63,8 @@ export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
   function shell(code = '') {
     dialog.innerHTML = `<header class="task-editor-header"><div><span class="task-editor-code">${esc(code)}</span><h2 id="taskEditorTitle">编辑任务</h2></div><button type="button" class="task-editor-close" data-task-close aria-label="关闭任务编辑">${closeIcon}</button></header><div class="task-editor-body task-editor-loading" role="status">正在读取任务…</div>`;
   }
-  async function open(id, origin, code = '') {
+  async function open(id, origin, code = '', options = {}) {
+    followupOnly = options.followupOnly === true; dialog.classList.toggle('is-followup', followupOnly);
     const token = ++generation; trigger = origin; current = null; submission = null; submitting = false; draft = false;
     shell(code); if (!dialog.open) dialog.showModal();
     try {
@@ -62,14 +73,15 @@ export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
       if (token !== generation || !dialog.open) return;
       current = cache?.records?.find(r => r.id === id);
       if (!cache?.ready || !current) throw Error(cache?.error || '任务尚未就绪，请重试。');
-      render(); dialog.querySelector('[name=title]').focus({ preventScroll: true });
+      render(); dialog.querySelector(followupOnly ? '[name=feedback]' : '[name=title]').focus({ preventScroll: true });
     } catch (error) { if (token === generation && dialog.open) dialog.querySelector('.task-editor-body').innerHTML = `<p role="alert">${esc(error.message)}</p><button type="button" data-task-reopen data-record="${esc(id)}">重新读取</button>`; }
   }
   function close() {
     if (submitting) return;
     if (draft && !confirm('关闭并放弃尚未保存的修改？')) return;
     ++generation; dialog.close();
-    const target = trigger?.isConnected ? trigger : current && document.querySelector(`.gantt-edit-name[data-edit-task="${CSS.escape(current.id)}"]`);
+    const weeklyTarget = current && [...document.querySelectorAll(`[data-weekly-update="${CSS.escape(current.id)}"]`)].find(node => node.getClientRects().length);
+    const target = trigger?.isConnected ? trigger : weeklyTarget || current && document.querySelector(`.gantt-edit-name[data-edit-task="${CSS.escape(current.id)}"]`);
     target?.focus({ preventScroll: true });
   }
   function formValues() {
@@ -112,8 +124,8 @@ export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
   dialog.addEventListener('submit', async event => {
     event.preventDefault(); if (submitting || !current) return;
     if (!submission) {
-      const values = formValues(), patch = Object.fromEntries(Object.entries(values).filter(([key, value]) => !equal(value, key === 'feedback' ? current.latestFeedback ?? current.values.feedback : current.values[key])));
-      if (!Object.keys(patch).length) { status('没有新的修改。'); return; }
+      const values = formValues(), patch = taskEditorPatch(values, current, followupOnly);
+      if (!Object.keys(patch).length) { status(followupOnly ? '请填写本次进展。' : '没有新的修改。'); return; }
       submission = { clientMutationId: crypto.randomUUID(), recordId: current.id, version: current.version, patch };
     }
     submitting = true; controls(); status('正在保存…', 'submitting');
@@ -123,7 +135,7 @@ export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
       current = result.record; cache.revision = result.revision; cache.records = cache.records.map(r => r.id === current.id ? current : r);
       cache.operations = [...cache.operations.filter(op => op.id !== result.operation.id), result.operation];
       draft = false; onPlan(result.plan); onOperations(cache.operations);
-      submitting = false; submission = null; close(); notify('修改已保存');
+      submitting = false; submission = null; close(); notify(followupOnly ? '进展已保存' : '修改已保存');
       startPolling();
     } catch (error) {
       if (error.definitive) submission = null;
@@ -141,7 +153,7 @@ export function createTaskEditor({ onPlan, onOperations = () => {} } = {}) {
   });
   dialog.addEventListener('click', async event => {
     if (event.target.closest('[data-task-close]')) close();
-    const reopen = event.target.closest('[data-task-reopen]'); if (reopen) { cache = null; open(reopen.dataset.record, trigger); }
+    const reopen = event.target.closest('[data-task-reopen]'); if (reopen) { cache = null; open(reopen.dataset.record, trigger, '', { followupOnly }); }
     const retry = event.target.closest('[data-task-retry]'), discard = event.target.closest('[data-task-discard]');
     if (!retry && !discard || submitting) return;
     const id = event.target.closest('[data-operation]').dataset.operation;

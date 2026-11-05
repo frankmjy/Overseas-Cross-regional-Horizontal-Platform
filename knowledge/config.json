@@ -4,25 +4,33 @@
   "categories": [
     {
       "id": "index",
-      "name": "Knowledge Index（知识索引）"
+      "name": "资料索引"
     },
     {
       "id": "standards",
-      "name": "01 Standards & Interfaces（标准与界面）"
+      "name": "标准与界面"
     },
     {
       "id": "ehs",
-      "name": "02 EHS References（安全健康环境资料）"
+      "name": "安全健康环境"
     },
     {
       "id": "experience",
-      "name": "03 Experience Sharing（经验共享）"
+      "name": "运维经验"
+    },
+    {
+      "id": "shared",
+      "name": "维保与技术资料"
+    },
+    {
+      "id": "projects",
+      "name": "项目资料"
     }
   ],
   "sources": [
     {
       "id": "tblIJiG3OE2QGTm8",
-      "name": "Knowledge Index（知识索引）",
+      "name": "01.01 Resource Index（资料索引）",
       "category": "index",
       "kind": "index",
       "fields": {
@@ -57,12 +65,37 @@
         "Project": {
           "id": "fldaZZ8nPf",
           "name": "Project（项目归属）"
+        },
+        "Attachments": {
+          "id": "fldBXXJsFL",
+          "name": "Attachments（附件）"
+        },
+        "Library Scope": {
+          "id": "fldTBdfMAw",
+          "name": "Library Scope（资料范围）"
+        },
+        "Lifecycle Chapter": {
+          "id": "fld0tLp8jB",
+          "name": "Lifecycle Chapter（生命周期篇章）"
+        },
+        "Lifecycle Stage": {
+          "id": "fldyqYXdNc",
+          "name": "Lifecycle Stage（生命周期阶段）"
+        },
+        "Discipline": {
+          "id": "fldoeY7non",
+          "name": "Discipline（专业）"
+        },
+        "Directory Category ID": {
+          "id": "fldkjwIZOC",
+          "name": "Directory Category ID（目录类别编号）"
         }
-      }
+      },
+      "writable": true
     },
     {
       "id": "tblYddsWcDx5vBWo",
-      "name": "Reference Service Standards（服务标准参考）",
+      "name": "01.04.02 Reference Service Standards（服务标准参考）",
       "category": "standards",
       "kind": "reference",
       "fields": {
@@ -86,11 +119,16 @@
           "id": "fldpO76RDJ",
           "name": "Source Record（原记录链接）"
         }
+      },
+      "libraryEntry": {
+        "title": "字节 SLA 标准",
+        "note": "PUE · 网络 · 电力 · 机房环境 · 门禁",
+        "url": "https://vnet.feishu.cn/wiki/MHltw8vqNi2N9IkWpvqcFOfinOf?table=tbliUB3liyQY3ktc"
       }
     },
     {
       "id": "tblgafmSBZdQuwjQ",
-      "name": "Reference Handover Interfaces（交付界面参考）",
+      "name": "01.04.01 Reference Handover Interfaces（交付界面参考）",
       "category": "standards",
       "kind": "reference",
       "fields": {
@@ -114,11 +152,16 @@
           "id": "fldOuKYXls",
           "name": "Source Files（源附件清单）"
         }
+      },
+      "libraryEntry": {
+        "title": "交付界面参考",
+        "note": "交付边界与职责",
+        "url": "https://vnet.feishu.cn/wiki/MHltw8vqNi2N9IkWpvqcFOfinOf?table=tblm7ryrs74JrKZM"
       }
     },
     {
       "id": "tblim7pPp0M9K9Di",
-      "name": "Occupational Health Catalog（职业卫生目录）",
+      "name": "01.04.03 Occupational Health Catalog（职业卫生目录）",
       "category": "ehs",
       "kind": "ehs",
       "contentField": "Occupational Health Content",
@@ -143,11 +186,16 @@
           "id": "fld6F4QDIz",
           "name": "Source Files（源附件清单）"
         }
+      },
+      "libraryEntry": {
+        "title": "职业卫生资料库",
+        "note": "职业卫生制度与记录",
+        "url": "https://vnet.feishu.cn/wiki/MHltw8vqNi2N9IkWpvqcFOfinOf?table=tbltbFY3orOteEm4"
       }
     },
     {
       "id": "tblYXC4PCW9qVcmd",
-      "name": "Workplace Safety Catalog（安全生产目录）",
+      "name": "01.04.06 Workplace Safety Catalog（安全生产目录）",
       "category": "ehs",
       "kind": "ehs",
       "contentField": "Safety Management Content",
@@ -172,11 +220,16 @@
           "id": "fldjhDP1QC",
           "name": "Source Record（原记录链接）"
         }
+      },
+      "libraryEntry": {
+        "title": "安全生产资料库",
+        "note": "安全生产制度与记录",
+        "url": "https://vnet.feishu.cn/wiki/MHltw8vqNi2N9IkWpvqcFOfinOf?table=tblGpHHj9HPtuV92"
       }
     },
     {
       "id": "tblt0YzyHk6IZrzR",
-      "name": "Environmental Protection Catalog（环境保护目录）",
+      "name": "01.04.04 Environmental Protection Catalog（环境保护目录）",
       "category": "ehs",
       "kind": "ehs",
       "contentField": "Environmental Content",
@@ -197,11 +250,16 @@
           "id": "fldTYnQkpQ",
           "name": "Category（分类）"
         }
+      },
+      "libraryEntry": {
+        "title": "环境保护资料库",
+        "note": "环境保护制度与记录",
+        "url": "https://vnet.feishu.cn/wiki/MHltw8vqNi2N9IkWpvqcFOfinOf?table=tblWytyTigYqtNMq"
       }
     },
     {
       "id": "tblonKw63Ltol1hP",
-      "name": "Fire Safety Catalog（消防安全目录）",
+      "name": "01.04.05 Fire Safety Catalog（消防安全目录）",
       "category": "ehs",
       "kind": "ehs",
       "contentField": "Fire Safety Content",
@@ -222,11 +280,16 @@
           "id": "fldkxp4efI",
           "name": "Category（分类）"
         }
+      },
+      "libraryEntry": {
+        "title": "消防安全资料库",
+        "note": "消防管理制度与记录",
+        "url": "https://vnet.feishu.cn/wiki/MHltw8vqNi2N9IkWpvqcFOfinOf?table=tbl4AG57wIxekTmb"
       }
     },
     {
       "id": "tblwvi00cg9RKDuj",
-      "name": "Operations Lessons（运维经验沉淀）",
+      "name": "01.04.08 Operations Lessons（运维经验沉淀）",
       "category": "experience",
       "kind": "lesson",
       "fields": {
@@ -262,11 +325,16 @@
           "id": "flddYpUPLa",
           "name": "Source Records（来源记录）"
         }
+      },
+      "libraryEntry": {
+        "title": "运维经验库",
+        "note": "运维案例与经验",
+        "url": "https://vnet.feishu.cn/wiki/MHltw8vqNi2N9IkWpvqcFOfinOf?table=tbl9lOZpYRx5iKwv"
       }
     },
     {
       "id": "tblJaE0LTj04NEke",
-      "name": "Thailand Meetings（泰国项目会议）",
+      "name": "02.05.01 Meetings（项目会议）",
       "category": "meetings",
       "kind": "meeting",
       "project": "thailand",
@@ -311,7 +379,7 @@
     },
     {
       "id": "tblpoE7rwxKdbes2",
-      "name": "Malaysia Meetings（马来项目会议）",
+      "name": "03.05.01 Meetings（项目会议）",
       "category": "meetings",
       "kind": "meeting",
       "project": "malaysia",
@@ -356,7 +424,7 @@
     },
     {
       "id": "tblCdANuL6HutEy1",
-      "name": "Team Meetings（海外运维团队会议）",
+      "name": "04.06 Team Meetings（跨项目会议）",
       "category": "meetings",
       "kind": "meeting",
       "project": "overseas",
@@ -398,7 +466,251 @@
           "name": "Status（状态）"
         }
       }
+    },
+    {
+      "id": "tblEg6Ql9waAVBVe",
+      "name": "01.03.01 Maintenance & Specifications（维保与技术资料）",
+      "kind": "equipment",
+      "category": "shared",
+      "fields": {
+        "Equipment Name": {
+          "id": "fldG6ILJ8d",
+          "name": "Equipment Name（设备名称）"
+        },
+        "Document Category": {
+          "id": "fldWowDPMl",
+          "name": "Document Category（资料类别）"
+        },
+        "Linked Document": {
+          "id": "fldHVhX7bH",
+          "name": "Linked Document（关联云文档）"
+        },
+        "Final PDF": {
+          "id": "fldwUq9G3u",
+          "name": "Final PDF（定稿PDF）"
+        },
+        "Link Type": {
+          "id": "fldQrCczEz",
+          "name": "Link Type（链接类型）"
+        },
+        "Document Status": {
+          "id": "fldEfWkDQM",
+          "name": "Document Status（资料状态）"
+        },
+        "Library Scope": {
+          "id": "fldwoLPONZ",
+          "name": "Library Scope（资料范围）"
+        },
+        "Lifecycle Chapter": {
+          "id": "fldA2apwKp",
+          "name": "Lifecycle Chapter（生命周期篇章）"
+        },
+        "Lifecycle Stage": {
+          "id": "fldWq7Fd7K",
+          "name": "Lifecycle Stage（生命周期阶段）"
+        },
+        "Discipline": {
+          "id": "fld15xdwd2",
+          "name": "Discipline（专业）"
+        },
+        "Notes": {
+          "id": "fldiYXYpdp",
+          "name": "Notes（备注）"
+        },
+        "Shared At": {
+          "id": "fldNpYd09P",
+          "name": "Shared At（分享时间）"
+        },
+        "Attachments": {
+          "id": "fldZ81R2pi",
+          "name": "Attachments（附件）"
+        },
+        "Directory Category ID": {
+          "id": "fldpXNqegl",
+          "name": "Directory Category ID（目录类别编号）"
+        }
+      },
+      "writable": true
+    },
+    {
+      "id": "tblCTyrV3BYSZkTv",
+      "name": "01.02.01 Araya Library（泰国Araya项目资料）",
+      "kind": "project-document",
+      "category": "projects",
+      "projectScope": "泰国",
+      "fields": {
+        "Summary": {
+          "id": "fldEEbPTLF",
+          "name": "Document Summary（资料简述）"
+        },
+        "Category": {
+          "id": "fld47pP99q",
+          "name": "Document Category（资料类别）"
+        },
+        "Stored Link": {
+          "id": "fld8Vo701K",
+          "name": "Stored Link（存放链接）"
+        },
+        "Source Files": {
+          "id": "fldWNnTMhT",
+          "name": "Source Attachments（源附件链接）"
+        },
+        "Attachments": {
+          "id": "fldug0XVHa",
+          "name": "Document Link（资料文档）"
+        },
+        "Shared At": {
+          "id": "fldG7L1bdU",
+          "name": "Date（日期）"
+        },
+        "Library Scope": {
+          "id": "fldXrf3nxO",
+          "name": "Library Scope（资料范围）"
+        },
+        "Lifecycle Chapter": {
+          "id": "fldnPuBXST",
+          "name": "Lifecycle Chapter（生命周期篇章）"
+        },
+        "Lifecycle Stage": {
+          "id": "fldo9D7MTk",
+          "name": "Lifecycle Stage（生命周期阶段）"
+        },
+        "Discipline": {
+          "id": "fldrxNkETu",
+          "name": "Discipline（专业）"
+        },
+        "Notes": {
+          "id": "fldAPbH04R",
+          "name": "Notes（备注）"
+        },
+        "Directory Category ID": {
+          "id": "fldOh5n1GN",
+          "name": "Directory Category ID（目录类别编号）"
+        }
+      },
+      "writable": true
+    },
+    {
+      "id": "tblblTWYgpjMsaUh",
+      "name": "01.02.02 Malaysia Library（马来项目资料）",
+      "kind": "project-document",
+      "category": "projects",
+      "projectScope": "马来",
+      "fields": {
+        "Summary": {
+          "id": "fldcXHw13r",
+          "name": "Document Summary（资料简述）"
+        },
+        "Category": {
+          "id": "fldpYFGbqE",
+          "name": "Document Category（资料类别）"
+        },
+        "Stored Link": {
+          "id": "fldAHjLYPG",
+          "name": "Stored Link（存放链接）"
+        },
+        "Source Files": {
+          "id": "fld1fdiJnr",
+          "name": "Source Attachments（源附件链接）"
+        },
+        "Attachments": {
+          "id": "fld55g4vVw",
+          "name": "Document Link（资料文档）"
+        },
+        "Shared At": {
+          "id": "fldLKmhjvb",
+          "name": "Date（日期）"
+        },
+        "Library Scope": {
+          "id": "fldI5GVBBI",
+          "name": "Library Scope（资料范围）"
+        },
+        "Lifecycle Chapter": {
+          "id": "fldDBzXiFU",
+          "name": "Lifecycle Chapter（生命周期篇章）"
+        },
+        "Lifecycle Stage": {
+          "id": "fldCIIBLc4",
+          "name": "Lifecycle Stage（生命周期阶段）"
+        },
+        "Discipline": {
+          "id": "fldoQRlyYy",
+          "name": "Discipline（专业）"
+        },
+        "Notes": {
+          "id": "fldp7a6JdC",
+          "name": "Notes（备注）"
+        },
+        "Directory Category ID": {
+          "id": "fldg68j9Iv",
+          "name": "Directory Category ID（目录类别编号）"
+        }
+      },
+      "writable": true
     }
   ],
-  "architectureUrl": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=ldxpV5M0qhI0IgVy"
+  "architectureUrl": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=ldxpV5M0qhI0IgVy",
+  "templates": [
+    {
+      "id": "tbl13gnsCDgElBXE",
+      "name": "01.05.01 Initialization Work（初始化工作）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tbl13gnsCDgElBXE"
+    },
+    {
+      "id": "tblCoYyFcT6fPpvq",
+      "name": "01.05.02 Handover Interfaces（交付界面）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblCoYyFcT6fPpvq"
+    },
+    {
+      "id": "tblqYrnwafWyS0b4",
+      "name": "01.05.03 Acceptance Tests（测试验收）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblqYrnwafWyS0b4"
+    },
+    {
+      "id": "tblnm6WUIyKggmA2",
+      "name": "01.05.04 Routine Work（例行工作）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblnm6WUIyKggmA2"
+    },
+    {
+      "id": "tbl4aqimHZmG7kik",
+      "name": "01.05.05 SLA Reviews（服务核查）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tbl4aqimHZmG7kik"
+    },
+    {
+      "id": "tblImMw6XG9bTo5Q",
+      "name": "01.05.06 Issues & Actions（问题整改）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblImMw6XG9bTo5Q"
+    },
+    {
+      "id": "tbl0B5LHAgMEt3h0",
+      "name": "01.05.07 EHS Work（EHS工作清单）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tbl0B5LHAgMEt3h0"
+    },
+    {
+      "id": "tblFRc89wOp9Wj9R",
+      "name": "01.05.08 Project Reports（项目报告）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblFRc89wOp9Wj9R"
+    },
+    {
+      "id": "tblHF8fSHxx9Cd2v",
+      "name": "01.05.09 Training Records（培训记录）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblHF8fSHxx9Cd2v"
+    },
+    {
+      "id": "tbloQ1HIn9mT6XLe",
+      "name": "01.05.10 Project Personnel（项目人员）",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tbloQ1HIn9mT6XLe"
+    }
+  ],
+  "projectLibraries": [
+    {
+      "project": "thailand",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblCTyrV3BYSZkTv"
+    },
+    {
+      "project": "malaysia",
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblblTWYgpjMsaUh"
+    }
+  ],
+  "directoryTable": "tbly9YjCOdjqDRIn"
 }

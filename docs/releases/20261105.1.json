@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "release": "20261105.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261103.6",
+  "candidateSha256": "d1ee56cce3ba76b109310f476fca292ea80e8c1948dea1805ee949742ab771a5",
+  "manifestSha256": "fc243540a928c95506a27872442b46d8e7501edf2e5854a8476b14a9fa3cc811",
+  "payloadSha256": "8fde28fef199b05932210c7da435c74f8057d854e94110eb328844d7aae41c2b",
+  "filesChanged": [
+    "project-tasks/handover/adapter.mjs",
+    "project-tasks/handover/http.mjs",
+    "project-tasks/handover/model.mjs",
+    "project-tasks/handover/numbering.mjs",
+    "project-tasks/handover/ordering.mjs",
+    "project-tasks/handover/service.mjs",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/editor.mjs",
+    "samples/handover-preview/model.mjs",
+    "samples/handover-preview/pages.mjs",
+    "samples/handover-preview/styles.css",
+    "samples/handover-preview/inline.mjs"
+  ],
+  "checks": {
+    "businessTests": 454,
+    "supplementalTests": 19,
+    "syntaxFiles": 289,
+    "isolatedDesktopAndMobileBrowser": true,
+    "onlinePermissionsMatrix": true,
+    "onlineGanttRowActions": true,
+    "onlineOrderingFieldsReady": true,
+    "realCloudBusinessWrites": 0,
+    "onlineMaterialsCount": 288,
+    "materialFields": 27,
+    "exactDeployedFilesVerified": 363,
+    "environmentPreserved": true,
+    "independentSessionSurvivalSeconds": 116
+  },
+  "coordination": {
+    "ownerThread": "01a19fde-2795-7253-b665-fa7402acc5cc",
+    "handoffCount": 1,
+    "tasks": 5,
+    "runtimeChanges": 12,
+    "installerChanged": true,
+    "dependenciesChanged": false
+  },
+  "deferred": [
+    {
+      "item": "旧版重点卡点关联旧任务表",
+      "reason": "既有数据关系需单独迁移并保留历史关联，不能仅替换表ID",
+      "impact": "历史重点卡点计划选择，不影响当前新版接维每周跟进；正式周跟进已实测新表链接",
+      "dependency": "飞书关联字段及现存记录映射"
+    },
+    {
+      "item": "调研总览统计下钻与维护入口",
+      "reason": "已有上线界面的后续产品规范差距，独立于本批甘特范围",
+      "impact": "总览操作与下钻体验",
+      "dependency": "调研页面后续业务改动"
+    }
+  ],
+  "features": [
+    "交付物图标",
+    "组末新增",
+    "逐条同层插入",
+    "软删除与恢复",
+    "顺序显示编号及持久化同步"
+  ],
+  "limitations": [
+    "正式表已验证身份、字段与记录读取；新增删除写回使用隔离适配器，未写正式业务测试记录"
+  ],
+  "sourceArchive": "Frozen deployed files, matching tests and verified release tools; commit SHA and remote confirmation recorded in local archive receipt.",
+  "recordedAt": "2026-11-05T00:51:00.801Z"
+}

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { projectById, projectDestination } from '../src/project-context-model.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 const random = () => randomBytes(32).toString('base64url');
@@ -15,9 +16,9 @@ export function safeReturnTo(value) {
   try { for (let n = 0; n < 3; n++) decoded = decodeURIComponent(decoded); } catch { return '/'; }
   if (!decoded.startsWith('/') || decoded.startsWith('//') || /[\\\x00-\x20\x7f]/.test(decoded)) return '/';
   const url = new URL(value, 'https://return.invalid');
-  if (!['/', '/project-management', '/knowledge-sharing', '/meeting-trail'].includes(decodeURIComponent(url.pathname))) return '/';
+  if (!['/', '/research', '/project-management', '/knowledge-sharing', '/meeting-trail', '/staffing-reserve', '/cross-coordination', '/admin'].includes(decodeURIComponent(url.pathname))) return '/';
   // Never put OAuth credentials or tickets in the audit log or next Location.
-  for (const key of [...url.searchParams.keys()]) if (!['project', 'category', 'q', 'view', 'tab', 'type', 'date'].includes(key)) url.searchParams.delete(key);
+  for (const key of [...url.searchParams.keys()]) if (!['project', 'category', 'q', 'view', 'tab', 'type', 'date'].includes(key) && !(url.pathname === '/cross-coordination' && ['platform','specialty','primary','requirement','region','architecture','level','sort','group','pageSize','page'].includes(key))) url.searchParams.delete(key);
   return url.pathname + url.search + url.hash;
 }
 
@@ -60,17 +61,18 @@ export class AuthService {
       fs.renameSync(temp, this.file); this.state = next;
     } catch { if (fs.existsSync(temp)) fs.unlinkSync(temp); throw authError('登录状态无法保存，请检查服务器存储后重试。', 503); }
   }
-  begin(origin, returnTo) {
+  begin(origin, returnTo, projectId = null) {
     const config = this.config();
     if (!(config.oauthOrigins || config.origins).includes(origin)) throw authError('当前访问地址未启用飞书登录。', 503);
     if (!config.origins.includes(origin) || !config.appId || !config.appSecret) throw authError('飞书登录尚未配置，请联系平台维护人员。', 503);
+    if (projectId !== null) projectById(projectId);
     const state = random(), browser = random(), now = this.now();
     if (Object.keys(this.state.states).filter(k => this.state.states[k].expires > now).length >= 2000) throw authError('登录请求繁忙，请稍后重试。', 429);
     this.commit(next => {
       for (const [key, value] of Object.entries(next.states)) if (value.expires <= now) delete next.states[key];
       for (const [key, value] of Object.entries(next.sessions)) if (value.expires <= now) delete next.sessions[key];
       for (const [key, value] of Object.entries(next.events)) if (value.syncStatus === 'synced' && Date.parse(value.loginTime) < now - 90 * 86400_000) delete next.events[key];
-      next.states[hash(state)] = { browser: hash(browser), returnTo: safeReturnTo(returnTo), origin, appId: config.appId, expires: now + 10 * 60_000 };
+      next.states[hash(state)] = { browser: hash(browser), returnTo: safeReturnTo(returnTo), projectId, origin, appId: config.appId, expires: now + 10 * 60_000 };
     });
     const url = new URL('https://accounts.feishu.cn/open-apis/authen/v1/authorize');
     for (const [key, value] of Object.entries({ client_id: config.appId, redirect_uri: `${origin}/api/auth/feishu/callback`, response_type: 'code', state })) url.searchParams.set(key, value);
@@ -80,6 +82,7 @@ export class AuthService {
     if (!/^[\w-]{43}$/.test(state || '') || !/^[\w-]{43}$/.test(browser || '')) throw authError('登录请求已失效，请重新登录。');
     const saved = this.state.states[hash(state)], config = this.config();
     if (!saved || saved.expires <= this.now() || saved.origin !== origin || saved.appId !== config.appId || !equal(saved.browser, hash(browser))) throw authError('登录请求已失效，请重新登录。');
+    const project = saved.projectId ? projectById(saved.projectId) : null;
     this.commit(next => { delete next.states[hash(state)]; });
     if (typeof code !== 'string' || !code || code.length > 2048 || /[\s\x00-\x1f]/.test(code)) throw authError('未取得飞书授权，请重新登录。');
     const identity = await this.oauth({ appId: config.appId, appSecret: config.appSecret, code, redirectUri: `${origin}/api/auth/feishu/callback` });
@@ -87,9 +90,9 @@ export class AuthService {
     const token = random(), csrf = random(), now = this.now(), id = randomUUID(), user = { name: identity.name.trim(), openId: identity.open_id };
     this.commit(next => {
       next.events[id] = { id, appId:config.appId, user, loginTime: new Date(now).toISOString(), logoutTime: null, entryPage: saved.returnTo.split(/[?#]/)[0], method: '飞书授权', revision: 1, syncStatus: 'pending', attempts: 0, nextAttempt: now };
-      next.sessions[hash(token)] = { user, csrf, eventId: id, appId: config.appId, created: now, expires: now + 12 * 3600_000 };
+      next.sessions[hash(token)] = { user, csrf, projectId: project?.id || null, eventId: id, appId: config.appId, created: now, expires: now + 12 * 3600_000 };
     });
-    return { token, csrf, user, returnTo: saved.returnTo };
+    return { token, csrf, user, returnTo: project ? projectDestination(saved.returnTo, project) : saved.returnTo };
   }
   session(token) {
     if (!/^[\w-]{43}$/.test(token || '')) return null;

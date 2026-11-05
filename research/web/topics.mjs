@@ -1,7 +1,8 @@
 const definitions = [
+  { name: '重点调研', topics: [['海外项目实际问题与教训（重点关注）', 'star']] },
   { name: '团队与运营', topics: [['组织与人才', 'users'], ['运维与验证', 'activity'], ['运维相关', 'activity'], ['验证测试', 'check']] },
   { name: '资源与保障', topics: [['采购与应急供应', 'box'], ['驻地与人员保障', 'home']] },
-  { name: '业务与合规', topics: [['属地合规', 'shield'], ['友商与市场', 'building'], ['友商相关', 'building'], ['零售相关', 'store']] },
+  { name: '业务与合规', topics: [['属地合规', 'shield'], ['友商与市场', 'building'], ['友商相关', 'building'], ['零售相关', 'store'], ['零售', 'store']] },
 ];
 
 export function groupTopics(categories) {
