@@ -44,14 +44,14 @@ const state = { mode: ['gantt', 'list', 'milestones', 'calendar'].includes(query
 let model, phase = 'idle', searchTimer, focusedBeforeDialog,lastRead=0,organization=null,organizationError='',organizationLoading=false;
 state.mode=state.page==='milestones'?'milestones':'gantt';
 const dialog = $('#detailDialog');
-const editor=createHandoverEditor({dialog:$('#taskEditorDialog'),getModel:()=>model,getContext:()=>state,api:securePage?api:'/api/handover-plan',onAccepted:data=>{model=data;render();},onMessage:showMessage});
+const editor=createHandoverEditor({dialog:$('#taskEditorDialog'),getModel:()=>model,getContext:()=>state,api:securePage?api:'/api/handover-plan',onAccepted:data=>{model=data;render();if(data.needsRefresh)load(false,true);},onMessage:showMessage});
 const rowMenu=document.createElement('div');rowMenu.className='row-action-menu';rowMenu.id='rowActionMenu';rowMenu.setAttribute('role','menu');rowMenu.hidden=true;document.body.append(rowMenu);
 function closeRowMenu(){rowMenu.hidden=true;document.querySelectorAll('[data-row-actions][aria-expanded=true]').forEach(b=>b.setAttribute('aria-expanded','false'));}
 document.addEventListener('pointerdown',e=>{if(!rowMenu.contains(e.target)&&!e.target.closest('[data-row-actions]'))closeRowMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!rowMenu.hidden){const source=document.querySelector('[data-row-actions][aria-expanded=true]');closeRowMenu();source?.focus();}});
 const inlineEntry=createInlineTaskEntry({root:document,getModel:()=>model,submit:input=>editor.createTask(input),onRender:()=>renderBoard(),onMessage:showMessage,onAccepted:(data,parentId)=>{
  model=data;Object.assign(state,{keyword:'',status:'',review:false,unscheduled:false});
- const created=model.records.find(r=>r.id===data.operation?.recordId),parent=model.parents.find(p=>p.id===(created?.level==='任务组'?created.id:parentId));if(parent){state.open.add(`s:${parent.stage}`);state.open.add(`c:${parent.stage}:${parent.category}`);state.open.add(`g:${parent.stage}:${parent.code} ${parent.title}`);}render();
+ const created=model.records.find(r=>r.id===data.operation?.recordId),parent=model.parents.find(p=>p.id===(created?.level==='任务组'?created.id:parentId));if(parent){state.open.add(`s:${parent.stage}`);state.open.add(`c:${parent.stage}:${parent.category}`);state.open.add(`g:${parent.stage}:${parent.code} ${parent.title}`);}render();if(data.needsRefresh)load(false,true);
 }});
 function showMessage(message,error=false){$('#notice').hidden=false;$('#notice').classList.toggle('error',error);$('#notice').textContent=message;}
 function loginUrl(){return 'https://localhost:3333/project-management?view=handover&tab='+state.page;}

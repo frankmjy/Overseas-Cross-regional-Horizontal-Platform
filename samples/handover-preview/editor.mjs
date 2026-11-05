@@ -1,3 +1,4 @@
+import {applyHandoverReceipt} from './model.mjs';
 import {explicitPriority,priorityPlaceholder} from '../../project-tasks/handover/priority.mjs';
 import {executionStatus,chinaDay} from '../../project-tasks/handover/status.mjs';
 import {taskResources,renderResourceLinks,bindOutsideDismiss} from '../../project-tasks/handover/resources.mjs';
@@ -18,8 +19,9 @@ export function createHandoverEditor({dialog,getModel,getContext=()=>({}),api,on
  const header=title=>`<header class="detail-header"><div class="detail-eyebrow">${esc(row?.code||'项目计划')}</div><h2>${title}</h2><button type="button" class="icon-button" data-editor-close aria-label="关闭编辑" title="关闭编辑">×</button></header>`;
  const footer=(label='保存',actions='')=>`<footer class="editor-footer"><span role="status" data-editor-status></span>${actions}<button type="submit" class="editor-primary">${label}</button></footer>`;
  async function request(url,{body,bytes:binary}={}){
-   let response;try{response=await fetch(url,{method:body||binary?'POST':'GET',headers:body?{'Content-Type':'application/json'}:binary?{'Content-Type':'application/octet-stream'}:undefined,body:body?JSON.stringify(body):binary,signal:AbortSignal.timeout(binary?120000:30000)});}catch{const e=Error('请求结果尚未确认，请重试核对；请保留当前内容。');e.uncertain=true;throw e;}
-   const result=await response.json();if(!response.ok||result.ok===false){const e=Error(result.error||'提交未完成，请重试。');e.status=response.status;throw e;}return result;
+   const compact=url.endsWith('/mutations')&&Number.isSafeInteger(getModel()?.revision),requestUrl=compact?url+'?receipt=compact':url;
+   let response;try{response=await fetch(requestUrl,{method:body||binary?'POST':'GET',headers:body?{'Content-Type':'application/json',...(compact?{'X-Vnet-Model-Revision':String(getModel().revision)}:{})}:binary?{'Content-Type':'application/octet-stream'}:undefined,body:body?JSON.stringify(body):binary,signal:AbortSignal.timeout(binary?120000:30000)});}catch{const e=Error('请求结果尚未确认，请重试核对；请保留当前内容。');e.uncertain=true;throw e;}
+   const result=await response.json();if(!response.ok||result.ok===false){const e=Error(result.error||'提交未完成，请重试。');e.status=response.status;throw e;}return applyHandoverReceipt(getModel(),result);
  }
  function options(key,selected,empty='请选择'){const values=(getModel().schema?.[key]?.options||[]).filter(v=>key!=='priority'||/P[012]/.test(v)||v===selected);return `<option value="">${esc(empty)}</option>`+values.map(v=>`<option value="${esc(v)}"${v===selected?' selected':''}>${esc(v)}</option>`).join('');}
  function parents(stage,selected){return '<option value="">请选择任务组</option>'+getModel().parents.filter(p=>p.stage===Number(stage)&&p.id!==row?.id&&!p.id.startsWith('local:')).map(p=>`<option value="${esc(p.id)}"${p.id===selected?' selected':''}>${esc(p.code+' '+p.title)}</option>`).join('');}
@@ -39,7 +41,7 @@ export function createHandoverEditor({dialog,getModel,getContext=()=>({}),api,on
   if(!submission&&form.elements.priority.value===explicitPriority(row)){dialog.close();return;}
   if(!submission)submission={clientMutationId:crypto.randomUUID(),kind:'update',recordId:row.id,version:row.version,values:{priority:form.elements.priority.value}};
   setPhase('submitting');message('正在保存…');
-  try{const data=await request(api+'/mutations',{body:submission});onAccepted(data);setPhase('accepted');uncertain=false;dialog.close();submission=null;onMessage('优先级已保存，后台同步中。');}
+  try{const data=await request(api+'/mutations',{body:submission});setPhase('accepted');uncertain=false;dialog.close();onAccepted(data);submission=null;onMessage('优先级已保存，后台同步中。');}
   catch(e){setPhase('error');message(e.message,true);if(e.status&&e.status<500){submission=null;uncertain=false;}else{uncertain=true;freeze();}}
  }
  async function saveTask(form){
@@ -51,7 +53,7 @@ export function createHandoverEditor({dialog,getModel,getContext=()=>({}),api,on
   if(!Object.keys(values).length){dialog.close();return;}
   if(!submission)submission={clientMutationId:crypto.randomUUID(),kind:row?'update':'create',...(row?{recordId:row.id,version:row.version}:{}),values};
   setPhase('submitting');message('正在保存…');
-  try{const data=await request(api+'/mutations',{body:submission});onAccepted(data);setPhase('accepted');uncertain=false;dialog.close();onMessage('修改已保存，后台同步中。');submission=null;}
+  try{const data=await request(api+'/mutations',{body:submission});setPhase('accepted');uncertain=false;dialog.close();onAccepted(data);onMessage('修改已保存，后台同步中。');submission=null;}
   catch(e){setPhase('error');message(e.message,true);if(e.status&&e.status<500){submission=null;uncertain=false;}else{uncertain=true;freeze();}}
  }
  async function loadDocumentOptions(){
@@ -68,10 +70,10 @@ export function createHandoverEditor({dialog,getModel,getContext=()=>({}),api,on
    const data=await request(api+'/mutations',{body:submission});deliveryAccepted=true;uncertain=false;onAccepted(data);freeze();await uploadFiles();setPhase('accepted');dialog.close();submission=null;onMessage('交付记录已保存，后台上传与归档中。');
   }catch(e){setPhase('error');message((deliveryAccepted?'交付记录已保存。':'')+e.message,true);if(!deliveryAccepted&&e.status&&e.status<500)submission=null;else{uncertain=!deliveryAccepted;freeze();}}
  }
- function confirmAction(title,body,run){mode='confirm';content(`<form data-confirm-form>${header(title)}<div class="editor-body"><p>${esc(body)}</p></div>${footer('确认')}</form>`);setPhase('ready');dialog.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();setPhase('submitting');try{await run();dialog.close();}catch(error){setPhase('error');message(error.message,true);}});}
+ function confirmAction(title,body,run){mode='confirm';content(`<form data-confirm-form>${header(title)}<div class="editor-body"><p>${esc(body)}</p></div>${footer('确认')}</form>`);setPhase('ready');dialog.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();setPhase('submitting');try{await run();if(!uncertain)dialog.close();else setPhase('error');}catch(error){setPhase('error');message(error.message,true);}});}
  async function quick(task,kind,values){
   if(quickBusy)throw Error('上一项修改正在保存，请稍后。');quickBusy=true;const input={clientMutationId:crypto.randomUUID(),kind,recordId:task.id,version:task.version,...(values?{values}:{})};
-  try{const data=await request(api+'/mutations',{body:input});onAccepted(data);onMessage('修改已保存，后台同步中。');}
+  try{const data=await request(api+'/mutations',{body:input});if(mode==='confirm')dialog.close();onAccepted(data);onMessage('修改已保存，后台同步中。');}
   catch(e){if(e.uncertain||!e.status||e.status>=500){mode='uncertain';uncertain=true;content(`${header('核对提交结果')}<div class="editor-body"><p>${esc(e.message)}</p><button class="editor-primary" data-retry-quick>重试核对</button><p role="status" data-editor-status></p></div>`);dialog.querySelector('[data-retry-quick]').addEventListener('click',async()=>{try{const data=await request(api+'/mutations',{body:input});onAccepted(data);uncertain=false;dialog.close();onMessage('修改已保存，后台同步中。');}catch(error){message(error.message,true);}});}else throw e;}finally{quickBusy=false;}
  }
  function remove(task){row=task;confirmAction('删除计划条目','删除后可从已删除条目恢复。',()=>quick(task,'delete'));}

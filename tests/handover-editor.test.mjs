@@ -12,8 +12,8 @@ test('交付物入口在条目内，链接去重并过滤危险地址，文件�
 });
 
 function dialogStub(){
- const events={},retry={},status={classList:{toggle(){}}};
- return{events,retry,open:false,dataset:{},innerHTML:'',showModal(){this.open=true;},close(){this.open=false;},querySelectorAll(){return[];},querySelector(selector){return selector==='[data-retry-quick]'?{addEventListener(type,fn){retry[type]=fn;}}:status;},addEventListener(type,fn){events[type]=fn;}};
+ const events={},retry={},confirm={},status={classList:{toggle(){}}};
+ return{events,retry,confirm,open:false,dataset:{},innerHTML:'',showModal(){this.open=true;},close(){this.open=false;},querySelectorAll(){return[];},querySelector(selector){if(selector==='form')return{addEventListener(type,fn){confirm[type]=fn;}};return selector==='[data-retry-quick]'?{addEventListener(type,fn){retry[type]=fn;}}:status;},addEventListener(type,fn){events[type]=fn;}};
 }
 test('行内完成回执不明时锁定核对，503重试沿用同一提交标识',async t=>{
  const dialog=dialogStub(),requests=[],accepted=[];let calls=0;
@@ -24,3 +24,9 @@ test('行内完成回执不明时锁定核对，503重试沿用同一提交标�
  await dialog.retry.click();assert.deepEqual(requests[0],requests[1]);assert.equal(accepted.length,1);assert.equal(dialog.open,false);
  prevented=false;dialog.events.cancel({preventDefault(){prevented=true;}});assert.equal(prevented,false);
 });
+
+ test('确认回执不明时保留核对弹窗，不自动关闭；成功后才退出',async t=>{
+ const dialog=dialogStub();let calls=0;
+ t.mock.method(globalThis,'fetch',async()=>({ok:++calls>1,status:calls===1?503:202,json:async()=>calls===1?{ok:false,error:'结果待核对'}:{ok:true,revision:2}}));
+ const editor=createHandoverEditor({dialog,api:'/api/handover-plan',getModel:()=>({}),onAccepted(){},onMessage(){}});editor.remove({id:'recTask',version:'v1'});await dialog.confirm.submit({preventDefault(){}});assert.equal(dialog.open,true);await dialog.retry.click();assert.equal(dialog.open,false);
+ });

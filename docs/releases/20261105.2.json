@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "release": "20261105.2",
+  "status": "deployed-server-verified",
+  "predecessor": "20261105.1",
+  "candidateSha256": "df6b957ab20a1a05b5bd30ece7fca7f3a1fcaa8211797f3122fc85699a30590f",
+  "manifestSha256": "84db8298a2f70f7c6c31644e9dd0d0face5fdfd9b339de3f654d1278e9c84d4b",
+  "payloadSha256": "56ee3cd45c01024ab5e2b4ee54720067eabe42a88dccd66f970059d69ae9c56c",
+  "filesChanged": [
+    "project-tasks/handover/http.mjs",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/editor.mjs",
+    "samples/handover-preview/model.mjs"
+  ],
+  "features": [
+    "确认保存精简持久化受理回执",
+    "受理后关闭弹窗、后台飞书同步",
+    "权威差量合并和较新版本保护",
+    "旧客户端兼容及结果不明幂等核对"
+  ],
+  "checks": {
+    "businessTests": 458,
+    "supplementalTests": 19,
+    "syntaxFiles": 290,
+    "isolatedPerformance": {
+      "representativeRecords": 361,
+      "desktopSaveMs": 460,
+      "mobileSaveMs": 882,
+      "confirmMs": 866,
+      "latencyMs": 120,
+      "downloadThroughputBytesPerSecond": 128000,
+      "externalGetDelayMs": 3000,
+      "receiptBytes": [
+        2778,
+        5361
+      ],
+      "previousFullPayloadBytes": 1470352
+    },
+    "isolatedSevenFlowRegression": true,
+    "onlineBrowser": {
+      "passed": true,
+      "url": "https://www.sm.sjhl.online:3333/project-management?project=th-001&tab=gantt",
+      "authenticatedLivePageLoaded": true,
+      "editorOpenedWithActualData": true,
+      "saveControlPresent": true,
+      "editorClosedWithoutMutation": true,
+      "browserErrors": 0,
+      "productionBusinessWrites": 0,
+      "performanceEvidence": "reports/handover-fast-save-20261105/browser.json",
+      "performanceMeasuredInProduction": false
+    },
+    "handoverRecords": 364,
+    "sourceIdsPreserved": true,
+    "materialRecords": 289,
+    "materialFields": 27,
+    "exactDeployedFilesVerified": 363,
+    "environmentPreserved": true,
+    "independentSessionSurvivalSeconds": 76,
+    "releaseMatrixReusedFrom": "20261105.1",
+    "nativeRollbackReusedFrom": "20261105.1",
+    "packagingGateTests": 5
+  },
+  "coordination": {
+    "ownerThread": "01a19fde-2795-7253-b665-fa7402acc5cc",
+    "handoffCount": 1,
+    "tasks": 1,
+    "runtimeChanges": 4,
+    "installerChanged": false,
+    "dependenciesChanged": false
+  },
+  "deferred": [
+    {
+      "item": "旧版重点卡点关联迁移",
+      "reason": "历史关系需独立迁移，保留既有记录；与本轮保存响应无依赖"
+    },
+    {
+      "item": "调研总览下钻优化",
+      "reason": "独立页面体验优化，与本轮保存响应无依赖"
+    }
+  ],
+  "limitations": [
+    "秒响应计时来自361条代表性隔离数据、120ms延迟和128000B/s下载环境；生产未写测试业务记录，不将该计时声称为生产实测"
+  ],
+  "sourceArchive": "Exact frozen deployed runtime, matching tests and release tools. Commit SHA and remote confirmation are bound to candidate hashes in local archive receipt.",
+  "recordedAt": "2026-11-05T02:52:37.281Z"
+}

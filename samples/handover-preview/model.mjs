@@ -40,6 +40,9 @@ export function buildModel(raw, fetchedAt = new Date().toISOString(), now = Date
   if (new Set(records.map(r => r.id)).size !== records.length) throw Error('源表记录身份重复。');
   if (records.some(r => !r.title || !r.code || !['任务组', '执行项', '里程碑'].includes(r.level) || r.stage < 1 || r.stage > 6)) throw Error('源表任务名称、层级或阶段不完整。');
   records=rollupTaskDates(inheritPriorities(orderedTaskRecords(records,{enabled:raw.some(r=>Object.hasOwn(r.fields,orderFieldName)&&Object.hasOwn(r.fields,displayCodeFieldName))})),{endKey:'end',now});
+  return indexModel(records,fetchedAt);
+}
+function indexModel(records,fetchedAt){
   const parents = records.filter(r => r.level === '任务组'), tasks = records.filter(r => r.level === '执行项');
   const milestones = records.filter(r => (r.level === '里程碑'||r.milestone) && !planOnlyMilestones.has(r.sourceCode||r.code));
   const parentIds = new Set(parents.map(r => r.id));
@@ -59,6 +62,13 @@ export function buildModel(raw, fetchedAt = new Date().toISOString(), now = Date
   };
 }
 
+export function applyHandoverReceipt(current,data){
+ if(data.receipt!=='handover-patch-v1')return data;
+ if(current.revision!==data.baseRevision)return{...current,operation:data.operation,...(current.revision<data.revision?{needsRefresh:true}:{})};
+ const removed=new Set(data.removedIds),rows=new Map(current.records.filter(r=>!removed.has(r.id)).map(r=>[r.id,r]));for(const r of data.records)rows.set(r.id,r);
+ const records=(data.recordOrder?data.recordOrder.map(id=>rows.get(id)):[...rows.values()]).map(r=>({...r}));
+ return{...current,...indexModel(records,current.source?.fetchedAt),...data.modelPatch,revision:data.revision,operation:data.operation,needsRefresh:false};
+}
 export function filterTasks(model, filters = {}) {
   const keyword = (filters.keyword || '').trim().toLowerCase();
   return model.tasks.filter(r => (!filters.stage || r.stage === Number(filters.stage)) && (!filters.batch || r.batch === filters.batch)

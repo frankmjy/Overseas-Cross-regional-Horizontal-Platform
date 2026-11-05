@@ -12,6 +12,12 @@ export function handoverView(service,actor){
  for(const row of result.records){const task=canonical.get(row.id);Object.assign(row,{version:task.version,values:task.values,ownerIds:task.owner,owner:task.owner.map(id=>snapshot.users.find(u=>u.id===id)?.name||'').filter(Boolean).join('、'),attachments:task.attachments,resourceArchives:Object.values(service.state.operations).filter(o=>o.kind==='deliverable'&&o.recordId===row.id&&o.status==='success'&&o.archiveRecord).map(o=>({title:o.archiveValue.title,contentUrl:o.archiveValue.url,archiveUrl:o.archiveRecord.url,storedNames:o.uploads.map(u=>u.storedName)}))});}
  return{...result,ready:snapshot.ready,revision:snapshot.revision,refreshing:snapshot.refreshing,error:snapshot.error,users:snapshot.users,schema:snapshot.schema,operations:snapshot.operations,numberingPending:!!service.state.orderScopes?.length,numberingError:service.numberingError||'',pendingRecordIds:[...new Set([...Object.values(service.state.operations).filter(o=>!['success','discarded'].includes(o.status)).map(o=>o.recordId),...snapshot.records.filter(r=>service.numberingInFlight?.has(orderScope(r))||r.parentId&&service.numberingInFlight?.has(orderScope(canonical.get(r.parentId)||{}))).map(r=>r.id)])],deletedRecords:snapshot.records.filter(r=>r.deleted).map(r=>({id:r.id,code:r.code,title:r.title,level:r.level,version:r.version})),capabilities:{editable:snapshot.ready&&!!actor.permissions?.projects?.edit,ordering:!!(snapshot.schema?.order&&snapshot.schema?.displayCode),project:actor.project.id,actorName:actor.name,actorId:actor.openId}};
 }
+export function handoverMutationReceipt(before,after,result){
+ const prior=new Map(before.records.map(r=>[r.id,JSON.stringify(r)])),metadata={};
+ for(const[key,value]of Object.entries(after))if(!['records','tasks','parents','milestones'].includes(key)&&JSON.stringify(value)!==JSON.stringify(before[key]))metadata[key]=value;
+ const order=after.records.map(r=>r.id),removed=before.records.filter(r=>!order.includes(r.id)).map(r=>r.id);
+ return{ok:true,...result,receipt:'handover-patch-v1',baseRevision:before.revision,revision:after.revision,records:after.records.filter(r=>prior.get(r.id)!==JSON.stringify(r)),removedIds:removed,...(JSON.stringify(order)!==JSON.stringify(before.records.map(r=>r.id))?{recordOrder:order}:{}),modelPatch:metadata};
+}
 export function createHandoverHandler({root,service,organization}={}){
  const files=new Map(['app.mjs','model.mjs','styles.css','editor.mjs','pages.mjs','inline.mjs'].map(name=>['/handover-preview/'+name,['samples/handover-preview/'+name,name.endsWith('.css')?'text/css':'text/javascript']]));
  files.set('/project-tasks/handover/priority.mjs',['project-tasks/handover/priority.mjs','text/javascript']);
@@ -49,9 +55,9 @@ export function createHandoverHandler({root,service,organization}={}){
     const plan=service.deliverables.uploadPlan(upload[1],req.auth);service.deliverables.storeUpload(upload[1],await bytes(req,Math.min(plan.size,64*1024*1024)),req.auth);send(201,{ok:true});
    }else if(route==='/refresh'){await input(req);await service.refresh();send(200,{ok:true,...handoverView(service,req.auth)});}
    else{
-    const body=await input(req);let result;
+    const body=await input(req),compact=route==='/mutations'&&url.searchParams.get('receipt')==='compact'&&req.headers['x-vnet-model-revision']===String(service.state.revision||0),before=compact?handoverView(service,req.auth):null;let result;
     if(route==='/mutations')result=service.accept(body,req.auth);else if(!uuid.test(body?.id||''))throw failure('同步任务标识无效。');else result=route==='/retry'?service.retry(body.id,req.auth):service.discard(body.id,req.auth);
-    send(route==='/discard'?200:202,{ok:true,...result,...handoverView(service,req.auth)});
+    const after=handoverView(service,req.auth);send(route==='/discard'?200:202,compact?handoverMutationReceipt(before,after,result):{ok:true,...result,...after});
    }
   }catch(e){send(e.status||503,{ok:false,error:e.status?e.message:'接维服务暂不可用，已受理内容会保留。'});}
   return true;
