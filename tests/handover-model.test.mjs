@@ -36,3 +36,9 @@ test('编号公式只读，新条目写其现有迁移标识字段，不向公�
   const encoded=encodeValues({title:'新条目'},schema,{code:'W-known'});
   assert.ok(!Object.hasOwn(encoded,'code'));assert.equal(encoded.migrationCode,'W-known');
 });
+
+import {inheritTaskDeletion,statusPresentation,statusMatches} from '../project-tasks/handover/status.mjs';
+test('四类只读标识保留原五种状态，父归档可见性不污染子项独立删除',()=>{
+ assert.deepEqual(['已完成','逾期完成','未开始','进行中','逾期进行'].map(v=>statusPresentation(v).label),['已完成','已完成','未开始','进行中','逾期']);assert.equal(statusMatches('逾期完成','已完成'),true);assert.equal(statusMatches('逾期完成','逾期'),false);
+ const rows=[{id:'g',level:'任务组',deleted:true},{id:'a',parentId:'g',deleted:false},{id:'b',parentId:'g',deleted:true}];let result=inheritTaskDeletion(rows);assert.equal(result[1].deleted,true);assert.equal(result[1].ownDeleted,false);assert.equal(result[2].ownDeleted,true);rows[0].deleted=false;result=inheritTaskDeletion(rows);assert.equal(result[1].deleted,false);assert.equal(result[2].deleted,true);
+});

@@ -1,7 +1,7 @@
 import {inheritPriorities} from '../../project-tasks/handover/priority.mjs';
 import {rollupTaskDates} from '../../project-tasks/handover/summary.mjs';
 import {orderedTaskRecords,orderFieldName,displayCodeFieldName} from '../../project-tasks/handover/ordering.mjs';
-import {executionStatus,completedStatus} from '../../project-tasks/handover/status.mjs';
+import {executionStatus,completedStatus,inheritTaskDeletion,statusMatches} from '../../project-tasks/handover/status.mjs';
 export const sourceBinding = Object.freeze({ base: 'CID8b8V7CaCtKesWGFKcHTdqnlc', table: 'tblgQsrBMFd9eeuX', view: 'vewkRPw0CG', appId: 'cli_aa547c8de6785ce2' });
 export const sourceUrl = `https://vnet.feishu.cn/base/${sourceBinding.base}?table=${sourceBinding.table}&view=${sourceBinding.view}`;
 export const stageNames = ['项目筹备', '机电进场', '验证测试', '验收阶段', '开服准备', '反馈优化'];
@@ -19,14 +19,14 @@ export const naturalCompare = (a, b) => a.localeCompare(b, 'zh-CN', { numeric: t
 const planOnlyMilestones = new Set(['M02', 'M03', 'M04']);
 
 export function buildModel(raw, fetchedAt = new Date().toISOString(), now = Date.now()) {
-  let records = raw.filter(({fields:f})=>![true,1,'true'].includes(f['Deleted（已删除）'])).map(({ id, fields: f }) => {
+  let records = raw.map(({ id, fields: f }) => {
     const get = key => text(f[key]);
     const stage = Number(/Step(\d)/.exec(get('Handover Stage（接维阶段）'))?.[1] || 0);
     const level = get('Task Level（任务层级）');
     const code = get('Task Code（任务编号）')||get('Migration Key（迁移标识）');
     const completion = date(f['Actual Completion（实际完成时间）']);
     const status = executionStatus({start:date(f['Start Time（开始时间）']),due:date(f['Due Time（截止时间）']),actualCompletion:completion},now);
-    return { id, code, title: get('Task Description（任务详情）'), level, stage, stageName: stageNames[stage - 1] || '未分组',
+    return { id, code, deleted:[true,1,'true'].includes(f['Deleted（已删除）']), title: get('Task Description（任务详情）'), level, stage, stageName: stageNames[stage - 1] || '未分组',
       category: get('Work Category（工作分类）'), group: get('Work Package（任务组）'), batch: get('Delivery Batch（交付批次）'), actionType: get('Action Type（动作类型）'),milestone:get('Milestone（里程碑）')==='🚩',
       start: date(f['Start Time（开始时间）']), end: date(f['Due Time（截止时间）']), actualCompletion: completion, status, owner: get('Owner（责任人）'), priority: get('Priority（优先级）'),order:f[orderFieldName]==null||f[orderFieldName]===''?null:Number(f[orderFieldName]),
       feedback: get('Latest Feedback（最新进展反馈）'), notes: get('Task Notes（任务备注）'), overseas: get('Overseas Notes（海外差异）'), goal: get('Task Goal（任务目标）'),
@@ -37,9 +37,10 @@ export function buildModel(raw, fetchedAt = new Date().toISOString(), now = Date
       url: `https://vnet.feishu.cn/base/${sourceBinding.base}?table=${sourceBinding.table}&record=${encodeURIComponent(id)}`,
     };
   });
+  records=inheritTaskDeletion(records);
   if (new Set(records.map(r => r.id)).size !== records.length) throw Error('源表记录身份重复。');
-  if (records.some(r => !r.title || !r.code || !['任务组', '执行项', '里程碑'].includes(r.level) || r.stage < 1 || r.stage > 6)) throw Error('源表任务名称、层级或阶段不完整。');
-  records=rollupTaskDates(inheritPriorities(orderedTaskRecords(records,{enabled:raw.some(r=>Object.hasOwn(r.fields,orderFieldName)&&Object.hasOwn(r.fields,displayCodeFieldName))})),{endKey:'end',now});
+  if (records.filter(r=>!r.deleted).some(r => !r.title || !r.code || !['任务组', '执行项', '里程碑'].includes(r.level) || r.stage < 1 || r.stage > 6)) throw Error('源表任务名称、层级或阶段不完整。');
+  records=rollupTaskDates(inheritPriorities(orderedTaskRecords(records,{enabled:raw.some(r=>Object.hasOwn(r.fields,orderFieldName)&&Object.hasOwn(r.fields,displayCodeFieldName))}).filter(r=>!r.deleted)),{endKey:'end',now});
   return indexModel(records,fetchedAt);
 }
 function indexModel(records,fetchedAt){
@@ -73,7 +74,7 @@ export function filterTasks(model, filters = {}) {
   const keyword = (filters.keyword || '').trim().toLowerCase();
   return model.tasks.filter(r => (!filters.stage || r.stage === Number(filters.stage)) && (!filters.batch || r.batch === filters.batch)
     && (!filters.category || r.category === filters.category) && (!filters.actionType || r.actionType === filters.actionType)
-    && (!filters.status || r.status === filters.status) && (!filters.unscheduled || !r.start || !r.end)
+    && statusMatches(r.status,filters.status) && (!filters.unscheduled || !r.start || !r.end)
     && (!filters.review || r.basis.includes('复核'))
     && (!keyword || [r.title, r.code, r.group, r.category, r.notes, r.feedback, r.owner].some(value => value.toLowerCase().includes(keyword))))
     .sort((a, b) => a.stage - b.stage || naturalCompare(a.group, b.group) || naturalCompare(a.code, b.code));

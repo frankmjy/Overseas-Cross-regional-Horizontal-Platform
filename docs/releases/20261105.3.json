@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "release": "20261105.3",
+  "status": "deployed-server-verified",
+  "predecessor": "20261105.2",
+  "candidateSha256": "9e2ca530040445fe2f583c820031dc6d1a036b8e39b49f652ad86ffcfe5915dd",
+  "manifestSha256": "9c78eeb9e220ced8bdc39d939cb4a2e7a6c1e2daa4960d49077d0e68a64c42ed",
+  "payloadSha256": "98f9f208ab4ab96667a3192dc1f0351be719da95a81c724fe0d22ac80ff79ac9",
+  "filesChanged": [
+    "project-tasks/handover/http.mjs",
+    "project-tasks/handover/service.mjs",
+    "project-tasks/handover/status.mjs",
+    "samples/handover-preview/index.html",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/editor.mjs",
+    "samples/handover-preview/model.mjs",
+    "samples/handover-preview/pages.mjs",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "四种自动只读状态标签，取消勾选和一键完成",
+    "含子项任务组整体软归档与恢复",
+    "子项独立删除、ID与附件保留",
+    "恢复状态及编号沿用持久化队列"
+  ],
+  "checks": {
+    "businessTests": 463,
+    "supplementalTests": 19,
+    "syntaxFiles": 290,
+    "isolatedPerformance": {
+      "ok": true,
+      "results": [
+        {
+          "viewport": {
+            "width": 1440,
+            "height": 950
+          },
+          "saveMs": 565,
+          "receiptBytes": 2838,
+          "slowExternalGetMs": 3000,
+          "latencyMs": 120,
+          "bandwidthBytesPerSecond": 128000
+        },
+        {
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "saveMs": 288,
+          "receiptBytes": 5421,
+          "slowExternalGetMs": 3000,
+          "latencyMs": 120,
+          "bandwidthBytesPerSecond": 128000
+        },
+        {
+          "confirmMs": 309
+        }
+      ],
+      "pageErrors": [],
+      "businessTestWrites": 0,
+      "representativeRecords": 361
+    },
+    "isolatedSixFlowRegression": true,
+    "onlineBrowser": {
+      "passed": true,
+      "url": "https://www.sm.sjhl.online:3333/project-management?project=th-001&tab=gantt",
+      "automaticNonInteractiveStatusLabels": true,
+      "completionCheckboxes": 0,
+      "nonemptyGroupArchiveConfirmationChildren": 7,
+      "confirmationCancelledWithoutMutation": true,
+      "browserErrors": 0,
+      "productionBusinessWrites": 0
+    },
+    "handoverRecords": 364,
+    "sourceIdsPreserved": true,
+    "materialRecords": 288,
+    "materialFields": 27,
+    "exactDeployedFilesVerified": 363,
+    "environmentPreserved": true,
+    "independentSessionSurvivalSeconds": 70,
+    "releaseMatrixReusedFrom": "20261105.1",
+    "nativeRollbackReusedFrom": "20261105.1",
+    "packagingGateTests": 5
+  },
+  "coordination": {
+    "ownerThread": "01a19fde-2795-7253-b665-fa7402acc5cc",
+    "handoffCount": 1,
+    "tasks": 2,
+    "runtimeChanges": 9,
+    "installerChanged": false,
+    "dependenciesChanged": false
+  },
+  "deferred": [
+    {
+      "item": "旧版重点卡点关联迁移",
+      "reason": "历史关系需独立迁移，保留既有记录；与本轮状态及归档无依赖"
+    },
+    {
+      "item": "调研总览下钻优化",
+      "reason": "独立页面体验优化，与本轮状态及归档无依赖"
+    }
+  ],
+  "limitations": [
+    "生产未试删正式任务组，归档/恢复写回使用真实Handler/Service与隔离适配器验证",
+    "秒响应计时来自361条代表性隔离数据、120ms延迟和128000B/s下载环境；生产未写测试业务记录，不将该计时声称为生产实测"
+  ],
+  "sourceArchive": "Exact frozen deployed runtime, matching tests and release tools. Commit SHA and remote confirmation are bound to candidate hashes in local archive receipt.",
+  "recordedAt": "2026-11-05T06:47:44.005Z"
+}

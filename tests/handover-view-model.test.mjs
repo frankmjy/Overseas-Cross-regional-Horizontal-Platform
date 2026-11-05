@@ -28,3 +28,9 @@ test('打标任务在里程碑中复用原身份，不重复执行任务或展�
  const group={id:'empty',stage:1,category:'组织与人才',code:'S1.1.2',title:'空组'};
  const tree=hierarchy([], [group], [{stage:6,id:'node'}]);assert.equal(tree.length,2);assert.equal(tree[0].categories[0].groups[0].parentId,'empty');assert.equal(tree[1].id,6);
  });
+
+ test('先保留归档记录排序位置再过滤，前端新插入位置与后端一致',()=>{
+ const meta={'Row Order（条目排序）':null,'Display Code（显示编号）':''},parent={'Parent Link（父记录）':[{id:'group'}]};
+ const model=buildModel([raw('group','S1.1.1','任务组','组',meta),raw('deleted','S1.1.1-01','执行项','旧归档',{...meta,...parent,'Deleted（已删除）':true}),raw('second','S1.1.1-02','执行项','第二项',{...meta,...parent}),raw('inserted','S1.1.1-03','执行项','插入项',{...meta,...parent,'Row Order（条目排序）':1572864})]);
+ assert.deepEqual(model.tasks.map(r=>r.id),['inserted','second']);assert.deepEqual(model.tasks.map(r=>r.code),['S1.1.1-01','S1.1.1-02']);
+ });

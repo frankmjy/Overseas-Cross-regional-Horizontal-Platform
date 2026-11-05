@@ -1,3 +1,4 @@
+import {inheritTaskDeletion} from './status.mjs';
 import {inheritPriorities} from './priority.mjs';
 import {rollupTaskDates} from './summary.mjs';
 import {nextChildCode} from './numbering.mjs';
@@ -37,7 +38,7 @@ export class HandoverService {
       if(row)Object.assign(row,encodeValues(op.values,named,{records:rows.map(r=>normalizeTask(r,this.now())),order:op.order}));
     }return rows;
   }
-  snapshot(actor){this.assertActor(actor);const raw=this.rawRecords();return{revision:this.state.revision||0,ready:!!this.state.schema,refreshing:!!this.refreshing,error:this.lastError||'',updatedAt:this.state.updatedAt,records:rollupTaskDates(inheritPriorities(orderedTaskRecords(raw.map(r=>normalizeTask(r,this.now())),{enabled:!!(this.state.schema?.order&&this.state.schema?.displayCode)})),{now:this.now()}),schema:this.state.schema,users:knownUsers(raw,actor,this.getUsers()),operations:Object.values(this.state.operations).filter(o=>this.allowed(o,actor)&&o.status!=='discarded').map(o=>this.publicOperation(o))};}
+  snapshot(actor){this.assertActor(actor);const raw=this.rawRecords();return{revision:this.state.revision||0,ready:!!this.state.schema,refreshing:!!this.refreshing,error:this.lastError||'',updatedAt:this.state.updatedAt,records:rollupTaskDates(inheritPriorities(orderedTaskRecords(inheritTaskDeletion(raw.map(r=>normalizeTask(r,this.now()))),{enabled:!!(this.state.schema?.order&&this.state.schema?.displayCode)})),{now:this.now()}),schema:this.state.schema,users:knownUsers(raw,actor,this.getUsers()),operations:Object.values(this.state.operations).filter(o=>this.allowed(o,actor)&&o.status!=='discarded').map(o=>this.publicOperation(o))};}
   async refresh(){
     this.ensureBinding();if(this.refreshing)return this.refreshing;
     this.refreshing=this.serialize(async()=>{const schema=await this.adapter.schema(),rows=await this.adapter.list();if(new Set(rows.map(r=>r.recordId)).size!==rows.length)throw Error('任务记录身份重复。');this.ensureBinding();this.commit(n=>{n.records=rows;n.schema=schema;n.updatedAt=this.now();});this.lastError='';});
@@ -59,7 +60,8 @@ export class HandoverService {
     if(current&&this.orderingBusy(current,records))throw failure('当前分组正在同步编号，请稍后操作。',409);
     let values;
     if(['delete','restore'].includes(raw.kind)) {
-      if(raw.kind==='delete'&&records.some(r=>!r.deleted&&r.parentId===current.id))throw failure('任务组仍有执行项，请先调整或移除子项。',409);
+      if(raw.kind==='restore'&&current.parentId&&records.find(r=>r.id===current.parentId)?.deleted)throw failure('请先恢复所属任务组。',409);
+      if(raw.kind==='restore'&&!current.deleted)throw failure('条目未删除，请刷新。',409);
       values={deleted:raw.kind==='delete'};
     }else {
       values=validateTaskValues(raw.values,{schema:this.state.schema,users:snapshot.users,records,current,now:this.now()});
@@ -116,7 +118,7 @@ export class HandoverService {
           remote=await this.adapter.get(op.recordId);normalized=remote&&normalizeTask(remote,this.now());
         }
         if(!normalized||!matches(normalized)||op.kind==='create'&&op.order!==undefined&&normalized.order!==op.order)throw failure('任务回读尚未一致，修改已保留，请重试核对。',503);
-        this.commit(n=>{n.records=[...n.records.filter(r=>r.recordId!==normalized.id),remote];Object.assign(n.operations[id],{recordId:normalized.id,status:'success',error:'',updatedAt:this.now(),nextAttempt:0});});
+        this.commit(n=>{n.records=[...n.records.filter(r=>r.recordId!==normalized.id),remote];if(op.kind==='restore'&&normalized.level==='任务组')n.statusDay='';Object.assign(n.operations[id],{recordId:normalized.id,status:'success',error:'',updatedAt:this.now(),nextAttempt:0});});
       }catch(e){this.commit(n=>{const op=n.operations[id];if(observed&&e.status===409)n.records=n.records.map(r=>r.recordId===observed.recordId?observed:r);Object.assign(op,{status:e.status===409?'blocked':e.status===425||op.kind==='create'&&op.attempted&&!op.recordId.startsWith('rec')?'uncertain':'error',error:e.status?e.message:'飞书同步未完成，修改已保留，可重试核对。',attempts:op.attempts+1,nextAttempt:this.now()+Math.min(300000,5000*2**Math.min(op.attempts,5)),updatedAt:this.now()});});}
     }});
     try{await this.flushing;}finally{this.flushing=null;}
@@ -126,14 +128,14 @@ export class HandoverService {
     const scopes=new Set(this.state.orderScopes);this.numberingInFlight=scopes;
     this.numberingRunning=this.serialize(async()=>{
       const schema=await this.adapter.schema();if(!schema.order||!schema.displayCode)throw failure('排序字段尚未就绪，编号同步已保留。',503);
-      const raw=await this.adapter.list(),rows=raw.map(r=>normalizeTask(r,this.now())),byId=new Map(rows.map(r=>[r.id,r])),affected=r=>scopes.has(orderScope(r))||r.parentId&&scopes.has(orderScope(byId.get(r.parentId)||{}));
+      const raw=await this.adapter.list(),rows=inheritTaskDeletion(raw.map(r=>normalizeTask(r,this.now()))),byId=new Map(rows.map(r=>[r.id,r])),affected=r=>scopes.has(orderScope(r))||r.parentId&&scopes.has(orderScope(byId.get(r.parentId)||{}));
       if(Object.values(this.state.operations).some(o=>active(o)&&o.kind!=='deliverable'&&affected({...byId.get(o.recordId),...o.values})))return;
       const desired=orderedTaskRecords(rows);
       for(const task of desired.filter(affected)){
         if(this.closed||this.isMaintenance())throw failure('编号同步已暂停。',503);
         const code=task.deleted?'':task.code;if(task.storedDisplayCode===code)continue;
         let remote=await this.adapter.get(task.id);if(!remote)throw failure('编号同步记录已变化，请重新核对。',425);
-        const current=normalizeTask(remote,this.now());if(orderScope(current)!==orderScope(task)||current.order!==task.order||current.deleted!==task.deleted)throw failure('排序已有外部修改，已保留同步任务。',425);
+        const current=normalizeTask(remote,this.now());if(orderScope(current)!==orderScope(task)||current.order!==task.order||current.deleted!==(task.ownDeleted??task.deleted))throw failure('排序已有外部修改，已保留同步任务。',425);
         await this.adapter.update(task.id,{[schema.displayCode.id||schema.displayCode.name]:code});remote=await this.adapter.get(task.id);
         if(text(remote?.[fields.displayCode.name])!==code)throw failure('显示编号回读未一致，稍后继续核对。',503);
         const index=raw.findIndex(r=>r.recordId===task.id);raw[index]=remote;
@@ -145,11 +147,12 @@ export class HandoverService {
   async syncStatuses(){
     if(this.statusRunning||this.closed||this.isMaintenance()||!this.state.schema||this.state.statusDay===chinaDay(this.now()))return;this.ensureBinding();
     this.statusRunning=this.serialize(async()=>{
-      const rows=await this.adapter.list(),pending=new Set(Object.values(this.state.operations).filter(active).map(o=>o.recordId)),groups=new Map();
-      for(const raw of rows){const r=normalizeTask(raw,this.now());if(r.deleted||r.level==='任务组'||pending.has(r.id)||r.status===text(raw[fields.status.name]))continue;if(!this.state.schema.status.options.includes(r.status))throw failure('任务状态选项未就绪，请先完成字段配置。',503);if(!groups.has(r.status))groups.set(r.status,[]);groups.get(r.status).push(r.id);}
+      const rows=await this.adapter.list(),effective=new Map(inheritTaskDeletion(rows.map(r=>normalizeTask(r,this.now()))).map(r=>[r.id,r])),pending=new Set(Object.values(this.state.operations).filter(active).map(o=>o.recordId)),groups=new Map();
+      for(const raw of rows){const r=effective.get(raw.recordId);if(r.deleted||r.level==='任务组'||pending.has(r.id)||r.status===text(raw[fields.status.name]))continue;if(!this.state.schema.status.options.includes(r.status))throw failure('任务状态选项未就绪，请先完成字段配置。',503);if(!groups.has(r.status))groups.set(r.status,[]);groups.get(r.status).push(r.id);}
       for(const[status,ids]of groups)for(let i=0;i<ids.length;i+=200){if(this.closed||this.isMaintenance())throw failure('状态同步已暂停。',503);await this.adapter.batchStatus(ids.slice(i,i+200),status,this.state.schema.status);}
       const fresh=groups.size?await this.adapter.list():rows;
-      if(fresh.some(raw=>{const r=normalizeTask(raw,this.now());return !r.deleted&&r.level!=='任务组'&&!pending.has(r.id)&&r.status!==text(raw[fields.status.name]);}))throw failure('状态回读尚未一致，稍后继续核对。',503);
+      const verified=new Map(inheritTaskDeletion(fresh.map(r=>normalizeTask(r,this.now()))).map(r=>[r.id,r]));
+      if(fresh.some(raw=>{const r=verified.get(raw.recordId);return !r.deleted&&r.level!=='任务组'&&!pending.has(r.id)&&r.status!==text(raw[fields.status.name]);}))throw failure('状态回读尚未一致，稍后继续核对。',503);
       this.commit(n=>{n.records=fresh;n.statusDay=chinaDay(this.now());n.updatedAt=this.now();});
     });
     try{await this.statusRunning;this.statusError='';}catch(e){this.statusError=e.status?e.message:'状态暂未同步到源表，页面计算结果保留。';}finally{this.statusRunning=null;}

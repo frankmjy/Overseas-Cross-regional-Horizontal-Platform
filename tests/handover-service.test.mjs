@@ -61,7 +61,7 @@ test('未标定子项继承已保存的父优先级，独立设置保留，清�
  assert.equal(f.rows.find(r=>r.recordId==='recTask')[fields.priority.name],null);
  await update('recGroup','',restarted);assert.equal(restarted.snapshot(actor).records.find(r=>r.id==='recTask').priority,'');
 });
-test('行内优先级与完成操作逐字段写入，重开保持优先级且重复提交幂等',async t=>{
+test('优先级与实际完成日期逐字段写入，重复提交幂等',async t=>{
  const f=await ready(t);let r=f.s.snapshot(actor).records.find(r=>r.id==='recTask');
  const priority={clientMutationId:randomUUID(),kind:'update',recordId:r.id,version:r.version,values:{priority:'P1'}};
  f.s.accept(priority,actor);f.s.accept(priority,actor);await f.s.flush();assert.equal(f.writes(),1);
@@ -79,12 +79,12 @@ test('受理先持久化，重复提交不重复写；里程碑打标保持同�
  assert.equal(f.s.snapshot(actor).operations.find(o=>o.id===input.clientMutationId).status,'success');
  assert.throws(()=>f.s.accept({...input,values:{title:'其他内容'}},actor),e=>e.status===409);
 });
-test('拒绝未登录、其他项目、旧版本和有子项的组删除',async t=>{
+test('拒绝未登录、其他项目与旧版本',async t=>{
  const f=await ready(t),task=f.s.snapshot(actor).records.find(r=>r.id==='recTask'),group=f.s.snapshot(actor).records.find(r=>r.id==='recGroup');
  const input={clientMutationId:randomUUID(),kind:'update',recordId:task.id,version:task.version,values:{title:'新名称'}};
  assert.throws(()=>f.s.accept(input,null),e=>e.status===401);assert.throws(()=>f.s.accept(input,{...actor,project:{id:'my-001',knowledgeKey:'malaysia'}}),e=>e.status===409);
  assert.throws(()=>f.s.accept({...input,version:'stale'},actor),e=>e.status===409);
- assert.throws(()=>f.s.accept({clientMutationId:randomUUID(),kind:'delete',recordId:group.id,version:group.version},actor),e=>e.status===409);
+
 });
 test('软删除可恢复，云端原记录和关联身份不变',async t=>{
  const f=await ready(t);let r=f.s.snapshot(actor).records.find(r=>r.id==='recTask');
@@ -136,3 +136,26 @@ test('更新进展按已验证编辑人追加历史，不覆盖旧内容',async 
  f.s.accept(input,actor);await f.s.flush();const update=f.adapter.update;f.adapter.update=async()=>{throw Error('offline');};await f.s.syncNumbering();assert.ok(f.s.state.orderScopes.length);assert.ok(f.s.numberingError);
  await f.s.close();f.adapter.update=update;const recovered=f.create();recovered.init();t.after(()=>recovered.close());await recovered.syncNumbering();assert.equal(recovered.state.orderScopes.length,0);assert.equal(f.creates(),1);assert.equal(f.rows.find(r=>r[fields.title.name]==='恢复编号测试')[fields.displayCode.name],'S1.1-02');
  });
+
+ test('含子项任务组可整体归档恢复，子项原字段不改，独立删除保持',async t=>{
+ const f=await ready(t);f.rows.push({...f.rows[1],recordId:'recOldDeleted',[fields.code.name]:'S1.1-02',[fields.deleted.name]:true});await f.s.refresh();
+ const group=()=>f.s.snapshot(actor).records.find(r=>r.id==='recGroup'),child=()=>f.s.snapshot(actor).records.find(r=>r.id==='recTask');
+ const id=randomUUID(),input={kind:'delete',clientMutationId:id,recordId:'recGroup',version:group().version};f.s.accept(input,actor);f.s.accept(input,actor);assert.equal(child().deleted,true);assert.equal(child().inheritedDeleted,true);await f.s.flush();assert.equal(f.rows[1][fields.deleted.name],false);assert.equal(f.rows[0][fields.deleted.name],true);
+ assert.throws(()=>f.s.accept({kind:'restore',clientMutationId:randomUUID(),recordId:'recTask',version:child().version},actor),/先恢复所属任务组/);
+ await f.s.close();const restored=f.create();restored.init();t.after(()=>restored.close());const g=restored.snapshot(actor).records.find(r=>r.id==='recGroup');restored.accept({kind:'restore',clientMutationId:randomUUID(),recordId:g.id,version:g.version},actor);await restored.flush();
+ assert.equal(restored.snapshot(actor).records.find(r=>r.id==='recTask').deleted,false);assert.equal(restored.snapshot(actor).records.find(r=>r.id==='recOldDeleted').deleted,true);assert.equal(f.rows.length,3);assert.equal(f.rows[1][fields.code.name],'S1.1-01');
+ });
+
+import {handoverView} from '../project-tasks/handover/http.mjs';
+test('组归档读模型隐藏子项，恢复后原编号和汇总回归；云端只写父删除标记',async t=>{
+ const f=await ready(t),g=f.s.snapshot(actor).records.find(r=>r.id==='recGroup');f.s.accept({kind:'delete',clientMutationId:randomUUID(),recordId:g.id,version:g.version},actor);let view=handoverView(f.s,{...actor,permissions:{projects:{edit:true}}});assert.equal(view.tasks.length,0);assert.equal(view.parents.length,0);assert.equal(view.deletedRecords.length,1);assert.equal(view.deletedRecords[0].childrenCount,1);await f.s.flush();await f.s.syncNumbering();assert.equal(f.rows[1][fields.deleted.name],false);assert.equal(f.rows[1][fields.displayCode.name]||'','');
+ const deleted=f.s.snapshot(actor).records.find(r=>r.id===g.id);f.s.accept({kind:'restore',clientMutationId:randomUUID(),recordId:g.id,version:deleted.version},actor);await f.s.flush();await f.s.syncNumbering();view=handoverView(f.s,{...actor,permissions:{projects:{edit:true}}});assert.equal(view.tasks.length,1);assert.equal(view.tasks[0].code,'S1.1-01');assert.equal(view.parents[0].start,'2026-09-30');assert.equal(f.rows[1][fields.code.name],'S1.1-01');
+});
+
+test('恢复任务组后重新同步子项日期状态，不等待次日',async t=>{
+ const f=await ready(t);f.adapter.batchStatus=async(ids,status)=>{for(const r of f.rows)if(ids.includes(r.recordId))r[fields.status.name]=status;};
+ let group=f.s.snapshot(actor).records.find(r=>r.id==='recGroup');f.s.accept({kind:'delete',clientMutationId:randomUUID(),recordId:group.id,version:group.version},actor);await f.s.flush();
+ await f.s.syncStatuses();assert.ok(f.s.state.statusDay);f.rows[1][fields.status.name]='未开始';
+ group=f.s.snapshot(actor).records.find(r=>r.id==='recGroup');f.s.accept({kind:'restore',clientMutationId:randomUUID(),recordId:group.id,version:group.version},actor);await f.s.flush();await f.s.syncStatuses();
+ assert.equal(f.rows[1][fields.status.name],'进行中');assert.equal(f.s.statusError,'');
+});

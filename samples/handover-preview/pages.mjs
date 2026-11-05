@@ -1,20 +1,20 @@
 import {calendarCells,addDays,day} from './model.mjs';
-import {completedStatus} from '../../project-tasks/handover/status.mjs';
+import {completedStatus,statusPresentation} from '../../project-tasks/handover/status.mjs';
 import {taskResources} from '../../project-tasks/handover/resources.mjs';
 export const pageDefinitions=[{id:'overview',label:'项目总览',icon:'grid'},{id:'gantt',label:'甘特计划',icon:'chart'},{id:'milestones',label:'交付里程碑',icon:'flag'},{id:'weekly',label:'每周跟进',icon:'calendar'},{id:'monthly',label:'月度回顾',icon:'chart'},{id:'organization',label:'项目组织',icon:'people'}];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function taskDeliverableCount(row){return taskResources(row).length;}
 export function ganttRowControls(row,{editable=false,pending=false}={}){
- const done=completedStatus(row.status),disabled=!editable||pending,priority=/P[012]/.exec(row.priority||'')?.[0]||'',reason=pending?'后台同步中':!editable?'请登录编辑':'';
+ const state=statusPresentation(row.status),disabled=!editable||pending,priority=/P[012]/.exec(row.priority||'')?.[0]||'',reason=pending?'后台同步中':!editable?'请登录编辑':'';
  return{
-  finish:`<button class="task-completion${done?' is-complete':''}" role="checkbox" aria-checked="${done}" data-complete-task="${esc(row.id)}" aria-label="${done?'重新打开':'标记完成'}：${esc(row.title)}" title="${esc(reason||row.status)}"${disabled?' disabled':''}>${done?'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"/></svg>':''}</button>`,
+  status:`<span class="task-status-label task-status-${state.tone}" data-task-status="${esc(row.id)}" title="${esc(row.status)}" aria-label="${esc(row.title)}：${state.label}"><i aria-hidden="true"></i>${state.label}</span>`,
   priority:`<button class="priority-cell priority-${priority.toLowerCase()||'none'}" data-priority-task="${esc(row.id)}" aria-label="修改优先级：${esc(row.title)}" title="${esc(reason||(row.priorityInherited?row.priority+' · 继承自 '+row.priorityParentName:row.priority)||'未指定优先级')}"${disabled?' disabled':''}>${priority||'—'}</button>`,
   delivery:taskDeliverableCount(row)?`<button class="task-delivery-icon" data-task-deliverables="${esc(row.id)}" title="交付物 · ${taskDeliverableCount(row)}份" aria-label="查看交付物：${esc(row.title)}，${taskDeliverableCount(row)}份"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v5h5M10 12h5m-5 4h5"/></svg></button>`:'',
   actions:editable?`<button class="task-row-actions" aria-haspopup="menu" aria-expanded="false" data-row-actions="${esc(row.id)}" title="条目操作" aria-label="条目操作：${esc(row.title)}"${pending||row.id.startsWith('local:')?' disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>`:'',
  };
 }
 const date=v=>v?v.replaceAll('-','/'):'未排期';
-const status=r=>`<span class="work-status ${r.status==='逾期进行'?'late':completedStatus(r.status)?'done':''}">${esc(r.status)}</span>`;
+const status=r=>`<span class="work-status ${r.status==='逾期进行'?'late':completedStatus(r.status)?'done':''}">${statusPresentation(r.status).label}</span>`;
 const phase=r=>r.batch?.startsWith('一期')?'一期':r.batch?.startsWith('二期')?'二期':'';
 const taskButton=r=>`<button class="work-task-link" data-record="${esc(r.id)}"><small>${esc(r.code)}</small><span>${esc(r.title)}</span>${phase(r)?`<em>${phase(r)}</em>`:''}</button>`;
 function metrics(items){return `<div class="work-metrics">${items.map(([label,count,unit,key])=>`<button data-summary="${key||''}"><span>${label}</span><strong>${count}<small>${unit}</small></strong></button>`).join('')}</div>`;}

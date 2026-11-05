@@ -2,18 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pageDefinitions,weeklyData,monthlyData,renderOverview,organizationData,overviewAgenda,overviewCalendarCells,stageInsight,stageInsightRows,ganttRowControls,taskDeliverableCount} from '../samples/handover-preview/pages.mjs';
 const tasks=[{id:'late',code:'1',title:'逾期检查',stage:1,status:'逾期进行',start:'2026-10-01',end:'2026-10-20',actualCompletion:''},{id:'done',code:'2',title:'已完成检查',stage:1,status:'已完成',start:'2026-10-01',end:'2026-11-01',actualCompletion:'2026-11-01'},{id:'next',code:'3',title:'下周检查',stage:1,status:'未开始',start:'2026-11-02',end:'2026-11-06',actualCompletion:''}];
-test('交付物收为独立小图标，不占第二行，保留完成和优先级',()=>{
+test('只读状态标签替代完成勾选，交付物及优先级仍在原行',()=>{
  const row={...tasks[1],priority:'🔴P0-高优',attachments:[{name:'交付.txt'}],deliverableLinks:'https://example.com/doc\nhttps://example.com/doc'};
- const controls=ganttRowControls(row,{editable:true});
- assert.equal(taskDeliverableCount(row),2);assert.match(controls.finish,/aria-checked="true"/);assert.match(controls.finish,/data-complete-task="done"/);
- assert.match(controls.priority,/>P0<\/button>/);assert.match(controls.priority,/data-priority-task="done"/);
- assert.match(controls.delivery,/data-task-deliverables="done"/);assert.match(controls.delivery,/<svg/);assert.match(controls.delivery,/aria-label="查看交付物：已完成检查，2份"/);assert.doesNotMatch(controls.delivery,/task-resource-tags|class="resource-kind"|添加交付物|data-deliver-task/);
- assert.equal(ganttRowControls(tasks[0],{editable:true}).delivery,'');
- assert.match(ganttRowControls(row,{editable:true,pending:true}).finish,/disabled/);
- assert.match(ganttRowControls(row).priority,/disabled/);
- assert.match(ganttRowControls({...tasks[0],title:'<img onerror=x>'},{editable:true}).finish,/&lt;img/);
- assert.match(ganttRowControls(tasks[0],{editable:true}).finish,/aria-checked="false"/);
+ const controls=ganttRowControls(row,{editable:true});assert.equal(taskDeliverableCount(row),2);
+ assert.match(controls.status,/>已完成<|已完成<\/span>/);assert.doesNotMatch(controls.status,/button|checkbox|aria-checked|data-complete-task|tabindex/);assert.equal(ganttRowControls(row).status,controls.status);
+ assert.match(controls.priority,/>P0<\/button>/);assert.match(controls.delivery,/data-task-deliverables="done"/);assert.match(controls.delivery,/aria-label="查看交付物：已完成检查，2份"/);assert.doesNotMatch(controls.delivery,/task-resource-tags|添加交付物/);
+ assert.equal(ganttRowControls(tasks[0],{editable:true}).delivery,'');assert.match(ganttRowControls(row,{editable:true,pending:true}).priority,/disabled/);
+ for(const [status,label,tone]of [['未开始','未开始','planned'],['进行中','进行中','active'],['逾期进行','逾期','overdue'],['逾期完成','已完成','done']]){const html=ganttRowControls({...row,status}).status;assert.ok(html.includes(label));assert.ok(html.includes('task-status-'+tone));}
 });
+
 test('工作台导航分页面，不提供独立任务清单或项目日历入口',()=>{assert.ok(pageDefinitions.some(p=>p.id==='overview'));assert.ok(pageDefinitions.some(p=>p.id==='gantt'));assert.ok(pageDefinitions.some(p=>p.id==='weekly'));assert.ok(!pageDefinitions.some(p=>['list','calendar'].includes(p.id)));});
 test('周跟进包含未完成逾期和本周实际完成，下周计划独立',()=>{const v=weeklyData(tasks,'2026-11-01','2026-11-01');assert.equal(v.start,'2026-10-26');assert.equal(v.end,'2026-11-01');assert.deepEqual(v.overdue.map(r=>r.id),['late']);assert.deepEqual(v.completed.map(r=>r.id),['done']);assert.deepEqual(v.next.map(r=>r.id),['next']);});
 test('月度完成只按实际完成日期，不把计划结束当作完成',()=>{const v=monthlyData(tasks,'2026-11');assert.deepEqual(v.completed.map(r=>r.id),['done']);assert.deepEqual(v.rows.map(r=>r.id).sort(),['done','next']);});
