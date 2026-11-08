@@ -352,5 +352,10 @@
 @media(max-width:640px){.row-actions-cell .priority-cell{width:31px;font-size:10px}.task-row-actions{width:17px}.row-action-menu button{font-size:13px;padding-block:10px}}
 
 @media(max-width:680px){.task-status-label{min-width:48px;min-height:22px;font-size:10px;padding:3px 4px;gap:3px}.task-status-label i{width:3px;height:3px}}
+.platform-header > .brand > img { width:77px; height:30px; object-fit:cover; object-position:10% center; flex:none; }
+@media (max-width:680px) {
+  .platform-header > .brand > img { width:66px; height:26px; }
+}
 
 .editor-calculated .task-status-label{justify-self:start}
+.handover-header-tools{display:contents}

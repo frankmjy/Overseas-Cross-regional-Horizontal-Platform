@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "release": "20261108.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261105.3",
+  "candidateSha256": "5f56744451f480a7db3cf76ff2558393a00180794b4ba28731504f3bc32fbae3",
+  "manifestSha256": "8478e4e3d9166928f78c2369a2d5771e6c4552da401865e93ad5a9168aa1406d",
+  "payloadSha256": "301c01541be02a5a820451c5a0703111d0026feedbadc2048ad634b2ee0cfa5e",
+  "filesChanged": [
+    "src/platform-account.js",
+    "src/platform-context.js",
+    "src/platform-navigation.css",
+    "src/platform-navigation.js",
+    "src/project-context-model.mjs",
+    "src/project-local-conditions.css",
+    "src/project-local-conditions.js",
+    "auth/http.mjs",
+    "auth/project-weather.mjs",
+    "auth/README.md",
+    "auth/service.mjs",
+    "project-tasks/handover/http.mjs",
+    "samples/handover-preview/index.html",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "空闲一小时重新登录并回跳",
+    "Araya与古来当地时间和天气",
+    "顶栏直接切换项目及权限隔离",
+    "Logo和天气样式调整"
+  ],
+  "checks": {
+    "businessTests": 468,
+    "supplementalTests": 27,
+    "syntaxFiles": 292,
+    "isolatedTopBar": {
+      "baseline": "20261105.3",
+      "focusedTests": 56,
+      "syntaxCheck": "294 files; changed account and weather modules rechecked",
+      "browser": [
+        "real auth handler and isolated ledgers; no live business writes",
+        "Araya and Kulai project switching in both directions",
+        "no Thailand task access from Malaysia",
+        "old tab resync and lost switch response recovery",
+        "320,390,768,1024,1440 pixel layouts on both top bars"
+      ],
+      "localhost3333": "HTTPS service restarted with new sources, pinned TLS session 200, switch without session 401",
+      "fixture": "closed port and removed isolated ledgers",
+      "releaseCaveat": "Local Feishu OAuth required the existing Windows proxy, scoped to this local process. Do not copy that local environment to production. Recheck production MET provider connectivity and the existing expanded BAT test caveat."
+    },
+    "serverWeatherProviderReady": true,
+    "onlineBrowser": {
+      "passed": true,
+      "browser": "Edge Playwright",
+      "formalRootLogin": true,
+      "formalDeepLinkReturnTo": true,
+      "projectChoices": [
+        "th-001",
+        "my-001"
+      ],
+      "oauthStartLinksVerified": true,
+      "authenticatedProductionSwitchVerified": false,
+      "businessWrites": 0,
+      "browserErrors": 0
+    },
+    "handoverRecords": 365,
+    "sourceIdsPreserved": true,
+    "materialRecords": 290,
+    "materialFields": 27,
+    "exactDeployedFilesVerified": 366,
+    "environmentPreserved": true,
+    "independentSessionSurvivalSeconds": 76,
+    "releaseMatrixReusedFrom": "20261105.1",
+    "nativeRollbackReusedFrom": "20261105.1",
+    "packagingGateTests": 5
+  },
+  "coordination": {
+    "ownerThread": "01a19fde-2795-7253-b665-fa7402acc5cc",
+    "handoffCount": 1,
+    "tasks": 4,
+    "runtimeChanges": 14,
+    "installerChanged": false,
+    "dependenciesChanged": false
+  },
+  "deferred": [
+    {
+      "item": "旧版重点卡点关联迁移",
+      "reason": "历史关系需独立迁移，保留既有记录；与本轮登录与顶栏无依赖"
+    },
+    {
+      "item": "调研总览下钻优化",
+      "reason": "独立页面体验优化，与本轮登录与顶栏无依赖"
+    }
+  ],
+  "limitations": [
+    "旧BAT配置工具在旧基线与本批均复现既有授权探测兼容问题，独立登记",
+    "双向切换和空闲边界由真实Handler的隔离浏览器环境覆盖，生产页面验证范围见onlineBrowser"
+  ],
+  "sourceArchive": "Exact frozen deployed runtime, matching tests and release tools. Commit SHA and remote confirmation are bound to candidate hashes in local archive receipt.",
+  "recordedAt": "2026-11-08T14:02:13.880Z"
+}

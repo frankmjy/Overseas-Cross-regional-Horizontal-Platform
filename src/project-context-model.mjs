@@ -1,6 +1,8 @@
 export const platformProjects = Object.freeze([
-  Object.freeze({ id: 'th-001', name: '泰国 Araya 项目', shortName: 'Araya', country: 'TH', countryName: '泰国', code: 'TH', recordId: 'reczz28Of2Cqo3Vz', knowledgeKey: 'thailand', researchKey: 'overseas', staffingValue: '泰国A项目', planConnected: true }),
-  Object.freeze({ id: 'my-001', name: '马来项目', shortName: '马来项目', country: 'MY', countryName: '马来西亚', code: 'MY', recordId: 'reczz28Of2CqqA92', knowledgeKey: 'malaysia', researchKey: 'overseas', staffingValue: '马来西亚项目', planConnected: false }),
+  Object.freeze({ id: 'th-001', name: '泰国 Araya 项目', shortName: 'Araya', country: 'TH', countryName: '泰国', code: 'TH', recordId: 'reczz28Of2Cqo3Vz', knowledgeKey: 'thailand', researchKey: 'overseas', staffingValue: '泰国A项目', planConnected: true,
+    location: Object.freeze({ label: 'Araya', timeZone: 'Asia/Bangkok', latitude: 13.5841, longitude: 100.8947 }) }),
+  Object.freeze({ id: 'my-001', name: '马来项目', shortName: '马来项目', country: 'MY', countryName: '马来西亚', code: 'MY', recordId: 'reczz28Of2CqqA92', knowledgeKey: 'malaysia', researchKey: 'overseas', staffingValue: '马来西亚项目', planConnected: false,
+    location: Object.freeze({ label: '古来', timeZone: 'Asia/Kuala_Lumpur', latitude: 1.6561, longitude: 103.6032 }) }),
 ]);
 
 export function projectById(id) {
@@ -20,6 +22,9 @@ export function projectDestination(value, project) {
   const url = new URL(value, 'https://platform.invalid');
   const parameter = projectParameter(url.pathname, project);
   if (parameter) url.searchParams.set('project', parameter);
+  if (url.pathname === '/project-management' && !project.planConnected && url.searchParams.get('view') === 'handover') {
+    url.searchParams.delete('view');
+  }
   return url.pathname + url.search + url.hash;
 }
 

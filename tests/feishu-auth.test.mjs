@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { AuthService, safeReturnTo, requestOrigin, authConfig } from '../auth/service.mjs';
 import { createAuthHandler } from '../auth/http.mjs';
+import { readProjectWeather } from '../auth/project-weather.mjs';
 
 const origin = 'https://localhost:3333';
 const config = () => ({ appId: 'cli_test', appSecret: 'private-test-only', origins: [origin] });
@@ -24,6 +25,7 @@ async function login(service) { const started = service.begin(origin, '/project-
 test('return destinations reject external, encoded and auth-loop redirects', () => {
   for (const value of ['//evil.example', '/\\evil', '/%2f%2fevil', '/%5cevil', 'https://evil', '/api/auth/feishu/authorize', '/login', '/\r\nfoo', '/%252f%252fevil']) assert.equal(safeReturnTo(value), '/');
   assert.equal(safeReturnTo('/project-management?code=secret&project=thailand#plan'), '/project-management?project=thailand#plan');
+  assert.equal(safeReturnTo('/project-management?tab=gantt&stage=2&q=phase%20one'), '/project-management?tab=gantt&stage=2&q=phase%20one');
 });
 
 test('meeting login return preserves only allowed filters',()=>{assert.equal(safeReturnTo('/meeting-trail?project=thailand&date=2026-10-15&type=已开&token=secret'),'/meeting-trail?project=thailand&date=2026-10-15&type=%E5%B7%B2%E5%BC%80');});
@@ -85,6 +87,110 @@ test('sessions and outbox survive restart; logout revokes and expires are enforc
   assert.ok(Object.values(resumed.state.events)[0].logoutTime);
   const second = await login(f.service); f.advance(13 * 3600_000);
   assert.equal(f.service.session(second.token), null);
+});
+
+test('one hour idle expires even while status and business GETs poll', async t => {
+  const f = fixture(t), logged = await login(f.service);
+  const cookie = `__Host-vnet_session=${logged.token}`;
+  const handle = createAuthHandler({ service: f.service, root: process.cwd() });
+  const hour = 3600_000;
+  for (let minute = 0; minute < 60; minute += 10) {
+    if (minute) f.advance(600_000);
+    const status = res();
+    await handle(req('/api/auth/session', cookie), status);
+    assert.equal(JSON.parse(status.body).expiresInMs, hour - minute * 60_000);
+    assert.equal(await handle(req('/api/coordination', cookie), res()), false);
+  }
+  f.advance(600_000);
+  assert.equal(f.service.session(logged.token), null);
+  const expired = res();
+  await handle(req('/api/coordination', cookie), expired);
+  assert.equal(expired.status, 401);
+  assert.equal(expired.headers['x-vnet-login-required'], '1');
+  const page = res();
+  await handle(req('/project-management?project=th-001&tab=gantt', cookie), page);
+  assert.equal(page.status, 303);
+  assert.equal(new URL(page.headers.location, origin).searchParams.get('returnTo'), '/project-management?project=th-001&tab=gantt');
+});
+
+test('same-origin activity with CSRF extends idle deadline across restart and cannot revive it', async t => {
+  const f = fixture(t), logged = await login(f.service);
+  const cookie = `__Host-vnet_session=${logged.token}`;
+  const handle = createAuthHandler({ service: f.service, root: process.cwd() });
+  const request = (source, csrf) => req('/api/auth/activity', cookie, { method: 'POST', headers: { host: 'localhost:3333', cookie, origin: source, 'x-csrf-token': csrf } });
+  f.advance(3_500_000);
+  for (const [source, csrf] of [['https://evil.example', logged.csrf], [origin, 'bad']]) {
+    const denied = res();
+    await handle(request(source, csrf), denied);
+    assert.equal(denied.status, 403);
+  }
+  const active = res();
+  await handle(request(origin, logged.csrf), active);
+  assert.equal(active.status, 200);
+  assert.equal(JSON.parse(active.body).expiresInMs, 3600_000);
+  const resumed = new AuthService({ dir: f.dir, config, now: f.service.now });
+  f.advance(3_599_999);
+  assert.ok(resumed.session(logged.token));
+  f.advance(1);
+  assert.equal(resumed.session(logged.token), null);
+  const expired = res();
+  await handle(request(origin, logged.csrf), expired);
+  assert.equal(expired.status, 401);
+});
+
+test('existing sessions without activity use their creation time as the idle baseline', async t => {
+  const f = fixture(t), logged = await login(f.service);
+  f.service.commit(next => { for (const session of Object.values(next.sessions)) delete session.lastActivity; });
+  f.advance(3_600_000);
+  assert.equal(Boolean(f.service.session(logged.token)), false);
+});
+
+test('weather uses the authenticated project even when a different project is requested', async t => {
+  const f = fixture(t), queried = [];
+  const handle = createAuthHandler({ service: f.service, root: process.cwd(),
+    readWeather: async location => { queried.push(location); return { temperature: location.label === 'Araya' ? 29 : 25, symbol: 'cloudy' }; },
+  });
+  for (const id of ['th-001', 'my-001']) {
+    const started = f.service.begin(origin, '/project-management', id);
+    const logged = await f.service.finish(origin, started.state, started.browser, 'code');
+    const response = res();
+    await handle(req('/api/project-weather?project=th-001', `__Host-vnet_session=${logged.token}`), response);
+    assert.equal(response.status, 200);
+    assert.equal(JSON.parse(response.body).weather?.temperature, id === 'th-001' ? 29 : 25);
+  }
+  assert.deepEqual(queried.map(location => location.label), ['Araya', '古来']);
+  const guest = res();
+  await handle(req('/api/project-weather'), guest);
+  assert.equal(guest.status, 401);
+});
+
+test('weather requests share the provider cache and advance through forecast time slots', async t => {
+  const initial = Date.parse('2026-11-08T06:00:00Z');
+  let now = initial;
+  t.mock.method(Date, 'now', () => now);
+  const point = (offset, temperature) => ({
+    time: new Date(initial + offset * 3600_000).toISOString(),
+    data: { instant: { details: { air_temperature: temperature } }, next_1_hours: { summary: { symbol_code: 'cloudy' } } },
+  });
+  const modified = 'Sun, 08 Nov 2026 06:00:00 GMT';
+  const request = t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    if (options.headers['If-Modified-Since']) {
+      assert.equal(options.headers['If-Modified-Since'], modified);
+      return new Response(null, { status: 304 });
+    }
+    return Response.json({ properties: { timeseries: [point(0, 30), point(1, 29), point(3, 28)] } }, {
+      headers: { 'Last-Modified': modified, Expires: new Date(initial + 4 * 3600_000).toUTCString() },
+    });
+  });
+  const location = { latitude: 1.2345, longitude: 2.3456 };
+  const first = await Promise.all([readProjectWeather(location), readProjectWeather(location)]);
+  assert.deepEqual(first.map(weather => weather.temperature), [30, 30]);
+  now += 3 * 3600_000;
+  assert.equal((await readProjectWeather(location)).temperature, 28);
+  assert.equal(request.mock.callCount(), 1);
+  now += 3600_000;
+  assert.equal((await readProjectWeather(location)).temperature, 28);
+  assert.equal(request.mock.callCount(), 2);
 });
 
 test('failed disk commit does not leave an accepted in-memory login', async t => {

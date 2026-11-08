@@ -36,7 +36,13 @@ export function createHandoverHandler({root,service,organization}={}){
    if(page||asset){
     if(!['GET','HEAD'].includes(req.method))throw failure('不支持此请求方法。',405);
     const entry=page?['samples/handover-preview/index.html','text/html']:files.get(url.pathname);let data=await fs.readFile(path.join(root,entry[0]));
-    if(page)data=Buffer.from(data.toString('utf8').replaceAll('href="/styles.css"','href="/handover-preview/styles.css"').replaceAll('src="/app.mjs"','src="/handover-preview/app.mjs"').replaceAll('src="/logo.png"','src="/handover-preview/logo.png"').replaceAll('href="/favicon.svg"','href="/handover-preview/favicon.svg"').replaceAll('/project-management-preview','/project-management?project='+binding.project));
+    if(page)data=Buffer.from(data.toString('utf8')
+      .replace('href="/styles.css"','href="/handover-preview/styles.css"')
+      .replace('src="/app.mjs"','src="/handover-preview/app.mjs"')
+      .replace('<script type="module" src="/handover-preview/app.mjs">','<script type="module" src="/src/project-local-conditions.js"></script>\n<script type="module" src="/handover-preview/app.mjs">')
+      .replace('src="/logo.png"','src="/handover-preview/logo.png"')
+      .replace('href="/favicon.svg"','href="/handover-preview/favicon.svg"')
+      .replaceAll('/project-management-preview','/project-management?project='+binding.project));
     res.writeHead(200,{...headers,'Content-Type':entry[1]+(entry[1].startsWith('text/')?'; charset=utf-8':''),'Content-Length':data.length});res.end(req.method==='HEAD'?undefined:data);return true;
    }
    if(!api)throw failure('页面不存在。',404);

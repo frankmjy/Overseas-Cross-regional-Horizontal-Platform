@@ -5,20 +5,22 @@ import { projectById, projectDestination } from '../src/project-context-model.mj
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 const random = () => randomBytes(32).toString('base64url');
+const idleTimeoutMs = 3600_000;
+const sessionDeadline = session => Math.min(session.expires, (session.lastActivity ?? session.created) + idleTimeoutMs);
 const equal = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 export const authError = (message, status = 400) => Object.assign(new Error(message), { status, publicMessage: message });
 export const defaultOrigins = ['https://www.sm.sjhl.online:3333', 'https://localhost:3333'];
 export function authConfig() { return { appId: process.env.FEISHU_APP_ID || '', appSecret: process.env.FEISHU_APP_SECRET || '', origins: defaultOrigins, oauthOrigins: [...defaultOrigins] }; }
 
 export function safeReturnTo(value) {
-  if (typeof value !== 'string' || value.length > 2048) return '/';
-  let decoded = value;
+  if (typeof value !== 'string' || value.length > 2048 || /[\x00-\x1f\x7f]/.test(value)) return '/';
+  let decoded = value.split(/[?#]/, 1)[0];
   try { for (let n = 0; n < 3; n++) decoded = decodeURIComponent(decoded); } catch { return '/'; }
   if (!decoded.startsWith('/') || decoded.startsWith('//') || /[\\\x00-\x20\x7f]/.test(decoded)) return '/';
   const url = new URL(value, 'https://return.invalid');
   if (!['/', '/research', '/project-management', '/knowledge-sharing', '/meeting-trail', '/staffing-reserve', '/cross-coordination', '/admin'].includes(decodeURIComponent(url.pathname))) return '/';
   // Never put OAuth credentials or tickets in the audit log or next Location.
-  for (const key of [...url.searchParams.keys()]) if (!['project', 'category', 'q', 'view', 'tab', 'type', 'date'].includes(key) && !(url.pathname === '/cross-coordination' && ['platform','specialty','primary','requirement','region','architecture','level','sort','group','pageSize','page'].includes(key))) url.searchParams.delete(key);
+  for (const key of [...url.searchParams.keys()]) if (!['project', 'category', 'q', 'view', 'tab', 'type', 'date'].includes(key) && !(url.pathname === '/project-management' && key === 'stage') && !(url.pathname === '/cross-coordination' && ['platform','specialty','primary','requirement','region','architecture','level','sort','group','pageSize','page'].includes(key))) url.searchParams.delete(key);
   return url.pathname + url.search + url.hash;
 }
 
@@ -70,7 +72,7 @@ export class AuthService {
     if (Object.keys(this.state.states).filter(k => this.state.states[k].expires > now).length >= 2000) throw authError('登录请求繁忙，请稍后重试。', 429);
     this.commit(next => {
       for (const [key, value] of Object.entries(next.states)) if (value.expires <= now) delete next.states[key];
-      for (const [key, value] of Object.entries(next.sessions)) if (value.expires <= now) delete next.sessions[key];
+      for (const [key, value] of Object.entries(next.sessions)) if (sessionDeadline(value) <= now) delete next.sessions[key];
       for (const [key, value] of Object.entries(next.events)) if (value.syncStatus === 'synced' && Date.parse(value.loginTime) < now - 90 * 86400_000) delete next.events[key];
       next.states[hash(state)] = { browser: hash(browser), returnTo: safeReturnTo(returnTo), projectId, origin, appId: config.appId, expires: now + 10 * 60_000 };
     });
@@ -97,7 +99,31 @@ export class AuthService {
   session(token) {
     if (!/^[\w-]{43}$/.test(token || '')) return null;
     const session = this.state.sessions[hash(token)];
-    return session && session.expires > this.now() && session.appId === this.config().appId ? structuredClone(session) : null;
+    if (!session || session.appId !== this.config().appId) return null;
+    const expiresInMs = sessionDeadline(session) - this.now();
+    return expiresInMs > 0 ? { ...structuredClone(session), expiresInMs } : null;
+  }
+  recordActivity(token, csrf) {
+    const session = this.session(token);
+    if (!session) throw authError('请先使用飞书登录。', 401);
+    if (!equal(session.csrf, csrf)) throw authError('会话续期请求无效。', 403);
+    const lastActivity = this.now(), key = hash(token);
+    this.commit(next => { next.sessions[key].lastActivity = lastActivity; });
+    return sessionDeadline({ ...session, lastActivity }) - lastActivity;
+  }
+  switchProject(token, csrf, projectId) {
+    const session = this.session(token);
+    if (!session) throw authError('请先使用飞书登录。', 401);
+    if (!equal(session.csrf, csrf)) throw authError('项目切换请求无效，请刷新后重试。', 403);
+    const project = projectById(projectId);
+    if (session.projectId !== project.id) {
+      this.commit(next => {
+        const saved = next.sessions[hash(token)];
+        saved.projectId = project.id;
+        saved.lastActivity = this.now();
+      });
+    }
+    return project;
   }
   logout(token, csrf) {
     const session = this.session(token);

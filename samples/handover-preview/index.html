@@ -5,7 +5,10 @@
 <header class="platform-header">
   <a class="brand" href="/project-management-preview" data-home aria-label="项目工作台首页"><img src="/logo.png" alt="世纪互联 VNET"><span>海外业务协作平台</span></a>
   <nav aria-label="主导航"><a class="current" href="/project-management-preview" data-home>项目管理</a><a data-platform-page="/cross-coordination?project=th-001" href="https://localhost:3333/cross-coordination?project=th-001" target="_blank" rel="noreferrer">横向统筹</a><a data-platform-page="/knowledge-sharing?project=thailand" href="https://localhost:3333/knowledge-sharing?project=thailand" target="_blank" rel="noreferrer">知识共享</a><a data-platform-page="/meeting-trail?project=thailand" href="https://localhost:3333/meeting-trail?project=thailand" target="_blank" rel="noreferrer">议事航迹</a></nav>
-  <button class="icon-button menu-button" data-action="sidebar" title="打开项目导航" aria-label="打开项目导航">☰</button><span class="preview-tag">本地预览</span>
+  <div class="handover-header-tools">
+    <project-local-conditions hidden></project-local-conditions>
+    <button class="icon-button menu-button" data-action="sidebar" title="打开项目导航" aria-label="打开项目导航">☰</button><span class="preview-tag">本地预览</span>
+  </div>
 </header>
 <div class="workspace">
   <aside class="sidebar" id="sidebar"><div class="side-title">项目工作台<button class="icon-button mobile-close" data-action="sidebar" title="关闭项目导航" aria-label="关闭项目导航">×</button></div><nav aria-label="项目导航"><div id="workspacePages"></div><div id="ganttStages"><h2>接维阶段</h2><div id="sideStages"></div></div></nav><footer><i></i>泰国 · Araya</footer></aside>

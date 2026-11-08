@@ -65,3 +65,35 @@ test('scoped API defaults come from session and unconnected Malaysia task data n
   const plan = response(); await f.handler(request('/api/base-sync', cookie), plan);
   assert.equal(plan.status, 409); assert.match(JSON.parse(plan.body).error, /未接入/);
 });
+
+test('project switch updates the existing session and routes a legacy Thai link to Malaysia', async t => {
+  const f = fixture(t), logged = await login(f.service, 'th-001'), cookie = `__Host-vnet_session=${logged.token}`;
+  const url = '/api/auth/project?project=my-001&returnTo=' + encodeURIComponent('/project-management?project=th-001&view=handover');
+  const send = async (sessionCookie, source, csrf, target = url, method = 'POST') => {
+    const req = request(target, sessionCookie), res = response();
+    Object.assign(req, { method, headers: { ...req.headers, origin: source, 'x-csrf-token': csrf } });
+    await f.handler(req, res);
+    return res;
+  };
+  assert.equal((await send('', origin, logged.csrf)).status, 401);
+  assert.equal((await send(cookie, 'https://other.invalid', logged.csrf)).status, 403);
+  assert.equal((await send(cookie, origin, 'wrong')).status, 403);
+  assert.equal((await send(cookie, origin, logged.csrf, url, 'GET')).status, 405);
+  assert.equal((await send(cookie, origin, logged.csrf, url.replace('my-001', 'unknown'))).status, 400);
+  assert.equal(f.service.session(logged.token).projectId, 'th-001');
+
+  const switched = await send(cookie, origin, logged.csrf);
+  assert.equal(switched.status, 200);
+  assert.deepEqual(JSON.parse(switched.body), { ok: true, destination: '/project-management?project=my-001' });
+  const current = new AuthService({ dir: f.dir, config }).session(logged.token);
+  assert.equal(current.projectId, 'my-001');
+  assert.equal(current.csrf, logged.csrf);
+  assert.equal(Object.keys(f.service.state.events).length, 1);
+  assert.equal(switched.headers['set-cookie'], undefined);
+
+  const oldView = response();
+  await f.handler(request('/project-management?project=th-001&view=handover', cookie), oldView);
+  assert.equal(oldView.headers.location, '/project-management?project=my-001');
+  const back = await send(cookie, origin, logged.csrf, '/api/auth/project?project=th-001&returnTo=%2Fknowledge-sharing');
+  assert.equal(JSON.parse(back.body).destination, '/knowledge-sharing?project=thailand');
+});

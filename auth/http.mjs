@@ -4,6 +4,7 @@ import path from 'node:path';
 import { authError, requestOrigin, safeReturnTo } from './service.mjs';
 import { isLocalConfigurationRequest } from '../application-settings.mjs';
 import { isAdministrator } from './admin-role.mjs';
+import { readProjectWeather } from './project-weather.mjs';
 import { timingSafeEqual } from 'node:crypto';
 import { platformProjects, projectById, projectParameter, projectDestination } from '../src/project-context-model.mjs';
 
@@ -28,7 +29,7 @@ function loginTarget(value){
   return url.pathname==='/'?(url.search?'/research'+url.search+url.hash:'/project-management'):target;
 }
 
-export function createAuthHandler({ service, root, canBootstrap = () => true, access = new PageAccess({auth:service}) }) {
+export function createAuthHandler({ service, root, canBootstrap = () => true, access = new PageAccess({auth:service}), readWeather = readProjectWeather }) {
   const publicFiles = {
     '/auth/login.js': ['auth/web/login.js', 'text/javascript'],
     '/auth/login.css': ['auth/web/login.css', 'text/css'],
@@ -54,7 +55,7 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
       if (url.pathname === '/api/auth/session') {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
         const loginEnabled = (service.config().oauthOrigins || service.config().origins).includes(origin);
-        json(res, 200, { ok: true, authenticated: !!session, user: session ? { name: session.user.name } : null, project, projects: platformProjects.map(({id,name})=>({id,name})), csrf: session?.csrf, auditStatus: service.auditStatus(token), ...(session ? access.summary(session.user) : {}), isAdmin, canConfigure: isAdmin || localBootstrap, loginEnabled }); return true;
+        json(res, 200, { ok: true, authenticated: !!session, user: session ? { name: session.user.name } : null, project, projects: platformProjects.map(({id,name})=>({id,name})), csrf: session?.csrf, expiresInMs: session?.expiresInMs, auditStatus: service.auditStatus(token), ...(session ? access.summary(session.user) : {}), isAdmin, canConfigure: isAdmin || localBootstrap, loginEnabled }); return true;
       }
       if (url.pathname === '/api/auth/feishu/authorize') {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
@@ -94,7 +95,34 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
       if (url.pathname === '/api/application-settings' && localBootstrap) return false;
       if (!session) {
         if (['GET', 'HEAD'].includes(req.method) && ['/', '/research', '/index.html', '/project-management', '/knowledge-sharing', '/meeting-trail', '/staffing-reserve', '/cross-coordination', '/admin'].includes(url.pathname)) redirect(res, `/login?returnTo=${encodeURIComponent(safeReturnTo(url.pathname === '/index.html' ? '/project-management' : url.pathname + url.search + url.hash))}`);
-        else json(res, 401, { ok: false, error: '请先使用飞书登录。', loginUrl: `/login?returnTo=${encodeURIComponent(safeReturnTo(req.headers.referer ? new URL(req.headers.referer).pathname : '/'))}` });
+        else {
+          res.setHeader('X-Vnet-Login-Required', '1');
+          json(res, 401, { ok: false, error: '请先使用飞书登录。', loginUrl: `/login?returnTo=${encodeURIComponent(safeReturnTo(req.headers.referer ? new URL(req.headers.referer, origin).pathname : '/'))}` });
+        }
+        return true;
+      }
+      if (url.pathname === '/api/auth/activity') {
+        if (req.method !== 'POST') throw authError('不支持此请求方法。', 405);
+        sameOrigin(req, origin);
+        const expiresInMs = service.recordActivity(token, req.headers['x-csrf-token']);
+        json(res, 200, { ok: true, expiresInMs });
+        return true;
+      }
+      if (url.pathname === '/api/auth/project') {
+        if (req.method !== 'POST') throw authError('不支持此请求方法。', 405);
+        sameOrigin(req, origin);
+        if (url.searchParams.getAll('project').length !== 1) throw authError('请选择一个项目。');
+        const destination = access.destination(loginTarget(url.searchParams.get('returnTo')), session.user);
+        if (!destination) throw authError('尚未分配页面访问权限，请联系管理员。', 403);
+        const selected = service.switchProject(token, req.headers['x-csrf-token'], url.searchParams.get('project'));
+        json(res, 200, { ok: true, destination: projectDestination(destination, selected) });
+        return true;
+      }
+      if (url.pathname === '/api/project-weather') {
+        if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
+        const location = project?.location;
+        const weather = Number.isFinite(location?.latitude) ? await readWeather(location) : null;
+        json(res, 200, { ok: true, weather });
         return true;
       }
       if ((url.pathname === '/admin' || url.pathname.startsWith('/api/admin/') || url.pathname === '/api/application-settings' || url.pathname === '/auth/web/admin.html') && !isAdmin) throw authError('仅管理员可访问。', 403);

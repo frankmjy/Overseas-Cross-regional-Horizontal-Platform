@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 const files = ['server.mjs', 'base-sync.mjs', 'team-organization.mjs', 'src/team-organization.js', 'src/diagram-canvas.js', 'src/diagram-viewer.js', 'src/task-editor.js', 'src/gantt-today.js', 'application-settings.mjs', 'src/data.js', 'src/app.js', 'src/platform-navigation.js', 'src/platform-account.js', 'src/application-settings.js', 'auth/web/login.js', ...['auth', 'project-tasks', 'research', 'research/web', 'knowledge', 'knowledge/web', 'scripts', 'tests'].flatMap(dir => readdirSync(dir).filter(f => /\.mjs$/.test(f)).map(f => `${dir}/${f}`))];
 files.push('src/gantt-pan.js');
-files.push('src/platform-context.js','src/project-context-model.mjs');
+files.push('src/platform-context.js','src/project-context-model.mjs','src/project-local-conditions.js');
 files.push('src/admin.js','src/admin-settings.js','src/admin-permissions.js','src/page-permissions.js');
 files.push('src/project-focus.js');
 files.push('src/project-workspace.js');
