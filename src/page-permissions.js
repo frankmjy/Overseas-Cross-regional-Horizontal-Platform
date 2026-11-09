@@ -2,7 +2,7 @@ const pages={'/project-management':'projects','/index.html':'projects','/':'rese
 const writes={
  materials:'#newMaterial,#pendingWrites,[data-edit-material]',
  staffing:'[data-edit],#retryOperation,#refresh',
- knowledge:'[data-new-document],[data-new-document-category],[data-document-retry],[data-document-upload],[data-document-operations]',
+ knowledge:'[data-edit-document],[data-new-document],[data-new-document-category],[data-document-retry],[data-document-upload],[data-document-operations]',
  meetings:'[data-new-meeting],[data-meeting-retry]',
  research:'[data-new-topic],[data-new-question],[data-new-content],[data-edit-content],[data-list-edit],[data-add-finding],[data-upload-task],[data-delete-question],[data-restore-question],[data-retry],[data-discard],[data-upload-retry]',
  projects:'#newTaskButton,[data-edit-task],[data-deliver-task],[data-complete-task],[data-delete-task],[data-milestone-task],[data-priority-task],[data-operation-retry],[data-operation-discard],[data-operation-upload],[data-restore-task],[data-priority-new],[data-priority-edit]'

@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "release": "20261109.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261108.1",
+  "candidateSha256": "9b8957edf86d62616285c44b960d8ac98fb232fc2f979df7b242c534787944a8",
+  "manifestSha256": "23643f8fc7aabf4110a111ad6dd0ce78e83e8fc6c7d786096df8d4fd52f21e12",
+  "payloadSha256": "5324f09e59169f122177f4ea11f71385d76ac9a49dd2c985bc1a653ce3f328ac",
+  "filesChanged": [
+    "server.mjs",
+    "src/page-permissions.js",
+    "src/project-local-conditions.css",
+    "src/project-local-conditions.js",
+    "knowledge/config.json",
+    "knowledge/directory.mjs",
+    "knowledge/document-fields.mjs",
+    "knowledge/document-http.mjs",
+    "knowledge/document-service.mjs",
+    "knowledge/library-model.mjs",
+    "knowledge/lifecycle.mjs",
+    "knowledge/model.mjs",
+    "knowledge/service.mjs",
+    "knowledge/web/app.mjs",
+    "knowledge/web/document-editor.mjs",
+    "knowledge/web/index.html",
+    "knowledge/web/library-ui.mjs",
+    "knowledge/web/library.css"
+  ],
+  "features": [
+    "区域协作站与专表",
+    "知识资料编辑及链接专业",
+    "资料类型与专业分组",
+    "同步任务图标、弹窗退出与共用顶栏"
+  ],
+  "checks": {
+    "businessTests": 475,
+    "syntaxFiles": 292,
+    "isolatedBrowser": true,
+    "knowledgeSources": {
+      "ok": true,
+      "identityVerified": true,
+      "verifiedSchemas": 5,
+      "regionalRecords": 0,
+      "actualService": true,
+      "loadedSources": 15,
+      "businessWrites": 0
+    },
+    "onlineBrowser": {
+      "passed": true,
+      "separateRefresh": true,
+      "transformerLinkPrefilled": true,
+      "syncTaskDialog": true,
+      "regionSourceLinkVerified": true,
+      "transformerDisciplinePrefilled": true,
+      "region": [
+        "区域报告",
+        "办公制度",
+        "行政事务"
+      ],
+      "browser": "Chrome",
+      "businessWrites": 0,
+      "regionalReportForm": [
+        "区域周报",
+        "区域月报",
+        "专题报告"
+      ],
+      "authenticatedProduction": true,
+      "regionalReportsEmpty": true,
+      "materialsGroupsVisible": true
+    },
+    "handoverRecords": 365,
+    "sourceIdsPreserved": true,
+    "materialRecords": 290,
+    "materialFields": 27,
+    "exactDeployedFilesVerified": 366,
+    "environmentPreserved": true,
+    "independentSessionSurvivalSeconds": 112,
+    "releaseMatrixReusedFrom": "20261108.1",
+    "nativeRollbackReusedFrom": "20261108.1",
+    "packagingGateTests": 5
+  },
+  "coordination": {
+    "ownerThread": "01a19fde-2795-7253-b665-fa7402acc5cc",
+    "handoffCount": 1,
+    "tasks": 4,
+    "runtimeChanges": 18,
+    "installerChanged": false,
+    "dependenciesChanged": false
+  },
+  "deferred": [
+    {
+      "item": "旧版重点卡点关联迁移",
+      "reason": "历史关系需独立迁移，保留既有记录；与本批知识库无依赖"
+    },
+    {
+      "item": "调研总览下钻优化",
+      "reason": "独立页面体验优化，与本批知识库无依赖"
+    }
+  ],
+  "limitations": [
+    "旧BAT配置工具在旧基线与本批均复现既有授权探测兼容问题，独立登记",
+    "生产验证使用正式记录只读回显，写回在隔离适配器中验收"
+  ],
+  "sourceArchive": "Exact frozen deployed runtime, matching tests and release tools. Commit SHA and remote confirmation are bound to candidate hashes in local archive receipt.",
+  "recordedAt": "2026-11-09T06:58:02.527Z"
+}

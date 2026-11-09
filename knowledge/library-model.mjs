@@ -1,5 +1,11 @@
 import {matchesDocumentProject} from '../src/project-context-model.mjs';
 const text=value=>Array.isArray(value)?value.map(text).filter(Boolean).join('、'):value&&typeof value==='object'?String(value.name||value.text||''):String(value??'').trim();
+export const documentSpecialties=Object.freeze(['电气','暖通','弱电','消防','建筑','EHS','管理','综合']);
+export const regionalOfficeSections=Object.freeze([
+ {id:'regional:reports',name:'区域报告',natures:['区域周报','区域月报','专题报告']},
+ {id:'regional:policies',name:'办公制度',natures:['办公制度']},
+ {id:'regional:administration',name:'行政事务',natures:['行政事务']},
+]);
 export const libraryScopes=Object.freeze([
  {id:'project',name:'项目资料'},
  {id:'shared',name:'海外共用'},
@@ -24,6 +30,7 @@ export function libraryScopeFor(source,cells={}){
 }
 export function withLibraryMetadata(document,source={}){
  if(!document)return document;
+ if(source.regionalOffice||document.libraryScope==='regional')return {...document,libraryScope:'regional',projectScope:''};
  const inferred=source.kind||(['standards','ehs','experience'].includes(document.category)?{standards:'reference',ehs:'ehs',experience:'lesson'}[document.category]:'index');
  const projectScope=libraryProjectScope({...source,kind:inferred},{Project:document.projectScope??(document.sourceId==='tblIJiG3OE2QGTm8'?document.tags?.at(-1)||'':''),'Document Title':document.title});
  const scope=libraryScopeFor({...source,kind:inferred},{Project:projectScope,'Document Title':document.title});

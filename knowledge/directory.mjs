@@ -1,4 +1,5 @@
 import {handoverStages,operationsCategories,documentLifecycle} from './lifecycle.mjs';
+import {regionalOfficeSections} from './library-model.mjs';
 
 export const builtinDirectory=Object.freeze([
  ...handoverStages.map(s=>({id:'handover:'+s.step,name:s.name,chapter:'handover',parentId:'',project:'shared',stage:s.step,builtin:true})),
@@ -11,6 +12,7 @@ export function visibleDirectory(nodes=[],project){
 }
 export function rootDirectory(node,nodes){return node?.parentId?nodes.find(n=>n.id===node.parentId):node;}
 export function documentDirectory(document){
+ if(document.libraryScope==='regional')return regionalOfficeSections.find(section=>section.natures.includes(document.nature))?.id||'';
  if(document.directoryId)return document.directoryId;
  const l=documentLifecycle(document);
  return l.chapter==='handover'&&l.stage!==''&&l.stage!==undefined?'handover:'+l.stage:l.chapter==='operations'&&l.category?'operations:'+l.category:'';

@@ -488,7 +488,7 @@ const assignments = {
   'tblIJiG3OE2QGTm8:reczz28OUtPAWO5I':'S2.3.1',
 };
 export function documentLifecycle(document) {
-  if (['domestic','general'].includes(document.libraryScope)) return {chapter:'',path:[]};
+  if (['domestic','general','regional'].includes(document.libraryScope)) return {chapter:'',path:[]};
   const explicit = document.lifecycle || {};
   if ((document.directoryId||explicit.directoryId)&&['handover','operations'].includes(explicit.chapter))return {...explicit,path:[explicit.chapter==='handover'?'接维篇':'运维篇']};
   if (explicit.chapter === 'handover' && handoverStages.some(stage => stage.step === String(explicit.stage))) return {chapter:'handover',stage:String(explicit.stage),group:'',folder:'',path:['接维篇',handoverStages.find(stage=>stage.step===String(explicit.stage)).name]};

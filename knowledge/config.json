@@ -647,6 +647,23 @@
         }
       },
       "writable": true
+    },
+    {
+      "id": "tblHa1UFDzN9doob",
+      "name": "01.07 Regional Office Hub（区域协作站）",
+      "kind": "index",
+      "category": "index",
+      "regionalOffice": true,
+      "writable": true,
+      "fields": {
+        "Document Title": {"id": "fldc1T8nKb", "name": "Document Title（文档名称）"},
+        "Topic": {"id": "fldbFRHxsd", "name": "Topic（主题分类）"},
+        "Document Link": {"id": "fldBacH4dT", "name": "Document Link（文档链接）"},
+        "Shared At": {"id": "fldldYQx2E", "name": "Shared At（分享时间）"},
+        "Attachments": {"id": "fldAeexLVB", "name": "Attachments（附件）"},
+        "Notes": {"id": "fldnRjGxq2", "name": "Notes（备注）"},
+        "Discipline": {"id": "fldG2NFBGt", "name": "Discipline（专业）"}
+      }
     }
   ],
   "architectureUrl": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=ldxpV5M0qhI0IgVy",

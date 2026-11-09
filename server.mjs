@@ -77,7 +77,7 @@ const minutesService=new MinutesService({dir:knowledgeDir,config:knowledgeConfig
 const handleMeeting=createMeetingHandler({service:meetingService,minutes:minutesService});
 const documentService=new DocumentService({dir:knowledgeDir,config:knowledgeConfig,isMaintenance:()=>isMaintenance()||applicationSettings.saving});
 documentService.init();documentService.start();
-const handleDocuments=createDocumentHandler({service:documentService});
+const handleDocuments=createDocumentHandler({service:documentService,snapshot:()=>knowledgeService.snapshot()});
 const handleKnowledge = createKnowledgeHandler({ root: ROOT, service: knowledgeService,meetings:meetingService,documents:documentService });
 let planRequests = 0;
 const projectTaskService = new ProjectTaskService({ dir: process.env.PROJECT_TASK_DATA_DIR || path.join(ROOT, '.runtime/project-tasks'), isMaintenance: () => isMaintenance() || applicationSettings.saving });

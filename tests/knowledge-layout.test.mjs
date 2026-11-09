@@ -5,12 +5,12 @@ import vm from 'node:vm';
 import { projects, filterDocuments, filterMeetings, meetingMetrics } from '../knowledge/web/data.mjs';
 import { renderLibraryOverview } from '../knowledge/web/overview.mjs';
 import { meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups } from '../knowledge/web/meetings-overview.mjs';
-import {libraryScopes,libraryMetrics,libraryDocuments} from '../knowledge/library-model.mjs';
+import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections} from '../knowledge/library-model.mjs';
 import {handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments} from '../knowledge/lifecycle.mjs';
 import {visibleDirectory,directoryDocuments} from '../knowledge/directory.mjs';
 
 async function fixture(overrides = {}) {
-  const uiContext=vm.createContext({libraryScopes,libraryMetrics,libraryDocuments,handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,URL,URLSearchParams});
+  const uiContext=vm.createContext({libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,URL,URLSearchParams});
   vm.runInContext((await readFile(new URL('../knowledge/web/library-ui.mjs',import.meta.url),'utf8')).replace(/^import .+;\r?\n/gm,'').replace(/^export /gm,''),uiContext);
   const nodes = new Map();
   const document = {
@@ -55,6 +55,37 @@ test('compact knowledge layout keeps classification, search and refresh together
   assert.doesNotMatch(f.nodes.get('#results').innerHTML, /详见源表|<p><\/p>/);
 });
 
+test('ordinary cards hide remarks and offer direct edit only for editable records',async()=>{
+ const {table}=await fixture(),document={id:'tbl:rec1',title:'板换',nature:'运维维保需求规范',note:'中午12点前',links:[{url:'https://example.com/spec'}],edit:{title:'板换'}};
+ const editor=table([document],{editable:true});
+ assert.doesNotMatch(editor,/中午12点前/);
+ assert.match(editor,/data-edit-document="tbl:rec1"/);
+ assert.match(editor,/data-document="tbl:rec1"/);
+ assert.match(editor,/href="https:\/\/example\.com\/spec"/);
+ assert.doesNotMatch(table([document]),/data-edit-document/);
+ assert.doesNotMatch(table([{...document,sync:{status:'syncing'}}],{editable:true}),/data-edit-document/);
+ const collection=table([{...document,members:[document],note:'规范覆盖范围'}],{editable:true});
+ assert.match(collection,/规范覆盖范围/);
+ assert.doesNotMatch(collection,/data-edit-document/);
+});
+
+test('regional office shows its own sections and table even when a section is empty',async()=>{
+ const base={libraryScope:'regional',links:[],tags:[],sections:[]};
+ const reports={...base,id:'weekly',title:'第32周区域周报',nature:'区域周报'};
+ const policy={...base,id:'policy',title:'办公管理办法',nature:'办公制度'};
+ const f=await fixture({documents:[reports,policy],feed:{state:'ready',errors:[],sources:[{regionalOffice:true,url:'https://example.com/regional-base'}]}});
+ f.render('library',{scope:'regional',directory:'regional:reports'});
+ const page=f.nodes.get('#app').innerHTML;
+ assert.match(page,/区域协作站/);
+ for(const section of regionalOfficeSections)assert(page.includes(`data-directory-node="${section.id}"`));
+ assert.match(page,/href="https:\/\/example\.com\/regional-base"/);
+ assert.match(f.nodes.get('#results').innerHTML,/第32周区域周报/);
+ assert.doesNotMatch(f.nodes.get('#results').innerHTML,/办公管理办法/);
+ f.render('library',{scope:'regional',directory:'regional:administration'});
+ assert.match(f.nodes.get('#app').innerHTML,/href="https:\/\/example\.com\/regional-base"/);
+ assert.equal(f.nodes.get('#doc-count').textContent,'0 份');
+});
+
 test('actual knowledge page exposes lifecycle chapters and handbook stages instead of ownership as primary cards', async () => {
   const f = await fixture(); f.render();
   const page=f.nodes.get('#app').innerHTML;
@@ -83,6 +114,26 @@ test('compact material cards omit empty metadata and collapsed groups preserve t
   const collapsed=f.table(rows,{collapsedGroups:['设备技术规格']});
   assert.match(collapsed,/aria-expanded="false"/);assert.match(collapsed,/设备技术规格<\/span><b>1<\/b>/);
   assert.doesNotMatch(collapsed,/class="material-card"/);
+});
+
+test('equipment specialty groups have independent collapse states and count only open cards for pagination', async () => {
+  const {table}=await fixture();
+  const rows=[
+    {id:'power',title:'电力方舱',nature:'运维维保需求规范',specialty:'电气'},
+    {id:'hvac',title:'冷塔',nature:'运维维保需求规范',specialty:'暖通'},
+    {id:'spec',title:'变压器规格',nature:'设备技术规格',specialty:'电气'},
+    {id:'unknown',title:'待分类设备',nature:'设备技术规格'},
+  ];
+  const full=table(rows);
+  assert.equal((full.match(/class="material-specialty"/g)||[]).length,4);
+  assert.match(full,/未标注/);
+  const key='specialty:'+JSON.stringify(['运维维保需求规范','电气']);
+  const limited=table(rows,{limit:2,collapsedGroups:[key]});
+  assert.match(limited,/aria-expanded="false"[^>]*>[^]*?电气<\/span><b>1<\/b>/);
+  assert.doesNotMatch(limited,/电力方舱|待分类设备/);
+  assert.match(limited,/冷塔/);
+  assert.match(limited,/变压器规格/);
+  assert.match(limited,/加载更多（2 \/ 3）/);
 });
 
 test('compact meetings follow login project and omit empty summary filler', async () => {
