@@ -41,7 +41,7 @@ const state = { mode: ['gantt', 'list', 'milestones', 'calendar'].includes(query
   page:pageDefinitions.some(p=>p.id===query.get('tab'))?query.get('tab'):query.get('mode')==='milestones'?'milestones':query.get('mode')==='gantt'?'gantt':'overview',
   overviewKeyword:'', overviewDay:'', stage: Number(query.get('stage')) || 0, keyword: query.get('q') || '', category: '', status: '', review: false, unscheduled: false,
   range: 'project', scale: 'fit', open: new Set(), calendar: today().slice(0, 7),week:today(),reviewMonth:today().slice(0,7),weeklyView:'current',periodPage:1 };
-let model, phase = 'idle', searchTimer, focusedBeforeDialog,lastRead=0,organization=null,organizationError='',organizationLoading=false;
+let model, phase = 'idle', searchTimer, focusedBeforeDialog,lastRead=0,retryReadAt=0,organization=null,organizationError='',organizationLoading=false;
 state.mode=state.page==='milestones'?'milestones':'gantt';
 const dialog = $('#detailDialog');
 const editor=createHandoverEditor({dialog:$('#taskEditorDialog'),getModel:()=>model,getContext:()=>state,api:securePage?api:'/api/handover-plan',onAccepted:data=>{model=data;render();if(data.needsRefresh)load(false,true);},onMessage:showMessage});
@@ -53,7 +53,7 @@ const inlineEntry=createInlineTaskEntry({root:document,getModel:()=>model,submit
  model=data;Object.assign(state,{keyword:'',status:'',review:false,unscheduled:false});
  const created=model.records.find(r=>r.id===data.operation?.recordId),parent=model.parents.find(p=>p.id===(created?.level==='任务组'?created.id:parentId));if(parent){state.open.add(`s:${parent.stage}`);state.open.add(`c:${parent.stage}:${parent.category}`);state.open.add(`g:${parent.stage}:${parent.code} ${parent.title}`);}render();if(data.needsRefresh)load(false,true);
 }});
-function showMessage(message,error=false){$('#notice').hidden=false;$('#notice').classList.toggle('error',error);$('#notice').textContent=message;}
+function showMessage(message,error=false){const notice=$('#notice');delete notice.dataset.planRead;notice.hidden=false;notice.classList.toggle('error',error);notice.textContent=message;}
 function loginUrl(){return 'https://localhost:3333/project-management?view=handover&tab='+state.page;}
 function setPage(page){if(!pageDefinitions.some(p=>p.id===page))return;state.page=page;state.mode=page==='milestones'?'milestones':'gantt';resetFilters();state.periodPage=1;setOpen();render();$('.workspace').classList.remove('nav-open');if(page==='organization')loadOrganization();}
 async function loadOrganization(){if(organizationLoading)return;if(!securePage){organizationError='请在登录后查看当前项目组织。';renderBoard();return;}organizationLoading=true;organizationError='';renderBoard();try{const response=await fetch('/api/staffing',{signal:AbortSignal.timeout(45000)}),data=await response.json();if(!response.ok)throw Error(data.error);organization=organizationData(data);}catch(e){organizationError=e.message||'项目组织未能读取，请重试。';}finally{organizationLoading=false;if(state.page==='organization')renderBoard();}}
@@ -243,23 +243,31 @@ function dayDialog(value) {
 }
 async function load(refresh = false,silent=false) {
   if (phase === 'loading') return;
+  const notice = $('#notice');
+  let reading = true;
   phase = 'loading'; $('.refresh').disabled = true; $('#sourceStamp').textContent = '正在读取新表';
   if (!model) { $('#loadStatus').hidden = false; $('#loadStatus').innerHTML = '<span class="spinner"></span>正在读取接维任务'; }
-  else if(!silent) { $('#notice').hidden = false; $('#notice').classList.remove('error'); $('#notice').textContent = '正在重新读取项目数据…'; }
+  else if(!silent) { showMessage('正在重新读取项目数据…'); notice.dataset.planRead = 'true'; }
   try {
     const url=securePage?api+(refresh?'/refresh':''):refresh?'/api/refresh':'/api/plan';
     const response = await fetch(url, { method: refresh ? 'POST' : 'GET',headers:securePage&&refresh?{'Content-Type':'application/json'}:undefined,body:securePage&&refresh?'{}':undefined, signal: AbortSignal.timeout(45000), cache: 'no-store' });
-    const data = await response.json(); if (!response.ok || !Array.isArray(data.tasks) || data.source?.table !== 'tblgQsrBMFd9eeuX') throw Error(data.error || '测试数据源未通过校验。');
+    const data = await response.json();
+    reading = false;
+    if (!response.ok || !Array.isArray(data.tasks) || data.source?.table !== 'tblgQsrBMFd9eeuX') throw Error(data.error || '测试数据源未通过校验。');
+    retryReadAt = 0;
+    if (notice.dataset.planRead) { notice.hidden = true; delete notice.dataset.planRead; }
     if(data.ready===false){model=data;phase='ready';lastRead=Date.now();$('#loadStatus').hidden=false;$('#workspaceData').hidden=true;$('#loadStatus').innerHTML=data.error?`<span>${esc(data.error)}</span><button class="text-button" data-action="refresh">重试连接</button>`:'<span class="spinner"></span>正在读取正式任务';return;}
-    const initial = !model,wasPending=model?.numberingPending||model?.operations?.some(o=>o.status!=='success'),changed=initial||data.revision!==model.revision||data.source.fetchedAt!==model.source.fetchedAt||today()!==model.clockDay;model=data;model.clockDay=today();phase = 'ready';lastRead=Date.now();$('#loadStatus').hidden = true; $('#workspaceData').hidden = false;if(!silent)$('#notice').hidden = true;
+    const initial = !model,wasPending=model?.numberingPending||model?.operations?.some(o=>o.status!=='success'),changed=initial||data.revision!==model.revision||data.source.fetchedAt!==model.source.fetchedAt||today()!==model.clockDay;model=data;model.clockDay=today();phase = 'ready';lastRead=Date.now();$('#loadStatus').hidden = true; $('#workspaceData').hidden = false;
     if(wasPending&&!data.numberingPending&&!data.operations?.some(o=>o.status!=='success'))showMessage('同步完成。');
     if (initial) setOpen(hasFilter());if(changed||!silent)render();if(initial&&state.page==='organization')loadOrganization();
     if(data.ready===false&&data.error)showMessage(data.error,true);if(data.numberingError)showMessage(data.numberingError,true);
   } catch (error) {
     phase = 'error';
+    lastRead = Date.now();
+    retryReadAt = reading && (error.name === 'TimeoutError' || error instanceof TypeError) ? lastRead + 10000 : 0;
     const message = error.name === 'TimeoutError' ? '读取超时，请重试。' : error.message || '未取得新表数据，请重试。';
     if (!model) { $('#loadStatus').innerHTML = `${icon('empty')}<span>${esc(message)}</span><button class="text-button" data-action="refresh">重试</button>`; }
-    else { $('#notice').hidden = false; $('#notice').classList.add('error'); $('#notice').innerHTML = `<span>${esc(message)} 保留上次成功数据。</span><button class="text-button" data-action="refresh">重试</button>`; render(); }
+    else { notice.hidden = false; notice.dataset.planRead = 'true'; notice.classList.add('error'); notice.innerHTML = `<span>${esc(message)} 保留上次成功数据。</span><button class="text-button" data-action="refresh">重试</button>`; render(); }
   } finally { $('.refresh').disabled = false; }
 }
 
@@ -324,6 +332,11 @@ dialog.addEventListener('cancel', () => focusedBeforeDialog?.focus?.());
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (model && state.page === 'gantt') renderBoard(); }, 100); });
 let polling=false;
-setInterval(async()=>{if(document.visibilityState!=='visible'||!model||phase==='loading'||polling||inlineEntry.active)return;if(securePage&&(model.numberingPending||(model.operations||[]).some(o=>o.status!=='success'))){polling=true;try{const response=await fetch(api+'/operations',{signal:AbortSignal.timeout(7000)}),data=await response.json();if(!response.ok)throw Error();if(data.revision!==model.revision)await load(false,true);}catch{showMessage('同步状态暂未更新，已保存的修改会保留。',true);}finally{polling=false;}}else if(model.ready===false||Date.now()-lastRead>60000)load(false,true);},2000);
+setInterval(async()=>{
+  if(document.visibilityState!=='visible'||phase==='loading'||polling||inlineEntry.active)return;
+  if(retryReadAt){if(Date.now()>=retryReadAt)await load(false,true);return;}
+  if(!model)return;
+  if(securePage&&(model.numberingPending||(model.operations||[]).some(o=>o.status!=='success'))){polling=true;try{const response=await fetch(api+'/operations',{signal:AbortSignal.timeout(7000)}),data=await response.json();if(!response.ok)throw Error();if(data.revision!==model.revision)await load(false,true);}catch{showMessage('同步状态暂未更新，已保存的修改会保留。',true);}finally{polling=false;}}else if(model.ready===false||Date.now()-lastRead>60000)load(false,true);
+},2000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&model&&!inlineEntry.active)load(false,true);});
 load();

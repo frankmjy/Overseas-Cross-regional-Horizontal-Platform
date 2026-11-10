@@ -1,12 +1,13 @@
 import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections} from '/knowledge/library-model.mjs';
-import {handoverStages,lifecycleDocuments} from '/knowledge/lifecycle.mjs';
-import {visibleDirectory,directoryDocuments} from '/knowledge/directory.mjs';
+import {handoverStages,documentLifecycle,lifecycleDocuments} from '/knowledge/lifecycle.mjs';
+import {visibleDirectory,directoryDocuments,documentDirectory} from '/knowledge/directory.mjs';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const url=value=>{try{const parsed=new URL(value);return parsed.protocol==='https:'&&!parsed.username&&!parsed.password?parsed.href:'';}catch{return '';}};
 const paths={info:'<circle cx="12" cy="12" r="9"/><path d="M12 10v7m0-11v1"/>',external:'<path d="M14 3h7v7m0-7L10 14"/><path d="M10 3H5v18h16V14"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',book:'<path d="M12 5C9 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1Zm0 0v15"/>',folder:'<path d="M3 7V5h6l2 2h10v13H3Z"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',file:'<path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8m-8 4h6"/>',chevron:'<path d="m9 5 7 7-7 7"/>',tool:'<path d="m14 6 4 4 3-3a6 6 0 0 1-8 8L6 22l-4-4 7-7a6 6 0 0 1 8-8Z"/>'};
 const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]||paths.file}</svg>`;
 paths.edit='<path d="m15 5 4 4M4 20l4.5-1 12-12a1.4 1.4 0 0 0 0-2l-1.5-1.5a1.4 1.4 0 0 0-2 0l-12 12Z"/>';
 paths.taskList='<path d="m3 6 1.5 1.5L7 5m-4 7 1.5 1.5L7 11m-4 7 1.5 1.5L7 17M11 6h10m-10 6h10m-10 6h10"/>';
+paths.plus='<path d="M12 5v14M5 12h14"/>';
 const natureOf=document=>document.nature||document.subcategory||'其他';
 const natureOrder=['手册','项目规划','运维维保需求规范','设备技术规格','培训','招采','调研','规范标准','EHS参考','经验案例','其他'];
 const natureCompare=(a,b)=>(natureOrder.includes(a)?natureOrder.indexOf(a):99)-(natureOrder.includes(b)?natureOrder.indexOf(b):99)||a.localeCompare(b,'zh-CN');
@@ -58,8 +59,17 @@ function groupBy(rows,keyOf){
  }
  return [...groups];
 }
-function groupToggle(key,label,count,collapsed){
- return `<button class="document-group-toggle" data-document-group="${esc(key)}" aria-expanded="${!collapsed}">${icon('chevron')}<span>${esc(label)}</span><b>${count}</b></button>`;
+function groupHeading(key,label,count,collapsed,defaults){
+ return `<button class="document-group-toggle" data-document-group="${esc(key)}" aria-expanded="${!collapsed}">${icon('chevron')}<span>${esc(label)}</span><b>${count}</b></button>${defaults?`<button type="button" class="document-group-add" data-group-add="${esc(JSON.stringify(defaults))}" title="新增资料" aria-label="在${esc(label)}新增资料">${icon('plus')}</button>`:''}`;
+}
+function groupDefaults(nature,rows,selection,specialty){
+ const common=read=>{const value=read(rows[0]);return value&&rows.every(row=>read(row)===value)?value:undefined;};
+ return {nature,
+  scope:['project','shared','domestic','general','regional'].includes(selection.scope)?selection.scope:selection.ownership||common(row=>row.libraryScope),
+  chapter:['handover','operations'].includes(selection.scope)?selection.scope:common(row=>documentLifecycle(row).chapter),
+  stage:selection.stage||common(row=>documentLifecycle(row).stage),
+  directoryId:selection.directory||common(documentDirectory),
+  specialty:documentSpecialties.includes(specialty)?specialty:undefined};
 }
 function materialCard(document,editable,grouped){
  const destination=document.links?.map(link=>url(link.url)).find(Boolean);
@@ -68,7 +78,7 @@ function materialCard(document,editable,grouped){
  const editableCard=canEditDocument(document,editable);
  return `<article class="material-card"${editableCard?' data-card-edit':''}><span class="material-file-icon${document.members?' is-collection':''}">${icon(document.members?'folder':'file')}</span><div class="material-card-content">${title}${document.members&&document.note?`<p class="material-note" title="${esc(document.note)}">${esc(document.note)}</p>`:''}${document.date||specialties.length||document.members||document.sync||(editableCard&&!destination)?`<div class="material-meta">${document.date?`<time>${esc(document.date)}</time>`:''}${specialties.length?`<span title="${esc(specialties.join(' / '))}">${esc(specialties.slice(0,3).join(' / '))}${specialties.length>3?'…':''}</span>`:''}${document.members?`<span>${document.members.length} 条记录</span>`:''}${editableCard&&!destination?'<span class="document-missing">待补</span>':''}${document.sync?`<span class="document-sync ${document.sync.status==='error'?'error':''}" title="${esc(document.sync.error||'')}">${document.sync.status==='success'?'已同步':document.sync.uploads?.some(u=>!u.ready)?'待上传':document.sync.status==='error'?'同步失败':'同步中'}</span>${document.sync.canRetry&&document.sync.status!=='success'?`<button class="document-sync-retry" data-${document.sync.uploads?.some(u=>!u.ready)?'document-upload':'document-retry'}="${esc(document.sync.id)}">${document.sync.uploads?.some(u=>!u.ready)?'补传附件':'重试'}</button>`:''}`:''}</div>`:''}</div><div class="material-actions"><button data-document="${esc(document.id)}" title="资料详情" aria-label="查看 ${esc(document.title)} 详情">${icon('info')}</button>${editableCard?`<button data-edit-document="${esc(document.id)}" title="编辑资料" aria-label="编辑 ${esc(document.title)}">${icon('edit')}</button>`:destination?`<a href="${esc(destination)}" target="_blank" rel="noopener noreferrer" title="打开资料" aria-label="打开 ${esc(document.title)}">${icon('external')}</a>`:'<span class="document-missing">待补</span>'}</div></article>`;
 }
-export function renderDocumentCards(rows,{limit=60,collapsedGroups=[],editable=false}={}){
+export function renderDocumentCards(rows,{limit=60,collapsedGroups=[],editable=false,selection={}}={}){
  if(!rows.length)return '<p class="library-empty">暂无资料</p>';
  const collapsed=new Set(collapsedGroups);
  let visible=0,expandedCount=0;
@@ -87,10 +97,10 @@ export function renderDocumentCards(rows,{limit=60,collapsedGroups=[],editable=f
     .sort(([a],[b])=>specialtyCompare(a,b)).map(([specialty,items])=>{
      const key='specialty:'+JSON.stringify([name,specialty]);
      const hidden=collapsed.has(key),cards=hidden?'':grid(items,true);
-     return hidden||cards?`<div class="material-specialty"><h4>${groupToggle(key,specialty,items.length,hidden)}</h4>${cards}</div>`:'';
+     return hidden||cards?`<div class="material-specialty"><h4>${groupHeading(key,specialty,items.length,hidden,editable&&groupDefaults(name,items,selection,specialty))}</h4>${cards}</div>`:'';
     }).join(''):grid(documents,false);
   }
-  return isCollapsed||content?`<section class="material-section${isGrouped?' is-specialty-grouped':''}"><h3>${groupToggle(name,name,documents.length,isCollapsed)}</h3>${content}</section>`:'';
+  return isCollapsed||content?`<section class="material-section${isGrouped?' is-specialty-grouped':''}"><h3>${groupHeading(name,name,documents.length,isCollapsed,editable&&groupDefaults(name,documents,selection,selection.specialties?.length===1?selection.specialties[0]:''))}</h3>${content}</section>`:'';
  }).join('');
  return `<div class="material-sections">${body}</div>${expandedCount>visible?`<button class="button" data-more>加载更多（${visible} / ${expandedCount}）</button>`:''}`;
 }

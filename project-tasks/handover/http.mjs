@@ -37,9 +37,10 @@ export function createHandoverHandler({root,service,organization}={}){
     if(!['GET','HEAD'].includes(req.method))throw failure('不支持此请求方法。',405);
     const entry=page?['samples/handover-preview/index.html','text/html']:files.get(url.pathname);let data=await fs.readFile(path.join(root,entry[0]));
     if(page)data=Buffer.from(data.toString('utf8')
-      .replace('href="/styles.css"','href="/handover-preview/styles.css"')
+      .replace('<link rel="stylesheet" href="/styles.css">','<link rel="stylesheet" href="/src/platform-navigation.css"><link rel="stylesheet" href="/handover-preview/styles.css">')
       .replace('src="/app.mjs"','src="/handover-preview/app.mjs"')
-      .replace('<script type="module" src="/handover-preview/app.mjs">','<script type="module" src="/src/project-local-conditions.js"></script>\n<script type="module" src="/handover-preview/app.mjs">')
+      .replace('<script type="module" src="/handover-preview/app.mjs">','<script type="module" src="/src/project-local-conditions.js"></script>\n<script type="module" src="/src/platform-account.js"></script>\n<script type="module" src="/handover-preview/app.mjs">')
+      .replace('<project-local-conditions hidden></project-local-conditions>','<project-local-conditions hidden></project-local-conditions><platform-account></platform-account>')
       .replace('src="/logo.png"','src="/handover-preview/logo.png"')
       .replace('href="/favicon.svg"','href="/handover-preview/favicon.svg"')
       .replaceAll('/project-management-preview','/project-management?project='+binding.project));

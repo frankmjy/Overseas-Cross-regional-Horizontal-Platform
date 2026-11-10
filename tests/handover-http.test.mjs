@@ -29,6 +29,8 @@ test('正式项目入口直接进入新版，兼容旧书签并隔离其他项�
  for(const route of ['/project-management?project=th-001','/project-management?view=handover','/index.html']){
   const response=await fetch(f.origin+route);assert.equal(response.status,200,route);
   const html=await response.text();assert.match(html,/\/handover-preview\/app.mjs/);assert.match(html,/tblgQsrBMFd9eeuX/);
+  assert.match(html,/<platform-account><\/platform-account>/);
+  assert.match(html,/src="\/src\/platform-account.js"/);
  }
  assert.equal((await fetch(f.origin+'/project-management?project=my-001')).status,409);
  f.actor({...actor,project:{id:'my-001'}});

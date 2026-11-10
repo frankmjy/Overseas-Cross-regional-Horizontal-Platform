@@ -98,3 +98,25 @@ project-local-conditions[hidden], project-local-conditions [hidden] { display: n
   .local-weather summary { gap: 3px; }
   .local-weather-icon { width: 18px; height: 18px; }
 }
+@media (max-width: 920px) {
+  .platform-header:has(.handover-header-tools platform-account) > .brand > span,
+  .handover-header-tools:has(platform-account) .preview-tag { display: none; }
+  .handover-header-tools .account-trigger.account-trigger-named { max-width: 104px; }
+}
+@media (max-width: 560px) {
+  .platform-header:has(.handover-header-tools platform-account) {
+    display: grid; grid-template-columns: minmax(0,1fr) auto auto; grid-template-rows: 40px 39px;
+    height: 88px; padding: 4px 12px; gap: 0 8px;
+  }
+  .platform-header:has(.handover-header-tools platform-account) .handover-header-tools { display: contents; }
+  .handover-header-tools platform-account { grid-column: 2; grid-row: 1; }
+  .handover-header-tools .menu-button { grid-column: 3; grid-row: 1; }
+  .handover-header-tools project-local-conditions { grid-column: 1/-1; grid-row: 2; justify-self: end; }
+  .platform-header:has(.handover-header-tools platform-account) + .workspace.nav-open .sidebar { top: 88px; }
+}
+@media (max-width: 430px) {
+  .platform-header-tools { display: contents; }
+  .platform-header-tools > platform-account { grid-column: 2; grid-row: 1; }
+  .platform-header-tools > project-local-conditions { grid-column: 1/-1; grid-row: 2; justify-self: end; }
+  .platform-header:has(.platform-header-tools) .platform-navigation { grid-row: 3; }
+}

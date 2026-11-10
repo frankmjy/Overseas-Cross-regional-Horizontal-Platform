@@ -7,10 +7,10 @@ import { renderLibraryOverview } from '../knowledge/web/overview.mjs';
 import { meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups } from '../knowledge/web/meetings-overview.mjs';
 import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections} from '../knowledge/library-model.mjs';
 import {handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments} from '../knowledge/lifecycle.mjs';
-import {visibleDirectory,directoryDocuments} from '../knowledge/directory.mjs';
+import {visibleDirectory,directoryDocuments,documentDirectory} from '../knowledge/directory.mjs';
 
 async function fixture(overrides = {}) {
-  const uiContext=vm.createContext({libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,URL,URLSearchParams});
+  const uiContext=vm.createContext({libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,documentDirectory,URL,URLSearchParams});
   vm.runInContext((await readFile(new URL('../knowledge/web/library-ui.mjs',import.meta.url),'utf8')).replace(/^import .+;\r?\n/gm,'').replace(/^export /gm,''),uiContext);
   const nodes = new Map();
   const document = {
@@ -134,6 +134,18 @@ test('equipment specialty groups have independent collapse states and count only
   assert.match(limited,/冷塔/);
   assert.match(limited,/变压器规格/);
   assert.match(limited,/加载更多（2 \/ 3）/);
+});
+
+test('group add carries the visible classification into the editor without granting access to readers',async()=>{
+ const {table}=await fixture();
+ const nature='运维维保需求规范';
+ const rows=[{id:'power',title:'电力方舱',nature,specialty:'电气',libraryScope:'shared',classification:'S1.3.3'},
+  {id:'unknown',title:'待分类设备',nature,libraryScope:'shared',classification:'S1.3.3'}];
+ const classify=html=>[...html.matchAll(/data-group-add="([^"]+)"/g)].map(([,value])=>JSON.parse(value.replaceAll('&quot;','"')));
+ const expected={nature,scope:'shared',chapter:'handover',stage:'1',directoryId:'handover:1'};
+ assert.deepEqual(classify(table(rows,{editable:true})),[expected,{...expected,specialty:'电气'},expected]);
+ assert.deepEqual(classify(table(rows,{editable:true,collapsedGroups:[nature]})),[expected]);
+ assert.deepEqual(classify(table(rows,{editable:false})),[]);
 });
 
 test('compact meetings follow login project and omit empty summary filler', async () => {

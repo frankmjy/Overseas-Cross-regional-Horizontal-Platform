@@ -3,7 +3,6 @@ import {PageAccess} from './page-access.mjs';
 import path from 'node:path';
 import { authError, requestOrigin, safeReturnTo } from './service.mjs';
 import { isLocalConfigurationRequest } from '../application-settings.mjs';
-import { isAdministrator } from './admin-role.mjs';
 import { readProjectWeather } from './project-weather.mjs';
 import { timingSafeEqual } from 'node:crypto';
 import { platformProjects, projectById, projectParameter, projectDestination } from '../src/project-context-model.mjs';
@@ -44,7 +43,8 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
       const origin = requestOrigin(req, service.config().origins);
       const values = cookies(req), token = values['__Host-vnet_session'], session = service.session(token);
       const project = session?.projectId ? projectById(session.projectId) : null;
-      const isAdmin = !!session && isAdministrator(session.user, service.config().appId);
+      const authorization = session ? access.summary(session.user) : null;
+      const isAdmin = authorization?.isAdmin === true;
       const localBootstrap = !session && canBootstrap() && isLocalConfigurationRequest(req);
       if (req.headers.cookie?.length > 16000) throw authError('请求内容过长。', 431);
       if(url.pathname==='/'){
@@ -55,7 +55,7 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
       if (url.pathname === '/api/auth/session') {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
         const loginEnabled = (service.config().oauthOrigins || service.config().origins).includes(origin);
-        json(res, 200, { ok: true, authenticated: !!session, user: session ? { name: session.user.name } : null, project, projects: platformProjects.map(({id,name})=>({id,name})), csrf: session?.csrf, expiresInMs: session?.expiresInMs, auditStatus: service.auditStatus(token), ...(session ? access.summary(session.user) : {}), isAdmin, canConfigure: isAdmin || localBootstrap, loginEnabled }); return true;
+        json(res, 200, { ok: true, authenticated: !!session, user: session ? { name: session.user.name } : null, project, projects: platformProjects.map(({id,name})=>({id,name})), csrf: session?.csrf, expiresInMs: session?.expiresInMs, auditStatus: service.auditStatus(token), ...authorization, isAdmin, canConfigure: isAdmin || localBootstrap, loginEnabled }); return true;
       }
       if (url.pathname === '/api/auth/feishu/authorize') {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
@@ -144,7 +144,7 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
       }
       res.setHeader('Vary', 'Cookie');
       req.adminCsrf = isAdmin ? session.csrf : undefined;
-      req.auth = { permissions:access.summary(session.user).permissions, name: session.user.name, openId: session.user.openId, isAdmin, ...(project ? { project } : {}) };
+      req.auth = { permissions:authorization.permissions, name: session.user.name, openId: session.user.openId, isAdmin, ...(project ? { project } : {}) };
       return false;
     } catch (error) {
       json(res, error.status || 500, { ok: false, error: error.publicMessage || '登录服务暂不可用，请稍后重试。' }); return true;

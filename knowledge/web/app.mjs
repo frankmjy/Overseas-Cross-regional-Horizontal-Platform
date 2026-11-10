@@ -53,7 +53,7 @@ function meetingShell(){
 }
 
 function updateResults(){saveState();if(state.view==='library'){
- if(state.scope==='templates'){document.querySelector('#doc-count').textContent=(feed.templates||[]).length+' 个';document.querySelector('#results').innerHTML=renderTemplateEntries(feed.templates||[]);}else{const shown=filterDocuments(libraryRows(),state),visibleLimit=limit;document.querySelector('#doc-count').textContent=shown.length+' 份';document.querySelector('#results').innerHTML=feed.state==='loading'&&!documents.length?'<p class="library-empty" role="status">正在读取资料…</p>':feed.state==='error'&&!documents.length?'<div class="library-empty" role="alert">资料读取失败 <button class="button" data-refresh>重试</button></div>':renderDocumentCards(shown,{limit:visibleLimit,collapsedGroups:state.collapsedGroups||[],editable:currentPageEditable('knowledge'),compact:typeof matchMedia==='function'&&matchMedia('(max-width:760px)').matches});}
+ if(state.scope==='templates'){document.querySelector('#doc-count').textContent=(feed.templates||[]).length+' 个';document.querySelector('#results').innerHTML=renderTemplateEntries(feed.templates||[]);}else{const shown=filterDocuments(libraryRows(),state),visibleLimit=limit;document.querySelector('#doc-count').textContent=shown.length+' 份';document.querySelector('#results').innerHTML=feed.state==='loading'&&!documents.length?'<p class="library-empty" role="status">正在读取资料…</p>':feed.state==='error'&&!documents.length?'<div class="library-empty" role="alert">资料读取失败 <button class="button" data-refresh>重试</button></div>':renderDocumentCards(shown,{limit:visibleLimit,collapsedGroups:state.collapsedGroups||[],editable:currentPageEditable('knowledge'),selection:state});}
  }else{
  const shown=filterMeetings(meetings,state),context=filterMeetings(meetings,{...state,date:''});
  document.querySelector('#result-count').textContent=`${shortLabel(projects.find(p=>p.id===state.project)?.label||'全部项目')} · ${shown.length} 场会议`;
@@ -99,8 +99,16 @@ root.addEventListener('click',event=>{
  const button=control||event.target.closest('[data-card-edit]')?.querySelector('[data-edit-document]');
  if(!button)return;
  if(button.dataset.editDocument){startDocumentUpdate(documents.find(record=>record.id===button.dataset.editDocument),button);return;}
- const saved=async selection=>{if(selection){state={...state,scope:selection.chapter,directory:selection.directory,stage:'',ownership:'',natures:[],specialties:[],query:''};}await refreshMeetingSnapshot();};
- if('newDocument'in button.dataset||'newDocumentCategory'in button.dataset)openDocumentEditor({...state,project:platformProject.knowledgeKey,name:platformProject.name},button,saved,'newDocumentCategory'in button.dataset?'category':'document');
+ const groupDefaults=button.dataset.groupAdd?JSON.parse(button.dataset.groupAdd):undefined;
+ let revealGroup=button.previousElementSibling?.dataset.documentGroup;
+ const saved=async selection=>{
+  if(selection){state={...state,scope:selection.chapter,directory:selection.directory,stage:'',ownership:'',natures:[],specialties:[],query:''};}
+  if(groupDefaults&&revealGroup){state.collapsedGroups=state.collapsedGroups.filter(key=>key!==revealGroup&&key!==groupDefaults.nature);revealGroup='';}
+  await refreshMeetingSnapshot();
+ };
+ if('newDocument'in button.dataset||'newDocumentCategory'in button.dataset||button.dataset.groupAdd){
+  openDocumentEditor({...state,groupDefaults,project:platformProject.knowledgeKey,name:platformProject.name},button,saved,'newDocumentCategory'in button.dataset?'category':'document');
+ }
  else if(button.dataset.documentRetry)retryDocument(button.dataset.documentRetry,saved);
  else if(button.dataset.documentUpload)resumeDocumentUpload(button.dataset.documentUpload,saved);
  else if('documentOperations'in button.dataset)showDocumentOperations(saved);

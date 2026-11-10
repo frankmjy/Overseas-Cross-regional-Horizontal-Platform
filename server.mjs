@@ -36,6 +36,7 @@ import {PageAccess} from './auth/page-access.mjs';
 import { createAuthHandler } from './auth/http.mjs';
 import {LoginAuditReader} from './auth/admin-audit.mjs';
 import {createAdminHandler} from './auth/admin-http.mjs';
+import {AppAvailability} from './auth/app-availability.mjs';
 
 const PORT = Number(process.env.PORT || 3333);
 const HOST = process.env.SERVER_HOST || process.env.HOST || '0.0.0.0';
@@ -48,9 +49,10 @@ const authService = new AuthService({ dir: process.env.AUTH_DATA_DIR || path.joi
 // Keep loopback recovery available to the server operator when OAuth credentials expire.
 const canBootstrap = () => true;
 const loginAuditReader = new LoginAuditReader({dir:process.env.AUTH_DATA_DIR||path.join(ROOT,'.runtime/auth'),sink:authService.sink,auth:authService});
-const pageAccess=new PageAccess({auth:authService,people:()=>loginAuditReader.identities()});
+const appAvailability=new AppAvailability({auth:authService});
+const pageAccess=new PageAccess({auth:authService,people:()=>loginAuditReader.identities(),availability:appAvailability});
 const handleAuth = createAuthHandler({service:authService,root:ROOT,canBootstrap,access:pageAccess});
-const handleAdmin = createAdminHandler({root:ROOT,reader:loginAuditReader,access:pageAccess});
+const handleAdmin = createAdminHandler({root:ROOT,reader:loginAuditReader,access:pageAccess,availability:appAvailability});
 authService.start();
 const researchConfig = JSON.parse(readFileSync(path.join(ROOT, 'research/config.json'), 'utf8'));
 assertResearchSourceSwitch(process.env.RESEARCH_DATA_DIR || path.join(ROOT,'.runtime/research'),Object.keys(researchConfig.projects));

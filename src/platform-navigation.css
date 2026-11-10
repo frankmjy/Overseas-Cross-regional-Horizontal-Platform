@@ -22,6 +22,14 @@ platform-account { display:block; position:relative; margin-left:auto; flex:none
 .account-menu { position:relative; }
 .account-trigger,.account-avatar { display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:50%; background:#4b7cf6; color:#fff; font:600 13px "Microsoft YaHei",sans-serif; cursor:pointer; list-style:none; }
 .account-trigger::-webkit-details-marker { display:none; }
+.account-trigger.account-trigger-named { display:flex; align-items:center; gap:7px; width:auto; max-width:150px; height:36px; padding:3px 8px 3px 3px; border-radius:7px; background:#f2f6fd; color:#294568; }
+.account-trigger-avatar { display:grid; place-items:center; flex:0 0 28px; height:28px; border-radius:50%; background:#4b7cf6; color:#fff; font-size:11px; }
+.account-trigger-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.account-menu[open] .account-trigger-named,.account-trigger-named:hover { background:#e6eefb; }
+@media(max-width:600px) {
+  .account-trigger.account-trigger-named { max-width:84px; padding:0 6px; font-size:12px; }
+  .account-trigger-avatar { display:none; }
+}
 .account-trigger:focus-visible,.account-dropdown :focus-visible { outline:2px solid #315ee9; outline-offset:3px; }
 .account-dropdown { position:absolute; z-index:1000; top:46px; right:0; width:238px; padding:8px; border:1px solid #e0e7f2; border-radius:12px; background:#fff; box-shadow:0 8px 30px #203e6820; color:#28436b; }
 .account-identity { display:flex; align-items:center; gap:12px; padding:10px 8px 15px; margin-bottom:6px; border-bottom:1px solid #e6ecf5; }

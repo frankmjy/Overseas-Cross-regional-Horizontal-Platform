@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "release": "20261110.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261109.1",
+  "candidateSha256": "6593b8b69b0d2a5bd70205442370b5ec5e7d83943158d1b10252b800230ffb84",
+  "manifestSha256": "b269d25b1a537f09c27b017882bd0af4a9a41a224e4f4ad686fbc99d8f973286",
+  "payloadSha256": "48ce4e86f9a16f43c0e4f4cae3f3118d9d5bbfa68b69003c258b45da2107bfda",
+  "filesChanged": [
+    "server.mjs",
+    "src/admin-permissions.js",
+    "src/admin.css",
+    "src/platform-account.js",
+    "src/platform-navigation.css",
+    "src/project-local-conditions.css",
+    "knowledge/web/app.mjs",
+    "knowledge/web/document-editor.mjs",
+    "knowledge/web/library-ui.mjs",
+    "knowledge/web/library.css",
+    "auth/admin-http.mjs",
+    "auth/app-availability.mjs",
+    "auth/http.mjs",
+    "auth/page-access.mjs",
+    "project-tasks/handover/http.mjs",
+    "samples/handover-preview/app.mjs"
+  ],
+  "features": [
+    "定盘星授权人员名单",
+    "顶栏飞书登录姓名",
+    "子管理员授权与撤销",
+    "知识库分组快捷新增",
+    "项目总览读取超时恢复"
+  ],
+  "checks": {
+    "businessTests": 476,
+    "syntaxFiles": 294,
+    "isolatedBrowser": true,
+    "supplementalTests": 34,
+    "availability": {
+      "people": 20,
+      "named": 20,
+      "existingGrantsPreserved": true
+    },
+    "onlineBrowser": {
+      "overviewExecutionTasks": 283,
+      "named": 20,
+      "authenticatedProduction": true,
+      "noOverviewReadError": true,
+      "businessWrites": 0,
+      "passed": true,
+      "people": 20,
+      "browser": "Chrome",
+      "searchMatches": 1,
+      "fullNameInOverview": true,
+      "knowledgeFormClosed": true,
+      "knowledgeGroupQuickAddPrefilled": true,
+      "ownerRoleControl": true
+    },
+    "handoverRecords": 365,
+    "sourceIdsPreserved": true,
+    "materialRecords": 290,
+    "materialFields": 27,
+    "exactDeployedFilesVerified": 367,
+    "environmentPreserved": true,
+    "independentSessionSurvivalSeconds": 110,
+    "releaseMatrixReusedFrom": "20261109.1",
+    "nativeRollbackReusedFrom": "20261109.1",
+    "packagingGateTests": 5
+  },
+  "coordination": {
+    "ownerThread": "01a19fde-2795-7253-b665-fa7402acc5cc",
+    "handoffCount": 1,
+    "tasks": 5,
+    "runtimeChanges": 16,
+    "installerChanged": false,
+    "dependenciesChanged": false
+  },
+  "deferred": [
+    {
+      "item": "旧版重点卡点关联迁移",
+      "reason": "历史关系需独立迁移，保留既有记录；与本批鉴权和页面改动无依赖"
+    },
+    {
+      "item": "调研总览下钻优化",
+      "reason": "独立页面体验优化，与本批鉴权和页面改动无依赖"
+    }
+  ],
+  "limitations": [
+    "旧BAT配置工具在旧基线与本批均复现既有授权探测兼容问题，独立登记",
+    "子管理员授权、撤销和资料写回在隔离台账中验证；生产名单只读验收"
+  ],
+  "sourceArchive": "Exact frozen deployed runtime, matching tests and release tools. Commit SHA and remote confirmation are bound to candidate hashes in local archive receipt.",
+  "recordedAt": "2026-11-10T03:27:57.837Z"
+}
