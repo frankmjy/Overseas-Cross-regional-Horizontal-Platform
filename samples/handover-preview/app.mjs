@@ -35,7 +35,10 @@ const query = new URL(location.href).searchParams;
 const securePage=location.protocol==='https:'&&['/project-management','/index.html'].includes(location.pathname);
 const localPreview=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
 $('.preview-tag').hidden=!localPreview;
-document.title='接维项目工作台'+(localPreview?' · 本地预览':'');
+document.title='接维项目工作台 · 海外运维协作平台'+(localPreview?' · 本地预览':'');
+if(!securePage)for(const link of document.querySelectorAll('[data-platform-page]')){
+  link.href=new URL(link.getAttribute('href'),'https://localhost:3333').href;
+}
 const api=securePage?'/api/handover-plan':'/api';
 const state = { mode: ['gantt', 'list', 'milestones', 'calendar'].includes(query.get('mode')) ? query.get('mode') : 'gantt',
   page:pageDefinitions.some(p=>p.id===query.get('tab'))?query.get('tab'):query.get('mode')==='milestones'?'milestones':query.get('mode')==='gantt'?'gantt':'overview',
@@ -198,7 +201,6 @@ function render() {
   $('#newTaskButton').textContent=model.capabilities?.editable?'新增条目':'登录编辑';$('#trashButton').hidden=!model.capabilities?.editable;
   const pending=(model.operations||[]).filter(o=>o.status!=='success');$('#syncButton').hidden=!pending.length;$('#syncButton').textContent=`同步任务 ${pending.length}`;$('#syncButton').classList.toggle('has-error',pending.some(o=>['error','blocked','uncertain'].includes(o.status)));
   $('#writeMode').textContent=model.capabilities?.editable?(localPreview?'本地联动预览':'已连接飞书'):(localPreview?'只读预览':'只读');
-  if(securePage)for(const link of document.querySelectorAll('[data-platform-page]'))link.href=link.dataset.platformPage;
   renderBoard(); syncUrl();
   const stamp = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(model.source.fetchedAt));
   $('#sourceStamp').textContent = `新表读取 ${stamp}`;

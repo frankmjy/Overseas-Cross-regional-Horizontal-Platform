@@ -27,7 +27,7 @@ const add = (date, days) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86
 
 export function renderWorkspaceSidebar(active = 'overview') {
   const button = page => `<a href="?section=${page.id}" data-workspace-page="${page.id}" aria-label="${page.label}"${active === page.id ? ' aria-current="page"' : ''} title="${page.label}">${icon(page.icon)}<span>${page.label}</span></a>`;
-  return `<aside class="project-sidebar"><div class="workspace-sidebar-inner"><div class="workspace-brand"><span>项目工作台</span><button type="button" data-workspace-collapse aria-label="收起项目导航" aria-expanded="true">‹</button></div><nav aria-label="项目导航"><div class="workspace-nav-group">${workspacePages.filter(page => !page.stage).map(button).join('')}</div><div class="workspace-nav-group"><h2>项目阶段</h2>${workspacePages.filter(page => page.stage).map(button).join('')}</div></nav><footer><span class="workspace-dot"></span>海外业务协作平台</footer></div></aside>`;
+  return `<aside class="project-sidebar"><div class="workspace-sidebar-inner"><div class="workspace-brand"><span>项目工作台</span><button type="button" data-workspace-collapse aria-label="收起项目导航" aria-expanded="true">‹</button></div><nav aria-label="项目导航"><div class="workspace-nav-group">${workspacePages.filter(page => !page.stage).map(button).join('')}</div><div class="workspace-nav-group"><h2>项目阶段</h2>${workspacePages.filter(page => page.stage).map(button).join('')}</div></nav><footer><span class="workspace-dot"></span>海外运维协作平台</footer></div></aside>`;
 }
 
 export function buildWorkspaceDemo(anchor) {

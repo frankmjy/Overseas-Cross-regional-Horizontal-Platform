@@ -39,7 +39,7 @@ function connection(){
  return `<div class="connection-tools">${state.view==='meetings'?'<button class="button primary new-meeting-button" data-new-meeting>＋ 新增会议</button>':''}<span class="connection-state ${warning?'warning':''}" role="status" aria-label="${label}${updated?' · '+updated:''}" title="${label}${updated?' · '+updated:''}"><i></i>${updated?`<time datetime="${esc(feed.updatedAt)}">${esc(updated)}</time>`:''}</span><button class="tool-button" data-refresh aria-label="刷新数据" title="刷新数据" ${loading?'disabled':''}>${icon('refresh')}</button>${feed.architectureUrl?`<a class="tool-button" href="${esc(feed.architectureUrl)}" target="_blank" rel="noopener noreferrer" aria-label="架构索引" title="架构索引">${icon('external')}</a>`:''}</div>`;
 }
 function render(){
- const library=state.view==='library';document.title=`${library?'知识共享':'议事航迹'} · 海外业务协作平台`;
+ const library=state.view==='library';document.title=`${library?'知识共享':'议事航迹'} · 海外运维协作平台`;
  root.innerHTML=`${renderPlatformHeader(library?'knowledge':'meetings')}<div class="workspace"><header class="knowledge-toolbar"><h1>${library?'知识共享':'议事航迹'}</h1><span class="workspace-project-name">${esc(platformProject.name)}</span>${connection()}</header>${feed.errors.length?`<div class="connection-errors" role="alert">${feed.errors.map(e=>`<p>${esc(e.name)}：${esc(e.message)}</p>`).join('')}</div>`:''}<main>${library?libraryShell():meetingShell()}</main></div>`;updateResults();
 }
 function libraryRows(){

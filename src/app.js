@@ -1638,7 +1638,7 @@ function renderCalendar() {
 
 async function boot() {
   const context = await requirePlatformProject();
-  document.title = `${context.name} · 海外业务协作平台`;
+  document.title = `${context.name} · 海外运维协作平台`;
   const selected = context.id;
   activeProject = projectCatalog.find(project => project.id === selected) || projectCatalog[0];
   restorePlanCache();

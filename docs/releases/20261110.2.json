@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "release": "20261110.2",
+  "status": "deployed-server-verified",
+  "predecessor": "20261110.1",
+  "candidateSha256": "3e0a254c6aee3841a95fcaf1723bca11eb43cc24ead57b253912f11bf6398f63",
+  "manifestSha256": "b28646569c3bdd577a4f11d5a05bb06ebc1e9c37ec2031d0e8bd4e7df10781be",
+  "payloadSha256": "dc923e31fc2a4c7849d2c6dbb24ba89c019788ff76f0a55dd41927aac4f5883e",
+  "filesChanged": [
+    "src/app.js",
+    "src/platform-navigation.js",
+    "src/project-workspace.js",
+    "src/staffing.js",
+    "research/web/index.html",
+    "knowledge/web/app.mjs",
+    "knowledge/web/index.html",
+    "auth/web/admin.html",
+    "auth/web/login.css",
+    "auth/web/login.html",
+    "project-tasks/staffing/web/index.html",
+    "coordination/web/index.html",
+    "samples/handover-preview/index.html",
+    "samples/handover-preview/app.mjs"
+  ],
+  "features": [
+    "平台更名为海外运维协作平台",
+    "蓝色AIDC机柜动效及减少动态效果",
+    "接维工作台三项导航同标签页"
+  ],
+  "checks": {
+    "businessTests": 477,
+    "syntaxFiles": 294,
+    "isolatedBrowser": true,
+    "supplementalTests": 19,
+    "availability": {
+      "people": 20,
+      "named": 20,
+      "existingGrantsPreserved": true
+    },
+    "anonymousBrowser": {
+      "passed": true,
+      "browser": "Edge Playwright",
+      "trustedHttps": true,
+      "anonymous": true,
+      "name": "海外运维协作平台",
+      "checks": [
+        {
+          "width": 1440,
+          "motion": "no-preference",
+          "racks": 3,
+          "animations": [
+            [
+              "aidc-led",
+              3600
+            ],
+            [
+              "aidc-transfer",
+              4410
+            ],
+            [
+              "aidc-startup",
+              650
+            ]
+          ],
+          "bothOAuthLinks": true,
+          "returnToVerified": true
+        },
+        {
+          "width": 390,
+          "motion": "reduce",
+          "racks": 3,
+          "animations": [
+            [
+              "none",
+              0
+            ]
+          ],
+          "bothOAuthLinks": true,
+          "returnToVerified": true
+        }
+      ]
+    },
+    "onlineBrowser": {
+      "extraPlatformTabs": 0,
+      "authenticatedProduction": true,
+      "sameTab": [
+        "/cross-coordination",
+        "/knowledge-sharing",
+        "/meeting-trail"
+      ],
+      "browserBack": [
+        "/cross-coordination",
+        "/knowledge-sharing",
+        "/meeting-trail"
+      ],
+      "workbenchTitle": "接维项目工作台 · 海外运维协作平台",
+      "browser": "Chrome",
+      "businessWrites": 0,
+      "passed": true
+    },
+    "handoverRecords": 365,
+    "sourceIdsPreserved": true,
+    "materialRecords": 290,
+    "materialFields": 27,
+    "exactDeployedFilesVerified": 367,
+    "environmentPreserved": true,
+    "independentSessionSurvivalSeconds": 75,
+    "releaseMatrixReusedFrom": "20261110.1",
+    "nativeRollbackReusedFrom": "20261110.1",
+    "packagingGateTests": 5
+  },
+  "coordination": {
+    "ownerThread": "01a19fde-2795-7253-b665-fa7402acc5cc",
+    "handoffCount": 1,
+    "tasks": 3,
+    "runtimeChanges": 14,
+    "installerChanged": false,
+    "dependenciesChanged": false
+  },
+  "deferred": [
+    {
+      "item": "旧版重点卡点关联迁移",
+      "reason": "历史关系需独立迁移，保留既有记录；与本批界面改动无依赖"
+    },
+    {
+      "item": "调研总览下钻优化",
+      "reason": "独立页面体验优化，与本批界面改动无依赖"
+    }
+  ],
+  "limitations": [
+    "旧 BAT 授权探测兼容问题继续独立登记",
+    "生产按正式入口只读验收；独立本地预览路径复用来源验收证据"
+  ],
+  "sourceArchive": "Exact frozen deployed runtime, matching tests and release tools. Commit SHA and remote confirmation are bound to candidate hashes in local archive receipt.",
+  "recordedAt": "2026-11-10T10:03:36.087Z"
+}

@@ -1,27 +1,77 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>飞书登录 · 海外业务协作平台</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/src/platform-navigation.css"><link rel="stylesheet" href="/auth/login.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>飞书登录 · 海外运维协作平台</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/src/platform-navigation.css"><link rel="stylesheet" href="/auth/login.css"></head>
 <body>
   <main class="login-experience">
-    <svg class="login-visual" viewBox="0 0 1440 1024" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+    <svg class="login-visual" viewBox="0 0 760 650" aria-hidden="true" focusable="false">
       <defs>
-        <radialGradient id="orbLight"><stop stop-color="#168cdd" stop-opacity=".42"/><stop offset="1" stop-color="#07458f" stop-opacity="0"/></radialGradient>
-        <linearGradient id="orbLine" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#86dfff" stop-opacity=".08"/><stop offset=".48" stop-color="#5cbfea" stop-opacity=".6"/><stop offset="1" stop-color="#5180dc" stop-opacity=".04"/></linearGradient>
-        <linearGradient id="orbSurface" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#0b386d"/><stop offset=".5" stop-color="#0c65a5" stop-opacity=".7"/><stop offset="1" stop-color="#143d80" stop-opacity=".15"/></linearGradient>
-        <linearGradient id="routeLight"><stop stop-color="#2490da" stop-opacity="0"/><stop offset=".5" stop-color="#8af0e5"/><stop offset="1" stop-color="#338fe1" stop-opacity=".1"/></linearGradient>
-        <clipPath id="orbClip"><circle cx="1015" cy="505" r="330"/></clipPath>
+        <radialGradient id="aidc-halo"><stop stop-color="#1b94e4" stop-opacity=".36"/><stop offset="1" stop-color="#1279ca" stop-opacity="0"/></radialGradient>
+        <linearGradient id="aidc-floor" x2="1" y2="1"><stop stop-color="#104c84"/><stop offset="1" stop-color="#0b315c"/></linearGradient>
+        <linearGradient id="aidc-front" x2="0" y2="1"><stop stop-color="#1b5686"/><stop offset="1" stop-color="#0b294f"/></linearGradient>
+        <linearGradient id="aidc-chip" x2="1" y2="1"><stop stop-color="#b3ffec"/><stop offset="1" stop-color="#45aee3"/></linearGradient>
+        <g id="aidc-tray">
+          <rect width="67" height="18" rx="3" fill="#0b2b52" stroke="#69bde7" stroke-opacity=".45"/>
+          <path d="M10 7h29m-29 4h21" stroke="#65acd7" stroke-opacity=".57"/>
+          <path d="M50 9h1m5 0h1" stroke="#4694b4" stroke-linecap="round" stroke-width="2"/>
+          <circle class="aidc-led" cx="61" cy="9" r="1.7" fill="#94f8e4"/>
+        </g>
+        <g id="aidc-rack">
+          <path d="M0 0 28-16h88L88 0z" fill="#377eb2" stroke="#84d6f5" stroke-opacity=".8"/>
+          <path d="M88 0l28-16v165l-28 16z" fill="#10385f" stroke="#60aad8" stroke-opacity=".65"/>
+          <path d="M97 27l11-6m-11 15 11-6m-11 15 11-6m-11 15 11-6m-11 15 11-6" stroke="#5a9ac3" stroke-opacity=".6"/>
+          <rect width="88" height="165" rx="3" fill="url(#aidc-front)" stroke="#6bc7ed" stroke-opacity=".8"/>
+          <path d="M11 10h66" stroke="#7de8ef" stroke-opacity=".85"/>
+          <use href="#aidc-tray" x="10" y="20"/>
+          <use href="#aidc-tray" x="10" y="46"/>
+          <use href="#aidc-tray" x="10" y="72"/>
+          <use href="#aidc-tray" x="10" y="98"/>
+          <use href="#aidc-tray" x="10" y="124"/>
+          <path d="M13 153h28m7 0h10" stroke="#75acd3" stroke-opacity=".62"/>
+        </g>
       </defs>
-      <circle cx="1050" cy="510" r="640" fill="url(#orbLight)"/>
-      <g fill="none" stroke="url(#orbLine)" stroke-width="1"><ellipse cx="1015" cy="505" rx="510" ry="190" transform="rotate(-35 1015 505)"/><ellipse cx="1015" cy="505" rx="560" ry="240" transform="rotate(32 1015 505)"/><circle cx="1015" cy="505" r="420"/><circle cx="1015" cy="505" r="480" stroke-opacity=".35"/></g>
-      <circle cx="1015" cy="505" r="330" fill="url(#orbSurface)" stroke="url(#orbLine)" stroke-width="1.4"/>
-      <g clip-path="url(#orbClip)" fill="none" stroke="#8ecde9" stroke-opacity=".16"><ellipse cx="1015" cy="505" rx="262" ry="330"/><ellipse cx="1015" cy="505" rx="145" ry="330"/><path d="M1015 175v660M685 505h660"/><ellipse cx="1015" cy="505" rx="330" ry="90"/><ellipse cx="1015" cy="505" rx="330" ry="190"/><ellipse cx="1015" cy="505" rx="330" ry="270"/><path d="m760 290 135 42 72-56 131 88 113-18 72 120-83 75-22 124-138 67-129-86-96-24-58-130 84-72z" stroke-dasharray="2 8"/><path d="m760 290 207-14 131 88 185 102-222 266-150-235-16-165 305 209-385 81 152-346 94 456M685 505l126-8 272-298 128 147-350 300 200 86 117-67-163-160 96-159" stroke-opacity=".13"/></g>
-      <g fill="none" stroke="url(#routeLight)" stroke-width="2"><path d="M507 710C646 333 943 227 1218 431"/><path d="M754 349c83 250 256 420 587 356"/><path d="M630 786c269-228 535-297 810-227" stroke-width="1"/></g>
-      <g fill="#a1eee5"><circle cx="754" cy="349" r="4"/><circle cx="1218" cy="431" r="4"/><circle cx="1061" cy="732" r="5"/><circle cx="754" cy="349" r="12" fill-opacity=".12"/><circle cx="1218" cy="431" r="12" fill-opacity=".12"/><circle cx="1061" cy="732" r="15" fill-opacity=".1"/></g>
+      <ellipse cx="401" cy="337" rx="375" ry="310" fill="url(#aidc-halo)"/>
+      <g fill="none" stroke="#83cbf4" stroke-opacity=".27">
+        <circle cx="391" cy="327" r="250" stroke-dasharray="2 10"/>
+        <circle cx="391" cy="327" r="220"/>
+        <path d="M83 362h71l51-31h42m294-92h74l43-28h34M151 262v-66h88m278-35h96v32"/>
+        <path d="M391 63v26m0 476v26M123 327h26m484 0h26"/>
+      </g>
+      <g fill="#91e9f7">
+        <circle cx="151" cy="196" r="3"/><circle cx="692" cy="211" r="3"/><circle cx="83" cy="362" r="3"/><circle cx="613" cy="161" r="3"/>
+      </g>
+      <path d="M94 439 360 305l312 142v13L406 595 94 452z" fill="#0a294e" stroke="#56a4d6" stroke-opacity=".62"/>
+      <path d="M94 439 360 305l312 142-266 135z" fill="url(#aidc-floor)" stroke="#68c3ee" stroke-opacity=".78"/>
+      <path d="m139 416 313 143m-269-165 312 143m-269-165 312 143m-268-165 311 143m-268-165 312 143M146 463l266-134m-213 158 266-134m-213 158 266-134m-213 158 266-134m-212 159 265-135" fill="none" stroke="#79c5ec" stroke-opacity=".17"/>
+      <g fill="none" stroke="#4fc7f1" stroke-opacity=".64" stroke-linejoin="round">
+        <path d="m154 447 48-24h35l50-25v-18"/>
+        <path d="m602 453-45-21h-31l-26-12v-45"/>
+        <path d="m327 487-53 27h-30l-38-18"/>
+        <path d="m420 490 53 24h31l47-23"/>
+        <path d="M368 460v-24l28-14v-37"/>
+      </g>
+      <g class="aidc-flow" fill="none" stroke="#a3ffe9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path pathLength="100" d="m154 447 48-24h35l50-25v-18"/>
+        <path pathLength="100" d="m602 453-45-21h-31l-26-12v-45"/>
+        <path pathLength="100" d="m206 496 38 18h30l53-27"/>
+        <path pathLength="100" d="m551 491-47 23h-31l-53-24"/>
+        <path pathLength="100" d="M368 460v-24l28-14v-37"/>
+      </g>
+      <g class="aidc-racks">
+        <use href="#aidc-rack" x="219" y="229"/>
+        <use href="#aidc-rack" x="329" y="187"/>
+        <use href="#aidc-rack" x="439" y="227"/>
+      </g>
+      <path d="m307 485 61-31 66 30v8l-62 32-65-30z" fill="#10375c" stroke="#65d5f0"/>
+      <path d="m307 485 61-31 66 30-62 32z" fill="#17517c" stroke="#88e4ef"/>
+      <path d="m333 484 36-18 40 18-37 19z" fill="url(#aidc-chip)" stroke="#b3ffee"/>
+      <path d="m349 484 21-10 23 10-21 11z" fill="#1f6b98"/>
+      <path d="m323 476 9 4m-1-8 9 4m-1-8 9 4m-1-8 9 4m41 5 9-5m-1 9 9-5m-1 9 9-5m-39 21 9 4m-1-8 9 4m-1-8 9 4m-58 1-9 5m1-9-9 5m1-9-9 5" fill="none" stroke="#8eedf0" stroke-opacity=".74"/>
+      <g fill="#8de9ef"><circle cx="154" cy="447" r="3"/><circle cx="602" cy="453" r="3"/><circle cx="206" cy="496" r="3"/><circle cx="551" cy="491" r="3"/></g>
     </svg>
     <header class="login-header">
       <div class="login-brand-context"><img class="login-logo" src="/assets/vnet-official-logo.png" alt="世纪互联 VNET"><span class="login-brand-divider" aria-hidden="true"></span><label class="login-project" for="loginProject"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4h10v17M14 9h6v12M8 8h2m-2 4h2m-2 4h2m7-3h1m-1 4h1M2 21h20"/></svg><select id="loginProject" aria-label="选择登录项目" required disabled><option value="">读取项目…</option></select></label></div>
       <button type="button" class="login-configuration" data-application-settings aria-label="应用配置" title="应用配置" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </header>
-    <section class="login-content" aria-labelledby="loginTitle"><p class="login-kicker">OVERSEAS OPERATIONS</p><h1 id="loginTitle">海外业务<br>协作平台</h1><div class="login-modules"><span>项目管理</span><span>调研工作台</span><span>知识共享</span></div><div class="login-panel" id="loginPanel" aria-label="飞书登录"><a class="login-primary" id="feishuLogin" href="/api/auth/feishu/authorize" aria-disabled="true"><svg class="feishu-symbol" viewBox="0 0 48 48" aria-hidden="true"><path fill="#3370ff" d="M5 13h17l11 9-10 10z"/><path fill="#00cbb0" d="m22 13 21 1-10 8z"/><path fill="#2489ee" d="m23 32 10-10 10-8-5 18-15 8z"/></svg><span>使用飞书登录</span><svg class="login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><div class="login-feedback"><p id="loginStatus" role="status" aria-live="polite"></p><button type="button" class="login-retry" id="loginRetry" title="重新读取项目" hidden>重试</button></div></div></section>
+    <section class="login-content" aria-labelledby="loginTitle"><p class="login-kicker">AIDC · OVERSEAS OPERATIONS</p><h1 id="loginTitle"><span>海外运维</span> <span>协作平台</span></h1><div class="login-modules"><span>项目管理</span><span>调研工作台</span><span>知识共享</span></div><div class="login-panel" id="loginPanel" aria-label="飞书登录"><a class="login-primary" id="feishuLogin" href="/api/auth/feishu/authorize" aria-disabled="true"><svg class="feishu-symbol" viewBox="0 0 48 48" aria-hidden="true"><path fill="#3370ff" d="M5 13h17l11 9-10 10z"/><path fill="#00cbb0" d="m22 13 21 1-10 8z"/><path fill="#2489ee" d="m23 32 10-10 10-8-5 18-15 8z"/></svg><span>使用飞书登录</span><svg class="login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><div class="login-feedback"><p id="loginStatus" role="status" aria-live="polite"></p><button type="button" class="login-retry" id="loginRetry" title="重新读取项目" hidden>重试</button></div></div></section>
   </main><script type="module" src="/auth/login.js"></script>
 </body></html>

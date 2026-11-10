@@ -30,3 +30,12 @@ test('调研工作台仅在横向统筹菜单中显示并保持当前页标记',
   assert.ok(menu);assert.match(menu,/href="\/research" aria-current="page">调研工作台<\/a>/);
   assert.doesNotMatch(header.replace(menu,''),/调研工作台|href="\/research"/);
 });
+
+test('接维工作台的模块链接复用当前标签页及既有路由',()=>{
+  const html=fs.readFileSync(new URL('../samples/handover-preview/index.html',import.meta.url),'utf8');
+  const links=[...html.matchAll(/<a\s+data-platform-page\s+href="([^"]+)"([^>]*)>/g)];
+  assert.deepEqual(links.map(([,url])=>url),['/cross-coordination?project=th-001','/knowledge-sharing?project=thailand','/meeting-trail?project=thailand']);
+  for(const [,,attributes] of links){
+    assert.doesNotMatch(attributes,/\btarget\s*=/i);
+  }
+});

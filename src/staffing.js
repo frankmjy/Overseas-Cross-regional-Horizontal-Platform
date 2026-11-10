@@ -1,6 +1,6 @@
 import { requirePlatformProject, currentPageEditable } from './platform-context.js';
 const platformProject = await requirePlatformProject();
-document.title = `${platformProject.name}人员储备 · 海外业务协作平台`;
+document.title = `${platformProject.name}人员储备 · 海外运维协作平台`;
 import { createStaffingExplorer } from './staffing-explorer.js';
 import { renderPlatformHeader } from './platform-navigation.js';
 const $=s=>document.querySelector(s),escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
