@@ -18,7 +18,7 @@ export class MeetingService{
  commit(change){const next=structuredClone(this.state);change(next);saveJson(this.file,next);this.state=next;}
  publicOperation(op){return {id:op.id,project:op.project,status:op.status,error:op.error||'',recordId:op.recordId||'',updatedAt:op.updatedAt};}
  get pending(){return Object.values(this.state.operations).some(o=>['accepted','syncing'].includes(o.status));}
- options(user){this.ensureIdentity();return {state:this.refreshing?'loading':this.lastError?'error':'ready',error:this.lastError||'',projects:this.sources.map(s=>({id:s.project,name:/（([^）]+)）/.exec(s.name)?.[1]||s.name,ready:!!this.state.schemas[s.project],status:this.state.schemas[s.project]?.status.options||[],priority:this.state.schemas[s.project]?.priority.options||[]})),people:this.people(user)};}
+ options(user){this.ensureIdentity();return {state:this.refreshing?'loading':this.lastError?'error':'ready',error:this.lastError||'',projects:this.sources.map(s=>({id:s.project,name:/（([^）]+)）/.exec(s.name)?.[1]||s.name,ready:!!this.state.schemas[s.project],status:this.state.schemas[s.project]?.status.options||[],priority:this.state.schemas[s.project]?.priority.options||[],meetingType:this.state.schemas[s.project]?.meetingType?.options||[]})),people:this.people(user)};}
  people(user){const values=new Map(this.state.people.map(p=>[p.id,p]));if(/^ou_\w+$/.test(user?.openId||'')&&user?.name)values.set(user.openId,{id:user.openId,name:user.name});return [...values.values()].sort((a,b)=>a.name.localeCompare(b.name,'zh-CN'));}
  refresh(){if(this.refreshing)return this.refreshing;this.refreshing=(async()=>{this.ensureIdentity();const errors=[];for(const source of this.sources){try{const schema=await this.adapter.schema(source),people=await this.adapter.people(source,schema);this.commit(next=>{next.schemas[source.project]=schema;const merged=new Map([...next.people,...people].map(p=>[p.id,p]));next.people=[...merged.values()];next.schemaUpdatedAt=this.now();});}catch{errors.push(source.name);}}this.lastError=errors.length?'部分会议字段读取失败，可使用已读取的范围，或重试连接。':'';return this.options();})().finally(()=>{this.refreshing=null;});return this.refreshing;}
  accept(raw,user){
@@ -38,7 +38,7 @@ export class MeetingService{
    const source=this.sources.find(s=>s.project===op.project),id=op.recordId||'pending-'+op.id,remote=meetings.find(m=>m.id===source.id+':'+id);
    if(remote){if(op.status!=='success')remote.sync=this.publicOperation(op);else if(!op.observed)observed.push(op.id);continue;}
    if(op.status==='success'&&op.observed)continue;
-   const v=op.value,cells={'Meeting Title':v.title,'Meeting Date':v.date+' '+v.time,'Meeting Time':v.time,Status:v.status,Summary:v.summary,'Action Items':v.actions,'Minutes Link':v.minutes,'Recording Link':v.recording,Participants:op.people};
+   const v=op.value,cells={'Meeting Title':v.title,'Meeting Date':v.date+' '+v.time,'Meeting Time':v.time,Status:v.status,'Meeting Type':v.meetingType,Summary:v.summary,'Action Items':v.actions,'Minutes Link':v.minutes,'Recording Link':v.recording,Participants:op.people};
    const record=projectRecord(source,{id,cells},this.config.baseUrl);record.sync=this.publicOperation(op);if(!op.recordId)record.sourceLink='';meetings.push(record);
   }
   if(observed.length)this.commit(next=>{for(const id of observed)next.operations[id].observed=true;});

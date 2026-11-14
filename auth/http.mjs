@@ -28,13 +28,16 @@ function loginTarget(value){
   return url.pathname==='/'?(url.search?'/research'+url.search+url.hash:'/project-management'):target;
 }
 
-export function createAuthHandler({ service, root, canBootstrap = () => true, access = new PageAccess({auth:service}), readWeather = readProjectWeather }) {
+export function createAuthHandler({ service, root, canBootstrap = () => true, access = new PageAccess({auth:service}), readWeather = readProjectWeather, translateBusiness }) {
   const publicFiles = {
     '/auth/login.js': ['auth/web/login.js', 'text/javascript'],
     '/auth/login.css': ['auth/web/login.css', 'text/css'],
     '/assets/vnet-official-logo.png': ['assets/vnet-official-logo.png', 'image/png'],
     '/src/application-settings.js': ['src/application-settings.js', 'text/javascript'],
     '/src/platform-navigation.css': ['src/platform-navigation.css', 'text/css'],
+    '/src/platform-language.js': ['src/platform-language.js', 'text/javascript'],
+    '/src/platform-translations.js': ['src/platform-translations.js', 'text/javascript'],
+    '/src/platform-language.css': ['src/platform-language.css', 'text/css'],
   };
   return async (req, res) => {
     let url;
@@ -55,7 +58,7 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
       if (url.pathname === '/api/auth/session') {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
         const loginEnabled = (service.config().oauthOrigins || service.config().origins).includes(origin);
-        json(res, 200, { ok: true, authenticated: !!session, user: session ? { name: session.user.name } : null, project, projects: platformProjects.map(({id,name})=>({id,name})), csrf: session?.csrf, expiresInMs: session?.expiresInMs, auditStatus: service.auditStatus(token), ...authorization, isAdmin, canConfigure: isAdmin || localBootstrap, loginEnabled }); return true;
+        json(res, 200, { ok: true, authenticated: !!session, user: session ? { name: session.user.name } : null, project, projects: platformProjects.map(({id,name})=>({id,name})), csrf: session?.csrf, expiresInMs: session?.expiresInMs, auditStatus: service.auditStatus(token), ...authorization, isAdmin, canConfigure: isAdmin || localBootstrap, loginEnabled, businessTranslationEnabled: !!session && typeof translateBusiness === 'function' }); return true;
       }
       if (url.pathname === '/api/auth/feishu/authorize') {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
@@ -106,6 +109,29 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
         sameOrigin(req, origin);
         const expiresInMs = service.recordActivity(token, req.headers['x-csrf-token']);
         json(res, 200, { ok: true, expiresInMs });
+        return true;
+      }
+      if (url.pathname === '/api/translation') {
+        if (req.method !== 'POST') throw authError('不支持此请求方法。', 405);
+        sameOrigin(req, origin);
+        if (typeof translateBusiness !== 'function') throw authError('业务翻译暂未配置。', 503);
+        if (req.headers['content-type']?.split(';')[0] !== 'application/json') throw authError('需要 JSON 请求。', 415);
+        const chunks = [];
+        let size = 0;
+        for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+          const bytes = Buffer.from(chunk);
+          size += bytes.length;
+          if (size > 16 * 1024) throw authError('待翻译文本过长。', 413);
+          chunks.push(bytes);
+        }
+        let payload;
+        try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+        catch { throw authError('待翻译文本格式无效。'); }
+        const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
+        if (!text || text.length > 4000) throw authError('待翻译文本格式无效。');
+        const translation = await translateBusiness(text, { sourceLanguage: 'zh', targetLanguage: 'en' });
+        if (typeof translation !== 'string' || !translation.trim() || translation.length > 16000) throw authError('业务翻译暂不可用。', 502);
+        json(res, 200, { ok: true, translation });
         return true;
       }
       if (url.pathname === '/api/auth/project') {

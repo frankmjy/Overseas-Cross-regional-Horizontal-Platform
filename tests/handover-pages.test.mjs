@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pageDefinitions,weeklyData,monthlyData,renderOverview,organizationData,overviewAgenda,overviewCalendarCells,stageInsight,stageInsightRows,ganttRowControls,taskDeliverableCount} from '../samples/handover-preview/pages.mjs';
+import {pageDefinitions,weeklyData,monthlyData,renderOverview,organizationData,overviewAgenda,overviewCalendarCells,overviewCycle,stageInsight,stageInsightRows,ganttRowControls,taskDeliverableCount} from '../samples/handover-preview/pages.mjs';
 const tasks=[{id:'late',code:'1',title:'逾期检查',stage:1,status:'逾期进行',start:'2026-10-01',end:'2026-10-20',actualCompletion:''},{id:'done',code:'2',title:'已完成检查',stage:1,status:'已完成',start:'2026-10-01',end:'2026-11-01',actualCompletion:'2026-11-01'},{id:'next',code:'3',title:'下周检查',stage:1,status:'未开始',start:'2026-11-02',end:'2026-11-06',actualCompletion:''}];
 test('只读状态标签替代完成勾选，交付物及优先级仍在原行',()=>{
  const row={...tasks[1],priority:'🔴P0-高优',attachments:[{name:'交付.txt'}],deliverableLinks:'https://example.com/doc\nhttps://example.com/doc'};
@@ -63,6 +63,19 @@ test('总览月历按实际月份展示完整周，不额外留空周，今天�
  assert.match(html,/aria-label="日历年份"/);assert.match(html,/aria-label="日历月份"/);
  assert.match(html,/data-overview-day="2026-11-02"[^>]*aria-current="date"/);
  assert.match(html,/data-overview-day="2026-11-25"[^>]*aria-pressed="true"/);
+});
+
+test('项目周期覆盖独立里程碑日期，同日节点分组且可分别打开',()=>{
+ const early={id:'start',title:'建设启动',end:'2026-09-30'},a={id:'delivery',title:'设备交付',end:'2026-11-30'},b={id:'review',title:'联合验收',end:a.end};
+ const model={tasks,milestones:[a,b,early,{id:'pending',title:'未排期节点'}],stages:[]};
+ const cycle=overviewCycle(model);
+ assert.deepEqual([cycle.start,cycle.end,cycle.span],['2026-09-30','2026-11-30',62]);
+ assert.deepEqual(cycle.groups.map(([d,items])=>[d,items.length]),[['2026-09-30',1],['2026-11-30',2]]);
+ const html=renderOverview(model,{month:'2026-11',today:'2026-11-04'}),section=html.match(/<section class="overview-cycle".*?<\/section>/)[0];
+ assert.match(section,/class="cycle-today" style="--cycle-position:57\.377%"/);
+ for(const id of ['start','delivery','review'])assert.match(section,new RegExp(`data-record="${id}"`));
+ assert.doesNotMatch(section,/未排期节点/);
+ assert.equal(overviewCycle({tasks:[],milestones:[{id:'pending'}]}),null);
 });
 
  test('逐条操作仅编辑者可见，待同步禁用并提供菜单语义',()=>{

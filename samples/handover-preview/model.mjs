@@ -1,3 +1,4 @@
+import { translateProjectTitle } from '../../src/platform-translations.js';
 import {inheritPriorities} from '../../project-tasks/handover/priority.mjs';
 import {rollupTaskDates} from '../../project-tasks/handover/summary.mjs';
 import {orderedTaskRecords,orderFieldName,displayCodeFieldName} from '../../project-tasks/handover/ordering.mjs';
@@ -76,7 +77,7 @@ export function filterTasks(model, filters = {}) {
     && (!filters.category || r.category === filters.category) && (!filters.actionType || r.actionType === filters.actionType)
     && statusMatches(r.status,filters.status) && (!filters.unscheduled || !r.start || !r.end)
     && (!filters.review || r.basis.includes('复核'))
-    && (!keyword || [r.title, r.code, r.group, r.category, r.notes, r.feedback, r.owner].some(value => value.toLowerCase().includes(keyword))))
+    && (!keyword || [r.title, translateProjectTitle(r.title), r.code, r.group, r.category, r.notes, r.feedback, r.owner].some(value => value?.toLowerCase().includes(keyword))))
     .sort((a, b) => a.stage - b.stage || naturalCompare(a.group, b.group) || naturalCompare(a.code, b.code));
 }
 

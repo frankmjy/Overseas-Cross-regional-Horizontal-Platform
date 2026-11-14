@@ -26,7 +26,7 @@ export const editableDocumentFields={
  index:{title:'Document Title',url:'Document Link'},
 };
 export function projectRecord(source,row,baseUrl){
- const record=baseRecord(source,row,baseUrl);if(!record||source.kind==='meeting')return record;
+ const record=baseRecord(source,row,baseUrl);if(!record||source.kind==='meeting'||source.kind==='meeting-action')return record;
  const c=row.cells,directoryId=text(c['Directory Category ID']),scope=text(c['Library Scope']),chapter=text(c['Lifecycle Chapter']),stage=text(c['Lifecycle Stage']),note=text(c.Notes),specialty=text(c.Discipline);
  const fields=editableDocumentFields[source.kind];
  const edit=source.writable&&fields?{title:editableText(c[fields.title]),note:editableText(c.Notes),specialty:editableText(c.Discipline)}:null;
@@ -37,11 +37,24 @@ export function projectRecord(source,row,baseUrl){
 }
 function baseRecord(source,row,baseUrl){
  const c=row.cells,t=n=>text(c[n]),sourceLink=`${baseUrl}?table=${source.id}&record=${row.id}`,id=source.id+':'+row.id;
+ if(source.kind==='meeting-action'){
+  const relations=Object.entries({'Araya Meeting':'thailand','Malaysia Meeting':'malaysia','Overseas Meeting':'overseas'}).flatMap(([key,project])=>{
+   const values=c[key];
+   return (Array.isArray(values)?values:values?[values]:[]).map(value=>({project,recordId:typeof value==='string'?value:value?.record_id||value?.id}));
+  });
+  const title=t('Action Title');
+  if(!title||relations.length!==1||!/^rec\w+$/.test(relations[0].recordId||''))return null;
+  const owners=Array.isArray(c.Assignee)?c.Assignee:c.Assignee?[c.Assignee]:[];
+  const date=t('Due At');
+  const time=/^\d{13}$/.test(date)?Number(date):Date.parse(date.replace(' ','T')+(/(?:Z|[+-]\d\d:\d\d)$/.test(date)?'':'+08:00'));
+  const due=Number.isFinite(time)?new Date(time+8*3600000).toISOString().slice(0,16):'';
+  return {id,sourceId:source.id,sourceLink,meetingAction:true,meetingRecordId:relations[0].recordId,project:relations[0].project,title,owner:owners.map(p=>p?.name).filter(Boolean).join('、'),due,status:t('Action Status'),priority:t('Action Priority'),note:t('Action Notes'),structured:true};
+ }
  if(source.kind==='meeting'){
   const stamp=t('Meeting Date'),date=/^\d{4}-\d\d-\d\d/.exec(stamp)?.[0]||'',time=t('Meeting Time')||/[T ](\d\d:\d\d)/.exec(stamp)?.[1]||'',timezone=/(Z|[+-]\d\d:\d\d)$/.exec(stamp)?.[1]||'';
   const actions=t('Action Items').split(/\r?\n|\s+(?=\d+[.、]\s)|(?<=[。；;])(?=\d+[.、]\s)/).map(v=>v.replace(/^\d+[.、]\s*/,'').trim()).filter(Boolean);
   const participants=Array.isArray(c.Participants)?c.Participants.map(p=>typeof p==='object'?p.name:'').filter(Boolean):[];
-  return {id,sourceId:source.id,sourceName:source.name,sourceLink,project:source.project,title:t('Meeting Title')||'未命名会议',type:t('Status'),date,time,timezone,summary:t('Summary'),participants,decisions:[],actions:actions.map(title=>({title,owner:'',due:'',status:'未标注',structured:false})),links:[...safeLinks(c['Minutes Link'],'会议纪要'),...safeLinks(c['Recording Link'],'会议妙记')],sections:[],tags:[]};
+  return {id,sourceId:source.id,sourceName:source.name,sourceLink,project:source.project,title:t('Meeting Title')||'未命名会议',type:t('Status'),meetingType:t('Meeting Type'),date,time,timezone,summary:t('Summary'),participants,decisions:[],actions:actions.map(title=>({title,owner:'',due:'',status:'未标注',structured:false})),links:[...safeLinks(c['Minutes Link'],'会议纪要'),...safeLinks(c['Recording Link'],'会议妙记')],sections:[],tags:[]};
  }
  let title,summary,sections=[],subcategory=t('Category'),specialty=t('Discipline');
  if(source.kind==='project-document'){

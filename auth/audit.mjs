@@ -36,6 +36,17 @@ export class LoginAuditSink {
     const rows = normalizeRows(found).filter(row => text(row[auditFields.id]) === event.id);
     if (rows.length > 1) throw Error('登录编号存在重复记录，请核对后重试。');
     let recordId = rows[0]?.recordId;
+    const matches = row => {
+      const account = row?.[auditFields.account];
+      return row && text(row[auditFields.id]) === event.id && text(row[auditFields.name]) === event.user.name &&
+        text(row[auditFields.openId]) === event.user.openId && Array.isArray(account) &&
+        account.some(value => (value.id || value.open_id) === event.user.openId) &&
+        instant(row[auditFields.login]) === Math.floor(Date.parse(event.loginTime) / 1000) * 1000 &&
+        (!event.logoutTime || instant(row[auditFields.logout]) === Math.floor(Date.parse(event.logoutTime) / 1000) * 1000) &&
+        text(row[auditFields.entry]) === event.entryPage && text(row[auditFields.method]) === event.method;
+    };
+    const read = async id => normalizeRows(await cli('+record-get', ['--record-id', id]))[0];
+    if (recordId && matches(await read(recordId))) return recordId;
     const fields = {
       [auditFields.id]: event.id, [auditFields.account]: [{ id: event.user.openId }], [auditFields.name]: event.user.name,
       [auditFields.openId]: event.user.openId, [auditFields.login]: date(event.loginTime), [auditFields.entry]: event.entryPage,
@@ -44,9 +55,7 @@ export class LoginAuditSink {
     const result = await cli('+record-upsert', [...(recordId ? ['--record-id', recordId] : []), '--json', JSON.stringify(fields)]);
     recordId ||= result.record?.record_id_list?.[0];
     if (!recordId) throw Error('登录记录写入结果不明确，将先查询再重试。');
-    const readback = normalizeRows(await cli('+record-get', ['--record-id', recordId]));
-    const row = readback[0], account = row?.[auditFields.account];
-    if (!row || text(row[auditFields.id]) !== event.id || text(row[auditFields.name]) !== event.user.name || text(row[auditFields.openId]) !== event.user.openId || !Array.isArray(account) || !account.some(value => (value.id || value.open_id) === event.user.openId) || instant(row[auditFields.login]) !== Math.floor(Date.parse(event.loginTime) / 1000) * 1000 || event.logoutTime && instant(row[auditFields.logout]) !== Math.floor(Date.parse(event.logoutTime) / 1000) * 1000 || text(row[auditFields.entry]) !== event.entryPage || text(row[auditFields.method]) !== event.method) throw Error('登录记录回读尚未一致，任务已保留。');
+    if (!matches(await read(recordId))) throw Error('登录记录回读尚未一致，任务已保留。');
     return recordId;
   }
 }

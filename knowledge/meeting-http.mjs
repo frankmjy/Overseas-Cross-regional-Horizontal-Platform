@@ -11,7 +11,7 @@ export function createMeetingHandler({service,minutes}){return async(req,res)=>{
   const method={options:'GET',minutes:'GET',operations:'GET',create:'POST',retry:'POST'}[route];if(!method)throw failure('接口不存在。',404);if(req.method!==method){res.setHeader('Allow',method);throw failure('请求方式不支持。',405);}
   if(method==='POST'){const origin=req.headers.origin;let same=false;try{same=!!origin&&new URL(origin).host===req.headers.host;}catch{}if(!same||req.headers['sec-fetch-site']==='cross-site')throw failure('请求来源不受支持。',403);if(!req.headers['content-type']?.startsWith('application/json'))throw failure('请使用 JSON 提交会议信息。',415);}
   if(route==='options'){if(!service.refreshing&&(!service.state.schemaUpdatedAt||Date.now()-service.state.schemaUpdatedAt>300000||url.searchParams.get('refresh')==='1'))service.refresh().catch(()=>{});const options=service.options(req.auth);send(200,{ok:true,...options,projects:options.projects.filter(scope=>allowed(scope.id))});}
-  else if(route==='minutes')send(200,{ok:true,...minutes.read(url.searchParams.get('id'),url.searchParams.get('refresh')==='1')});
+  else if(route==='minutes')send(200,{ok:true,...minutes.read(url.searchParams.get('id'),url.searchParams.get('refresh')==='1',scope=>req.auth.isAdmin===true||allowed(scope))});
   else if(route==='operations')send(200,{ok:true,operations:Object.values(service.state.operations).filter(o=>allowed(o.project)).map(o=>service.publicOperation(o))});
   else if(route==='create'){const raw=await body(req);assertScope(raw.project);send(202,{ok:true,operation:service.accept(raw,req.auth)});}
   else if(route==='retry'){const id=(await body(req)).id,operation=service.state.operations[id];if(operation)assertScope(operation.project);send(202,{ok:true,operation:service.retry(id)});}

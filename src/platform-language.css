@@ -1,0 +1,73 @@
+platform-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 2px;
+  border: 1px solid #dce6f4;
+  border-radius: 8px;
+  background: #f5f8fd;
+}
+
+platform-language button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #425e80;
+  font: 650 12px/1 system-ui, "Microsoft YaHei", sans-serif;
+  cursor: pointer;
+}
+
+platform-language button:hover { background: #edf3ff; }
+platform-language button[aria-pressed="true"] { background: #e4edff; color: #234fb2; }
+platform-language button:focus-visible { outline: 2px solid #4777e4; outline-offset: 1px; }
+
+.login-header-tools { display: flex; align-items: center; justify-self: end; gap: 10px; }
+.login-header-tools platform-language { border-color: #ffffff45; background: #ffffff12; }
+.login-header-tools platform-language button { color: #dceaff; }
+.login-header-tools platform-language button:hover { background: #ffffff24; }
+.login-header-tools platform-language button[aria-pressed="true"] { background: #d6e7ff; color: #15386b; }
+.login-header-tools .login-configuration[hidden] { display: none; }
+.platform-header .handover-header-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+html[lang="en"] :is(.platform-navigation>a,.platform-coordination>summary,.platform-header>nav>a) { gap: 5px; }
+html[lang="en"] :is(.overview-metric-copy>span,.stage-summary h3,.staffing-kpi-label,.coord-filters label,.document-card-title) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1360px) {
+  html[lang="en"] :is(.platform-brand,.platform-header>.brand)>span { display: none; }
+}
+
+@media (max-width: 760px) {
+  .login-header-tools { grid-row: 1; grid-column: 2; }
+  html[lang="en"] .platform-header .platform-navigation { gap: 6px 10px; flex-wrap: wrap; }
+  html[lang="en"] :is(.platform-navigation>a,.platform-coordination>summary) { font-size: 11px; }
+  .admin-page :is(.admin-heading,.admin-tabs,.admin-pagination,.admin-summary) {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+  .admin-filters .admin-search { min-width: 0; }
+}
+
+@media (max-width: 560px) {
+  .platform-header:has(.handover-header-tools platform-account) {
+    grid-template-columns: minmax(0,1fr) auto auto auto;
+  }
+  .platform-header .handover-header-tools:has(platform-account) { display: contents; }
+  .platform-header .handover-header-tools > platform-language { grid-column: 2; grid-row: 1; }
+  .platform-header .handover-header-tools > platform-account { grid-column: 3; }
+  .platform-header .handover-header-tools > .menu-button { grid-column: 4; }
+}
+
+@media (max-width: 430px) {
+  .platform-header:has(.platform-header-tools) .platform-header-inner {
+    grid-template-columns: minmax(0,1fr) auto auto;
+  }
+  .platform-header .platform-header-tools > platform-language { grid-column: 2; grid-row: 1; }
+  .platform-header .platform-header-tools > platform-account { grid-column: 3; }
+}

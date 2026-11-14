@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { AuthService, safeReturnTo, requestOrigin, authConfig } from '../auth/service.mjs';
 import { createAuthHandler } from '../auth/http.mjs';
 import { readProjectWeather } from '../auth/project-weather.mjs';
@@ -21,6 +22,34 @@ function fixture(t, options = {}) {
 function req(url, cookie = '', extra = {}) { return { url, method: 'GET', headers: { host: 'localhost:3333', cookie }, socket: { encrypted: true, remoteAddress: '127.0.0.1' }, ...extra }; }
 function res() { return { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, writeHead(status, headers = {}) { this.status = status; for (const [k, v] of Object.entries(headers)) this.setHeader(k, v); }, end(body = '') { this.body = body; } }; }
 async function login(service) { const started = service.begin(origin, '/project-management'); return service.finish(origin, started.state, started.browser, 'code'); }
+
+test('business translation is optional and requires an authenticated same-origin session', async t => {
+  const f = fixture(t), logged = await login(f.service);
+  const cookie = `__Host-vnet_session=${logged.token}`;
+  const url = '/api/translation';
+  const translated = [];
+  const handle = createAuthHandler({service:f.service,root:process.cwd(),translateBusiness:async value => {
+    translated.push(value);
+    return 'Meeting follow-up';
+  }});
+  const call = async (handler, sessionCookie, source = origin) => {
+    const request = Object.assign(Readable.from(['{"text":"会议跟进"}']), req(url, sessionCookie, {
+      method: 'POST', headers: {host:'localhost:3333',cookie:sessionCookie,origin:source,'content-type':'application/json'},
+    }));
+    const response = res();
+    assert.equal(await handler(request,response),true);
+    return response;
+  };
+  const disabled = createAuthHandler({service:f.service,root:process.cwd()});
+  assert.equal((await call(disabled,cookie)).status,503);
+  assert.equal((await call(handle,'')).status,401);
+  assert.equal((await call(handle,cookie,'https://foreign.invalid')).status,403);
+  assert.deepEqual(translated,[]);
+  const result = await call(handle,cookie);
+  assert.equal(result.status,200);
+  assert.equal(JSON.parse(result.body).translation,'Meeting follow-up');
+  assert.deepEqual(translated,['会议跟进']);
+});
 
 test('return destinations reject external, encoded and auth-loop redirects', () => {
   for (const value of ['//evil.example', '/\\evil', '/%2f%2fevil', '/%5cevil', 'https://evil', '/api/auth/feishu/authorize', '/login', '/\r\nfoo', '/%252f%252fevil']) assert.equal(safeReturnTo(value), '/');

@@ -38,6 +38,27 @@
 .overview-metric-copy strong{display:block;font-size:30px;font-weight:750;line-height:1.15;letter-spacing:-.6px;font-variant-numeric:tabular-nums;margin-top:5px;color:#213851}
 .overview-metric-copy small{font-size:11px;font-weight:500;letter-spacing:0;color:var(--ov-muted);margin-left:6px}
 .project-overview .overview-main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:stretch}
+.overview-cycle{margin-bottom:18px;padding:16px 20px;background:#fff;border:1px solid var(--ov-line);border-radius:12px;min-width:0}
+.cycle-heading h2{margin:0;font-size:18px;color:#243c58}
+.cycle-axis{margin-top:20px}
+.cycle-track{position:relative;height:4px;margin:0 5px;border-radius:4px;background:#cbdaf3}
+.cycle-track::before,.cycle-track::after{content:"";position:absolute;top:0;width:4px;height:4px;border-radius:50%;background:#5480cf}
+.cycle-track::before{left:0}.cycle-track::after{right:0}
+.cycle-marker{position:absolute;z-index:1;top:50%;left:var(--cycle-position);width:9px;height:9px;border:1px solid #fff;border-radius:2px;background:#b47b2c;transform:translate(-50%,-50%) rotate(45deg)}
+.cycle-today{position:absolute;left:var(--cycle-position);bottom:10px;transform:translateX(-50%);padding:1px 4px;border-radius:3px;background:#edf3fc;color:#365b96;font-size:10px;font-weight:650;white-space:nowrap}
+.cycle-today::after{content:"";position:absolute;top:100%;left:50%;width:1px;height:10px;background:#7391c4}
+.cycle-boundaries{display:flex;justify-content:space-between;gap:8px;margin-top:9px;color:var(--ov-muted);font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums}
+.cycle-boundaries>span:last-child{text-align:right}
+.cycle-boundaries time{color:var(--ov-copy);font-weight:650;white-space:nowrap}
+.cycle-milestones{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,194px),1fr));align-items:start;gap:8px;margin:13px 0 0;padding:0;list-style:none}
+.cycle-milestones li{min-width:0;padding:6px 9px;border:1px solid #e8eef6;border-radius:7px;background:#f8fafd}
+.cycle-milestones time{display:flex;align-items:center;gap:6px;color:#685134;font-size:11px;font-weight:650;font-variant-numeric:tabular-nums}
+.cycle-milestones time::before{content:"";width:5px;height:5px;border-radius:1px;background:#b47b2c;transform:rotate(45deg)}
+.cycle-milestone{display:flex;align-items:baseline;justify-content:space-between;gap:5px;width:100%;padding:3px 0;border:0;background:transparent;color:#344d6a;text-align:left;font-size:12px;line-height:1.45}
+.cycle-milestone>span:first-child{overflow-wrap:anywhere}
+.cycle-milestone>span:last-child{color:#7188aa}
+.cycle-milestone:hover,.cycle-milestone:focus-visible{color:#245ab0;text-decoration:underline}
+@media(max-width:600px){.overview-cycle{padding:12px}.cycle-milestones{grid-template-columns:repeat(2,minmax(0,1fr))}.cycle-boundaries time{display:block}}
 .overview-shell{display:flex;flex-direction:column;background:#fff;padding:20px;border:1px solid var(--ov-line);border-radius:12px;min-width:0}
 .overview-shell-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;min-height:34px}
 .overview-section-title{display:flex;align-items:center;gap:12px;white-space:nowrap}

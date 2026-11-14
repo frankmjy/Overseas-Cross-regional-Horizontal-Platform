@@ -781,7 +781,7 @@ function renderDetailItem(item) {
       ${item.organizationChart ? '<button class="detail-item-action" type="button" data-organization-chart aria-haspopup="dialog">' : ''}
       <i class="${escapeAttribute(item.tone || '')}"></i>
       <${item.organizationChart ? 'span' : 'div'}>
-        ${item.url ? `<a class="deliverable-document" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)} ${icon('external')}</a>` : `<strong>${escapeHtml(item.title)}</strong>`}
+        ${item.url ? `<a class="deliverable-document" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer"><span data-business-text>${escapeHtml(item.title)}</span> ${icon('external')}</a>` : `<strong data-business-text>${escapeHtml(item.title)}</strong>`}
         ${item.meta ? `<small>${escapeHtml(item.meta)}</small>` : ''}
       </${item.organizationChart ? 'span' : 'div'}>
       ${item.tag ? `<em>${escapeHtml(item.tag)}</em>` : ''}

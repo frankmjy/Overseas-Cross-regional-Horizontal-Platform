@@ -6,14 +6,15 @@ import { exchangeIdentity } from '../auth/service.mjs';
 const event = { id: 'a1b2-test-login', user: { name: '测试人员', openId: 'ou_verified' }, loginTime: '2026-10-24T00:00:00.999Z', logoutTime: null, entryPage: '/project-management', method: '飞书授权' };
 const table = rows => ({ fields: Object.values(f), record_id_list: rows.map(() => 'rec_test'), data: rows.map(row => Object.values(f).map(name => row[name] ?? null)), has_more: false });
 function adapter({ loseCreate = false, wrongUser = false, incompleteSearch = false } = {}) {
-  let row, creates = 0;
-  return { get creates() { return creates; }, async cli(command, args) {
+  let row, creates = 0, writes = 0;
+  return { get creates() { return creates; }, get writes() { return writes; }, async cli(command, args) {
     assert.ok(args.includes('--table-id')); assert.equal(args[args.indexOf('--table-id') + 1], 'tblActual');
     if (command === '+record-search') {
       assert.deepEqual(JSON.parse(args[args.indexOf('--json') + 1]), { keyword: event.id, search_fields: [f.id], select_fields: [f.id], limit: 2 });
       return { ...table(row ? [row] : []), has_more: incompleteSearch };
     }
     if (command === '+record-upsert') {
+      writes++;
       assert.ok(!args.includes('--format'), 'upsert does not support --format');
       if (!args.includes('--record-id')) creates++;
       row = { ...row, ...JSON.parse(args[args.indexOf('--json') + 1]) };
@@ -28,8 +29,8 @@ function adapter({ loseCreate = false, wrongUser = false, incompleteSearch = fal
 test('audit recovers an uncertain create by login id and semantically verifies typed fields', async () => {
   const base = adapter({ loseCreate: true }), sink = new LoginAuditSink({ tableId: 'tblActual' }, base);
   await assert.rejects(sink.sync(event), /unknown result/);
-  assert.equal(await sink.sync(event), 'rec_test'); assert.equal(base.creates, 1);
-  assert.equal(await sink.sync({ ...event, logoutTime: '2026-10-24T01:00:00.100Z' }), 'rec_test'); assert.equal(base.creates, 1);
+  assert.equal(await sink.sync(event), 'rec_test'); assert.equal(base.creates, 1); assert.equal(base.writes, 1);
+  assert.equal(await sink.sync({ ...event, logoutTime: '2026-10-24T01:00:00.100Z' }), 'rec_test'); assert.equal(base.creates, 1); assert.equal(base.writes, 2);
 });
 test('audit refuses a name-only or wrong linked Feishu account', async () => {
   await assert.rejects(new LoginAuditSink({ tableId: 'tblActual' }, adapter({ wrongUser: true })).sync(event), /回读/);

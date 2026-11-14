@@ -374,6 +374,10 @@
         "Participants": {
           "id": "fldZzuXq3E",
           "name": "Participants（参与人）"
+        },
+        "Meeting Type": {
+          "id": "fldtC1aibI",
+          "name": "Meeting Type（会议类型）"
         }
       }
     },
@@ -419,6 +423,10 @@
         "Participants": {
           "id": "fldruNFZVt",
           "name": "Participants（参与人）"
+        },
+        "Meeting Type": {
+          "id": "fld5lZHr0N",
+          "name": "Meeting Type（会议类型）"
         }
       }
     },
@@ -464,6 +472,10 @@
         "Status": {
           "id": "fldcJchSIG",
           "name": "Status（状态）"
+        },
+        "Meeting Type": {
+          "id": "fldGbc4zSz",
+          "name": "Meeting Type（会议类型）"
         }
       }
     },
@@ -656,13 +668,78 @@
       "regionalOffice": true,
       "writable": true,
       "fields": {
-        "Document Title": {"id": "fldc1T8nKb", "name": "Document Title（文档名称）"},
-        "Topic": {"id": "fldbFRHxsd", "name": "Topic（主题分类）"},
-        "Document Link": {"id": "fldBacH4dT", "name": "Document Link（文档链接）"},
-        "Shared At": {"id": "fldldYQx2E", "name": "Shared At（分享时间）"},
-        "Attachments": {"id": "fldAeexLVB", "name": "Attachments（附件）"},
-        "Notes": {"id": "fldnRjGxq2", "name": "Notes（备注）"},
-        "Discipline": {"id": "fldG2NFBGt", "name": "Discipline（专业）"}
+        "Document Title": {
+          "id": "fldc1T8nKb",
+          "name": "Document Title（文档名称）"
+        },
+        "Topic": {
+          "id": "fldbFRHxsd",
+          "name": "Topic（主题分类）"
+        },
+        "Document Link": {
+          "id": "fldBacH4dT",
+          "name": "Document Link（文档链接）"
+        },
+        "Shared At": {
+          "id": "fldldYQx2E",
+          "name": "Shared At（分享时间）"
+        },
+        "Attachments": {
+          "id": "fldAeexLVB",
+          "name": "Attachments（附件）"
+        },
+        "Notes": {
+          "id": "fldnRjGxq2",
+          "name": "Notes（备注）"
+        },
+        "Discipline": {
+          "id": "fldG2NFBGt",
+          "name": "Discipline（专业）"
+        }
+      }
+    },
+    {
+      "id": "tblrUCVFXhyql7gJ",
+      "name": "04.06.02 Meeting Follow-ups（会议待办）",
+      "category": "meetings",
+      "kind": "meeting-action",
+      "fields": {
+        "Action Title": {
+          "id": "fldOIRo8Fu",
+          "name": "Action Title（待办事项）"
+        },
+        "Assignee": {
+          "id": "fldqDm6zHE",
+          "name": "Assignee（负责人）"
+        },
+        "Due At": {
+          "id": "fldXZlo0hF",
+          "name": "Due At（截止时间）"
+        },
+        "Action Status": {
+          "id": "fld4hMQheN",
+          "name": "Action Status（状态）"
+        },
+        "Action Priority": {
+          "id": "fldkKAsn0a",
+          "name": "Action Priority（优先级）"
+        },
+        "Action Notes": {
+          "id": "fld1Wkpqsj",
+          "name": "Action Notes（备注）"
+        },
+        "Araya Meeting": {
+          "id": "fldtLJ8vqq",
+          "name": "Araya Meeting（泰国会议）"
+        },
+        "Malaysia Meeting": {
+          "id": "fldmf7QVyN",
+          "name": "Malaysia Meeting（马来会议）"
+        },
+        "Overseas Meeting": {
+          "id": "fld4oQqEGn",
+          "name": "Overseas Meeting（海外同频）"
+        }
       }
     }
   ],

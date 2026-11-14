@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>飞书登录 · 海外运维协作平台</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/src/platform-navigation.css"><link rel="stylesheet" href="/auth/login.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>飞书登录 · 海外运维协作平台</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/src/platform-navigation.css"><link rel="stylesheet" href="/auth/login.css"><link rel="stylesheet" href="/src/platform-language.css"><script type="module" src="/src/platform-language.js"></script></head>
 <body>
   <main class="login-experience">
     <svg class="login-visual" viewBox="0 0 760 650" aria-hidden="true" focusable="false">
@@ -36,6 +36,7 @@
         <path d="M83 362h71l51-31h42m294-92h74l43-28h34M151 262v-66h88m278-35h96v32"/>
         <path d="M391 63v26m0 476v26M123 327h26m484 0h26"/>
       </g>
+      <circle class="aidc-orbit" cx="391" cy="327" r="250" pathLength="100" fill="none" stroke="#9eeeff" stroke-width="2" stroke-linecap="round"/>
       <g fill="#91e9f7">
         <circle cx="151" cy="196" r="3"/><circle cx="692" cy="211" r="3"/><circle cx="83" cy="362" r="3"/><circle cx="613" cy="161" r="3"/>
       </g>
@@ -70,8 +71,13 @@
     </svg>
     <header class="login-header">
       <div class="login-brand-context"><img class="login-logo" src="/assets/vnet-official-logo.png" alt="世纪互联 VNET"><span class="login-brand-divider" aria-hidden="true"></span><label class="login-project" for="loginProject"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4h10v17M14 9h6v12M8 8h2m-2 4h2m-2 4h2m7-3h1m-1 4h1M2 21h20"/></svg><select id="loginProject" aria-label="选择登录项目" required disabled><option value="">读取项目…</option></select></label></div>
-      <button type="button" class="login-configuration" data-application-settings aria-label="应用配置" title="应用配置" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <div class="login-header-tools"><platform-language></platform-language><button type="button" class="login-configuration" data-application-settings aria-label="应用配置" title="应用配置" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
     </header>
-    <section class="login-content" aria-labelledby="loginTitle"><p class="login-kicker">AIDC · OVERSEAS OPERATIONS</p><h1 id="loginTitle"><span>海外运维</span> <span>协作平台</span></h1><div class="login-modules"><span>项目管理</span><span>调研工作台</span><span>知识共享</span></div><div class="login-panel" id="loginPanel" aria-label="飞书登录"><a class="login-primary" id="feishuLogin" href="/api/auth/feishu/authorize" aria-disabled="true"><svg class="feishu-symbol" viewBox="0 0 48 48" aria-hidden="true"><path fill="#3370ff" d="M5 13h17l11 9-10 10z"/><path fill="#00cbb0" d="m22 13 21 1-10 8z"/><path fill="#2489ee" d="m23 32 10-10 10-8-5 18-15 8z"/></svg><span>使用飞书登录</span><svg class="login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><div class="login-feedback"><p id="loginStatus" role="status" aria-live="polite"></p><button type="button" class="login-retry" id="loginRetry" title="重新读取项目" hidden>重试</button></div></div></section>
+    <section class="login-content" aria-labelledby="loginTitle"><p class="login-kicker"><span class="login-kicker-zh">AIDC · 海外运维</span><span class="login-kicker-en" lang="en">VNET AIDC</span></p>
+      <h1 id="loginTitle">
+        <span class="login-title-zh" lang="zh-CN" translate="no"><span>海外运维</span><span>协作平台</span></span>
+        <span class="login-title-en" lang="en"><span class="login-title-main">Overseas Ops</span><span class="login-title-support">Collaboration Platform</span></span>
+      </h1><div class="login-modules"><span>项目管理</span><span>调研工作台</span><span>知识共享</span></div><div class="login-panel" id="loginPanel" aria-label="飞书登录"><a class="login-primary" id="feishuLogin" href="/api/auth/feishu/authorize" aria-disabled="true"><svg class="feishu-symbol" viewBox="0 0 48 48" aria-hidden="true"><path fill="#3370ff" d="M5 13h17l11 9-10 10z"/><path fill="#00cbb0" d="m22 13 21 1-10 8z"/><path fill="#2489ee" d="m23 32 10-10 10-8-5 18-15 8z"/></svg><span>使用飞书登录</span><svg class="login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><div class="login-feedback"><p id="loginStatus" role="status" aria-live="polite"></p><button type="button" class="login-retry" id="loginRetry" title="重新读取项目" hidden>重试</button></div></div></section>
   </main><script type="module" src="/auth/login.js"></script>
 </body></html>

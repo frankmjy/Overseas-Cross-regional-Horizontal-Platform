@@ -3,7 +3,7 @@ import { access, stat } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ProjectTaskService } from './project-tasks/service.mjs';
 import { createProjectTaskHandler } from './project-tasks/http.mjs';
 import {HandoverService} from './project-tasks/handover/service.mjs';
@@ -51,7 +51,19 @@ const canBootstrap = () => true;
 const loginAuditReader = new LoginAuditReader({dir:process.env.AUTH_DATA_DIR||path.join(ROOT,'.runtime/auth'),sink:authService.sink,auth:authService});
 const appAvailability=new AppAvailability({auth:authService});
 const pageAccess=new PageAccess({auth:authService,people:()=>loginAuditReader.identities(),availability:appAvailability});
-const handleAuth = createAuthHandler({service:authService,root:ROOT,canBootstrap,access:pageAccess});
+let translateBusiness;
+const translationModule = process.env.VNET_TRANSLATION_MODULE?.trim();
+if (translationModule) {
+  try {
+    if (!path.isAbsolute(translationModule)) throw Error('Expected absolute module path');
+    const provider = await import(pathToFileURL(translationModule).href);
+    if (typeof provider.translateBusiness !== 'function') throw Error('Missing translation provider export');
+    translateBusiness = provider.translateBusiness;
+  } catch {
+    console.error('Business translation disabled: check VNET_TRANSLATION_MODULE and its translateBusiness export.');
+  }
+}
+const handleAuth = createAuthHandler({service:authService,root:ROOT,canBootstrap,access:pageAccess,translateBusiness});
 const handleAdmin = createAdminHandler({root:ROOT,reader:loginAuditReader,access:pageAccess,availability:appAvailability});
 authService.start();
 const researchConfig = JSON.parse(readFileSync(path.join(ROOT, 'research/config.json'), 'utf8'));
