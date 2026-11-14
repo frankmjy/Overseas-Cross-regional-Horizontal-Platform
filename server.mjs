@@ -18,6 +18,7 @@ import { researchProjectConfigs, createProjectResearchHandler, assertResearchSou
 import { ApplicationSettings, createApplicationSettingsHandler, isLocalConfigurationRequest } from './application-settings.mjs';
 import { createKnowledgeHandler } from './knowledge/http.mjs';
 import { KnowledgeService } from './knowledge/service.mjs';
+import { startNightlySync } from './knowledge/nightly-sync.mjs';
 import { MeetingService } from './knowledge/meeting-service.mjs';
 import { MinutesService } from './knowledge/minutes.mjs';
 import { createMeetingHandler } from './knowledge/meeting-http.mjs';
@@ -108,8 +109,29 @@ const staffingConfig=JSON.parse(readFileSync(path.join(ROOT,'project-tasks/staff
 const staffingService=new StaffingService({dir:process.env.STAFFING_DATA_DIR||path.join(ROOT,'.runtime/staffing'),adapter:new StaffingAdapter(staffingConfig),isMaintenance:()=>isMaintenance()||applicationSettings.saving});
 staffingService.start();
 const handleStaffing=createStaffingHandler(staffingService);
-applicationSettings.canSwitchApp = () => !handoverService.pending && !handoverService.flushing && !handoverService.refreshing && !handoverService.statusRunning && !documentService.pending && !documentService.running && !coordinationService.writer.pending && !coordinationService.writer.running && !staffingService.busy && !Object.values(staffingService.state.operations).some(o => !['success','discarded'].includes(o.status)) && !Object.values(priorityService.state.operations).some(o => !['success','discarded'].includes(o.status)) && !authService.flushing && !Object.values(authService.state.events).some(e => e.syncStatus !== 'synced') && !Object.values(projectTaskService.state.operations).some(op => op.status !== 'success') && !Object.values(meetingService.state.operations).some(op => op.status !== 'success');
-const handleApplicationSettings = createApplicationSettingsHandler(applicationSettings, () => !handoverService.pending && !handoverService.flushing && !handoverService.refreshing && !handoverService.statusRunning && !documentService.running && !documentService.refreshing && !documentService.pending && !coordinationService.refreshing && !coordinationService.writer.running && !staffingService.busy && !staffingService.refreshing && !priorityService.running && !priorityService.refreshing.size && planRequests === 0 && !meetingService.running && !meetingService.refreshing && !meetingService.pending && !minutesService.running.size && !projectTaskService.refreshing && !projectTaskService.flushing && !projectTaskService.statusRefreshing && Object.values(researchServices).every(service => !service.busy && !service.refreshing && !Object.values(service.state.operations).some(op => ['accepted', 'syncing'].includes(op.status))), req => req.auth?.isAdmin === true || !req.auth && canBootstrap() && isLocalConfigurationRequest(req));
+const confirmedRefresh=(refresh,hasError)=>async()=>{
+ await refresh();
+ if(hasError())throw Error('Feishu refresh did not complete');
+};
+const nightlySync=startNightlySync({
+ dir:knowledgeDir,
+ isPaused:()=>isMaintenance()||applicationSettings.saving,
+ jobs:{
+  'knowledge-meetings':confirmedRefresh(()=>knowledgeService.refresh(),()=>knowledgeService.errors.length>0),
+  'knowledge-directory':confirmedRefresh(()=>documentService.refresh(),()=>!!documentService.lastError),
+  'meeting-fields':confirmedRefresh(()=>meetingService.refresh(),()=>!!meetingService.lastError),
+  'project-handover':()=>handoverService.refresh(),
+  'startup-materials':confirmedRefresh(()=>coordinationService.refresh(),()=>!!coordinationService.error),
+  'staffing-tracking':()=>staffingService.refreshTracking(),
+  'organization-thailand':()=>teamOrganization.read('thailand',{refresh:true}),
+  'organization-malaysia':()=>teamOrganization.read('malaysia',{refresh:true}),
+  'priorities-thailand':()=>priorityService.refresh('th-001'),
+  'priorities-malaysia':()=>priorityService.refresh('my-001'),
+  ...Object.fromEntries(Object.entries(researchServices).map(([key,service])=>['research-'+key,()=>service.refresh()])),
+ },
+});
+applicationSettings.canSwitchApp = () => !nightlySync.running && !handoverService.pending && !handoverService.flushing && !handoverService.refreshing && !handoverService.statusRunning && !documentService.pending && !documentService.running && !coordinationService.writer.pending && !coordinationService.writer.running && !staffingService.busy && !Object.values(staffingService.state.operations).some(o => !['success','discarded'].includes(o.status)) && !Object.values(priorityService.state.operations).some(o => !['success','discarded'].includes(o.status)) && !authService.flushing && !Object.values(authService.state.events).some(e => e.syncStatus !== 'synced') && !Object.values(projectTaskService.state.operations).some(op => op.status !== 'success') && !Object.values(meetingService.state.operations).some(op => op.status !== 'success');
+const handleApplicationSettings = createApplicationSettingsHandler(applicationSettings, () => !nightlySync.running && !handoverService.pending && !handoverService.flushing && !handoverService.refreshing && !handoverService.statusRunning && !documentService.running && !documentService.refreshing && !documentService.pending && !coordinationService.refreshing && !coordinationService.writer.running && !staffingService.busy && !staffingService.refreshing && !priorityService.running && !priorityService.refreshing.size && planRequests === 0 && !meetingService.running && !meetingService.refreshing && !meetingService.pending && !minutesService.running.size && !projectTaskService.refreshing && !projectTaskService.flushing && !projectTaskService.statusRefreshing && Object.values(researchServices).every(service => !service.busy && !service.refreshing && !Object.values(service.state.operations).some(op => ['accepted', 'syncing'].includes(op.status))), req => req.auth?.isAdmin === true || !req.auth && canBootstrap() && isLocalConfigurationRequest(req));
 const DEFAULT_PFX_PATH = path.join(ROOT, 'certs', 'localhost.pfx');
 const DEFAULT_PFX_PASSPHRASE_PATH = path.join(ROOT, 'certs', 'localhost.passphrase');
 
@@ -303,9 +325,11 @@ const server = httpsOptions
 
 server.listen(PORT, HOST, () => {
   console.log(`Overseas project platform: ${protocol}://${HOST}:${PORT}/`);
+  nightlySync.tick();
 });
 async function shutdown() {
   server.close();
+  await nightlySync.close();
   await handoverService.close();
   authService.close();
   await loginAuditReader.close();

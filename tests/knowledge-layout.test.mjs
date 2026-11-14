@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { projects, filterDocuments, filterMeetings, meetingMetrics } from '../knowledge/web/data.mjs';
 import { renderLibraryOverview } from '../knowledge/web/overview.mjs';
 import { meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups } from '../knowledge/web/meetings-overview.mjs';
+import { renderMeetingTrail } from '../knowledge/web/meeting-trail.mjs';
 import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections} from '../knowledge/library-model.mjs';
 import {handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments} from '../knowledge/lifecycle.mjs';
 import {visibleDirectory,directoryDocuments,documentDirectory} from '../knowledge/directory.mjs';
@@ -26,7 +27,7 @@ async function fixture(overrides = {}) {
     currentPageEditable:()=>true,projects, filterDocuments, filterMeetings, meetingMetrics, renderLibraryOverview,libraryDocuments,primeDocumentOptions:()=>Promise.resolve(),
     renderLibraryShell:uiContext.renderLibraryShell,renderDocumentCards:uiContext.renderDocumentCards,renderTemplateEntries:uiContext.renderTemplateEntries,
     selectedProject:{id:'th-001',name:'泰国 Araya 项目',knowledgeKey:'thailand'},
-    meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups,
+    meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups, renderMeetingTrail,
     handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,
     renderPlatformHeader: active => `<header data-active="${active}"></header>` });
   const source = (await readFile(new URL('../knowledge/web/app.mjs', import.meta.url), 'utf8'))
@@ -53,6 +54,37 @@ test('compact knowledge layout keeps classification, search and refresh together
   assert.doesNotMatch(page, /knowledge-hero|library-search|category-grid|module-nav/);
   assert.match(f.nodes.get('#results').innerHTML, /真实资料/);
   assert.doesNotMatch(f.nodes.get('#results').innerHTML, /详见源表|<p><\/p>/);
+});
+
+test('project preparation groups source records by topic and keeps project boundaries',async()=>{
+ const prep={lifecycle:{chapter:'handover',stage:'1'},libraryScope:'shared',links:[],tags:[],sections:[],date:''};
+ const documents=[
+  {...prep,id:'spec',title:'变压器',nature:'设备技术规格'},
+  {...prep,id:'maintenance',title:'变压器',nature:'运维维保需求规范'},
+  {...prep,id:'review',title:'泰国施工图审图意见',nature:'项目规划',libraryScope:'project',projectScope:'泰国',directoryId:'handover:1'},
+  {...prep,id:'other-project',title:'马来设备厂验计划',libraryScope:'project',projectScope:'马来'},
+  {...prep,id:'domestic',title:'国内设备厂验计划',libraryScope:'domestic'},
+  {...prep,id:'explicit',title:'泰国待审施工图',libraryScope:'project',projectScope:'泰国',directoryId:'custom-review'},
+  {...prep,id:'general-prep',title:'筹备总体资料'},
+ ];
+ const directoryNodes=[
+  {id:'custom-review',name:'需复核文件',chapter:'handover',parentId:'handover:1',stage:'1',project:'thailand'},
+  {id:'empty-custom',name:'用户创建的空目录',chapter:'handover',parentId:'handover:1',stage:'1',project:'thailand'},
+ ];
+ const f=await fixture({documents,feed:{state:'ready',errors:[],directoryNodes}});
+ f.render('library',{scope:'handover',directory:'handover:1'});
+ const page=f.nodes.get('#app').innerHTML;
+ assert.match(page,/项目筹备<\/span><b>5<\/b>/);
+ assert.match(page,/设备技术规格<\/span><b>1<\/b>/);
+ assert.match(page,/维保规范<\/span><b>1<\/b>/);
+ assert.match(page,/施工图及图审记录<\/span><b>1<\/b>/);
+ assert.match(page,/用户创建的空目录<\/span><b>0<\/b>/);
+ assert.doesNotMatch(page,/data-directory-node="prep:factory-inspection"/);
+ assert.equal(f.nodes.get('#doc-count').textContent,'5 份');
+ f.render('library',{scope:'handover',directory:'prep:drawing-review'});
+ assert.equal(f.nodes.get('#doc-count').textContent,'1 份');
+ assert.match(f.nodes.get('#results').innerHTML,/泰国施工图审图意见/);
+ assert.doesNotMatch(f.nodes.get('#results').innerHTML,/泰国待审施工图/);
 });
 
 test('ordinary cards hide remarks and offer direct edit only for editable records',async()=>{
@@ -142,22 +174,22 @@ test('group add carries the visible classification into the editor without grant
  const rows=[{id:'power',title:'电力方舱',nature,specialty:'电气',libraryScope:'shared',classification:'S1.3.3'},
   {id:'unknown',title:'待分类设备',nature,libraryScope:'shared',classification:'S1.3.3'}];
  const classify=html=>[...html.matchAll(/data-group-add="([^"]+)"/g)].map(([,value])=>JSON.parse(value.replaceAll('&quot;','"')));
- const expected={nature,scope:'shared',chapter:'handover',stage:'1',directoryId:'handover:1'};
+ const expected={nature,scope:'shared',chapter:'handover',stage:'1',directoryId:'prep:maintenance-standards'};
  assert.deepEqual(classify(table(rows,{editable:true})),[expected,{...expected,specialty:'电气'},expected]);
  assert.deepEqual(classify(table(rows,{editable:true,collapsedGroups:[nature]})),[expected]);
  assert.deepEqual(classify(table(rows,{editable:false})),[]);
 });
 
 test('compact meetings follow login project and omit empty summary filler', async () => {
-  const f = await fixture(); f.render('meetings');
+  const f = await fixture(); f.render('meetings',{meetingScope:'thailand'});
   const page = f.nodes.get('#app').innerHTML;
   assert.match(page, /泰国 Araya 项目/); assert.doesNotMatch(page,/class="project-tabs"/);
   assert.match(page, /data-active="meetings"/);
   assert.doesNotMatch(page, /module-nav/);
-  assert.match(page, /meeting-dashboard-layout/);
-  assert.match(f.nodes.get('#results').innerHTML, /项目会议/);
-  assert.doesNotMatch(f.nodes.get('#results').innerHTML, /源表暂未填写|<p><\/p>/);
-  assert.match(f.nodes.get('#pending-actions').innerHTML, /暂无跟进事项/);
+  assert.match(page, /meeting-trail/);
+  const trail=f.nodes.get('#meetingTrail').innerHTML;
+  assert.match(trail, /项目会议/);
+  assert.doesNotMatch(trail, /源表暂未填写|未分类|<p><\/p>/);
 });
 
 test('compact toolbar retains explicit external read errors', async () => {

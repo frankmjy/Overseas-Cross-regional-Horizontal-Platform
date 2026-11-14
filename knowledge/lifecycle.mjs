@@ -485,6 +485,7 @@ const locations = new Map(handoverStages.flatMap(stage => stage.groups.flatMap(g
 const assignments = {
   'tblIJiG3OE2QGTm8:reczz28OUtPAWBqF':'S1.3.2',
   'tblIJiG3OE2QGTm8:reczz28OUtPATMbW':'S1.1.1',
+  'tblIJiG3OE2QGTm8:reczz28OUtPAUjsR':'S1.1.1',
   'tblIJiG3OE2QGTm8:reczz28OUtPAWO5I':'S2.3.1',
 };
 export function documentLifecycle(document) {

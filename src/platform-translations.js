@@ -336,6 +336,12 @@ const labels = new Map(`
 小类|Subcategory
 运维维保需求规范|Maintenance Requirements
 设备技术规格|Equipment Specifications
+设备厂验|Factory Acceptance Testing
+维保规范|Maintenance Standards
+施工图及图审记录|Drawings and Reviews
+招采与技术澄清|Procurement and Clarifications
+团队组建与配置|Team Setup and Staffing
+运维需求与方案|Operations Requirements and Plans
 项目规划|Project Planning
 规范标准|Standards
 更新日期|Updated

@@ -59,6 +59,23 @@ test('minor directory under built-in stage inherits stage, rejects invisible or 
  assert.throws(()=>service.accept(input({kind:'directory',nature:'项目筹备',level:'major'}),user),{status:409});
 });
 
+test('preparation subdirectory persists in the existing Feishu record field',async t=>{
+ const {service,adapter}=await fixture(t);
+ service.directoryAdapter={find:async id=>id==='handover:1'?{id}:null};
+ const raw=input({directoryId:'prep:factory-inspection',stage:'',title:'项目设备厂验计划'});
+ assert(service.options(user).directoryNodes.some(n=>n.id===raw.directoryId&&n.parentId==='handover:1'));
+ service.accept(raw,user);
+ await service.flush();
+ const op=service.state.operations[raw.clientMutationId],source=config.sources[0],schema=await adapter.schema(source);
+ assert.equal(op.status,'success');
+ const row=await adapter.get(source,op.recordId);
+ assert.equal(row[schema.directoryId.name],raw.directoryId);
+ assert.equal(row[schema.stage.name],'1');
+ const snapshot=service.merge({documents:[]},user);
+ assert.equal(directoryDocuments(snapshot.documents,raw.directoryId).length,1);
+ assert.equal(directoryDocuments(snapshot.documents,'handover:1').length,1);
+});
+
 test('named Feishu links can be edited and cleared without overwriting other fields',async t=>{
  const {service,adapter}=await fixture(t),recordId='recTransformer';
  const source={...config.sources[3],writable:true,fields:{'Equipment Name':{name:'equipment'},'Linked Document':{name:'Linked Document（关联云文档）'}}};

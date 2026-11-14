@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "release": "20261114.2",
+  "status": "deployed-server-verified",
+  "predecessor": "20261114.1",
+  "candidateSha256": "6fd18dda844018582eae6e125f371671931338cd07717c71e9f11285292564c4",
+  "manifestSha256": "17433eef528424a0bb81fc2e1b0342c0821a20acff159b44cb98807d9041c4a1",
+  "payloadSha256": "6a40d3158a6c811d6ac4ae57bd0a38df807d4f02fde74f30c38ef3cfd41f7562",
+  "filesChanged": [
+    "server.mjs",
+    "src/platform-translations.js",
+    "knowledge/directory.mjs",
+    "knowledge/document-service.mjs",
+    "knowledge/lifecycle.mjs",
+    "knowledge/nightly-sync.mjs",
+    "knowledge/web/document-editor.mjs",
+    "knowledge/web/library-ui.mjs",
+    "project-tasks/staffing/service.mjs"
+  ],
+  "features": [
+    "知识共享的项目筹备新增七类目录，新增资料时带入所选目录",
+    "平台每日北京时间 02:00 自动读取多维数据，失败模块在凌晨时段补跑",
+    "合并会议、待办及资料归档说明，明确来源编号、去重与回读规则"
+  ],
+  "checks": {
+    "businessTests": 484,
+    "exactDeployedFilesVerified": 371,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "independentSessionSurvivalSeconds": 87
+  },
+  "recordedAt": "2026-11-14T10:07:07.8010425Z"
+}

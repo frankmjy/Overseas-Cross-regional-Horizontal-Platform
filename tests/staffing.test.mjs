@@ -34,6 +34,13 @@ test('人工字段规范化与外部回读使用语义值',()=>{
 function fixture(t){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'staffing-test-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));let rows=[{record_id:'recT',fields:{[fields.name]:'甲',[fields.sourceId]:'recA',[fields.status]:'待沟通'}}];let writes=0;
  const adapter={async list(){return structuredClone(rows);},async update(id,patch){writes++;Object.assign(rows.find(r=>r.record_id===id).fields,patch);},async sources(){return {records:[record('recA','甲')],sheet,demand:[]};}};
  return {dir,adapter,writes:()=>writes,rows:()=>rows};}
+test('凌晨读取人员跟踪表不运行导入和写表',async t=>{
+ const f=fixture(t),service=new StaffingService({dir:f.dir,adapter:f.adapter});
+ f.adapter.sources=()=>assert.fail('nightly tracking must not trigger import');
+ await service.refreshTracking();
+ assert.equal(service.snapshot().people.length,1);
+ assert.equal(f.writes(),0);
+});
 test('持久化后受理、重复请求幂等、失败重启可恢复且不覆盖外部修改',async t=>{
  const f=fixture(t),s=new StaffingService({dir:f.dir,adapter:f.adapter});await s.refresh();const item=s.snapshot().people[0];
  const baseline=f.writes();const raw={clientMutationId:'11111111-1111-4111-8111-111111111111',id:item.id,version:item.version,values:{status:'已确认',owner:'',actualArrival:'',notes:'确认'}};

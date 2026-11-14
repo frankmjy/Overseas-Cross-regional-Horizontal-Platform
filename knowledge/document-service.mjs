@@ -6,7 +6,7 @@ import {DocumentAdapter,uuid,validateDocument,validateDocumentUpdate,encodeDocum
 import {editableText,editableDocumentLink,projectRecord} from './model.mjs';
 import {matchesDocumentProject} from '../src/project-context-model.mjs';
 import {DirectoryAdapter} from './directory-adapter.mjs';
-import {visibleDirectory,rootDirectory} from './directory.mjs';
+import {visibleDirectory,rootDirectory,isPreparationDirectory} from './directory.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const canonical=v=>v&&typeof v==='object'?Array.isArray(v)?v.map(canonical):Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 export class DocumentService{
@@ -148,7 +148,7 @@ export class DocumentService{
     const readback=await this.directoryAdapter.find(id);if(!readback||Object.keys(saved.node).some(k=>String(readback[k]||'')!==String(saved.node[k]||'')))throw Error('目录回读尚未一致，任务已保留。');
     this.commit(n=>{n.directoryNodes=[...(n.directoryNodes||[]).filter(v=>v.id!==id),readback];Object.assign(n.operations[id],{status:'success',error:'',observed:true,updatedAt:this.now(),nextAttempt:0});});continue;
    }
-   if(saved.value.directoryId&&!await this.directoryAdapter?.find(saved.value.directoryId))throw Error('资料目录尚未同步，任务已保留。');
+   if(saved.value.directoryId&&!isPreparationDirectory(saved.value.directoryId)&&!await this.directoryAdapter?.find(saved.value.directoryId))throw Error('资料目录尚未同步，任务已保留。');
    const schema=await this.adapter.ensureCategory(source,saved.value.nature);this.commit(n=>{n.schemas[source.id]=schema;});
    if(this.closed||this.isMaintenance())throw Error('系统正在更新，任务已保留。');
    let op=this.state.operations[id];if(op.value.kind==='document'){
