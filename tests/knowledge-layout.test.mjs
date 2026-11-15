@@ -24,7 +24,7 @@ async function fixture(overrides = {}) {
   };
   const context = vm.createContext({ document, location: { search: '', pathname: '/knowledge-sharing' },
     history: { replaceState() {} }, addEventListener() {}, URLSearchParams,
-    currentPageEditable:()=>true,projects, filterDocuments, filterMeetings, meetingMetrics, renderLibraryOverview,libraryDocuments,primeDocumentOptions:()=>Promise.resolve(),
+    currentPageEditable:()=>true,projects, filterDocuments, filterMeetings, meetingMetrics, renderLibraryOverview,libraryDocuments,primeDocumentOptions:()=>Promise.resolve(),cancelMinutes(){},readMinutes(){},
     renderLibraryShell:uiContext.renderLibraryShell,renderDocumentCards:uiContext.renderDocumentCards,renderTemplateEntries:uiContext.renderTemplateEntries,
     selectedProject:{id:'th-001',name:'泰国 Araya 项目',knowledgeKey:'thailand'},
     meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups, renderMeetingTrail,
@@ -40,8 +40,26 @@ async function fixture(overrides = {}) {
     feed: { state: 'ready', errors: [], updatedAt: '2026-10-24T10:00:00Z' }, ...overrides
   };
   vm.runInContext('({documents, meetings, categories, feed} = fixture);', context);
-  return { nodes, table:uiContext.renderDocumentCards, render(view = 'library',selection={}) { context.view = view;context.selection=selection; vm.runInContext('state={...state,...selection,view};render();', context); } };
+  return { nodes, table:uiContext.renderDocumentCards, render(view = 'library',selection={}) { context.view = view;context.selection=selection; vm.runInContext('state={...state,...selection,view};render();', context); },
+    detail(kind,id) { const dialog=nodes.get('#detail'); dialog.querySelector=selector=>selector==='[data-meeting-minutes]'?{addEventListener(){}}:null;dialog.showModal=()=>{};context.detailArgs=[kind,id];vm.runInContext('openDetail(...detailArgs)',context);return dialog.innerHTML; } };
 }
+
+test('meeting detail shows one original recording link and omits the source section without it',async()=>{
+ const meeting={id:'meeting',title:'例会',summary:'会议结论\n下一步安排',participants:[],actions:[{title:'提交整改报告：补齐验收数据',status:'待办',priority:'P1',owner:'张工',due:'2026-11-20T10:30',structured:true,sourceLink:'https://example.com/action'},{title:'共1条待办（详见会议待办表）',status:'未标注'}],sourceLink:'https://example.com/record',
+  links:[{label:'会议纪要',url:'https://example.com/notes'},{label:'会议妙记',url:'https://example.com/minutes/example'},{label:'会议妙记',url:'https://example.com/minutes/other'}]};
+ const f=await fixture({meetings:[meeting,{...meeting,id:'without',links:[meeting.links[0]]}]});
+ const html=f.detail('meeting','meeting');
+ assert.match(html,/<h3>来源<\/h3>/);
+ assert.match(html,/href="https:\/\/example\.com\/minutes\/example"/);
+ assert.equal((html.match(/<a /g)||[]).length,1);
+ assert.match(html,/<h4>待办 <span>1<\/span><\/h4>/);
+ assert.match(html,/<strong data-business-text>提交整改报告<\/strong><p data-business-text>补齐验收数据<\/p>/);
+ assert.match(html,/<time datetime="2026-11-20T10:30">2026-11-20 10:30<\/time>/);
+ assert.match(html,/<details class="followup-group"><summary>历史待办<\/summary>/);
+ assert.match(html,/会议结论<\/p><p data-business-text>下一步安排/);
+ assert.match(html,/id="meeting-minutes"/);
+ assert.doesNotMatch(f.detail('meeting','without'),/class="source-links"/);
+});
 
 test('compact knowledge layout keeps classification, search and refresh together without repeated heroes', async () => {
   const f = await fixture(); f.render();

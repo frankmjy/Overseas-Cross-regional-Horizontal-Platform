@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "release": "20261114.3",
+  "status": "deployed-server-verified",
+  "predecessor": "20261114.2",
+  "candidateSha256": "aebe6d6c6a379cd02b7044f89fd404f131c3e2189bc22d890ae3834ddc7a30d7",
+  "manifestSha256": "e15dc62c45918cc47a10aa3abac3e38675a3ca77762cd314dcbdb27718aca804",
+  "payloadSha256": "0813d66dd09da2db1296750ece796e5b10bed2cd5158bd98510c4105471f9033",
+  "filesChanged": [
+    "src/platform-translations.js",
+    "knowledge/web/app.mjs",
+    "knowledge/web/meeting-trail.css",
+    "knowledge/web/meeting-trail.mjs"
+  ],
+  "features": [
+    "议事航迹详情保留飞书妙记直达入口，按状态归组跟进事项，会议纪要按需加载",
+    "周会议列表分开展示日期、时间与状态，清单高度随内容收起"
+  ],
+  "checks": {
+    "businessTests": 485,
+    "exactDeployedFilesVerified": 371,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "independentSessionSurvivalSeconds": 79
+  },
+  "recordedAt": "2026-11-15T00:14:46.9982123Z"
+}

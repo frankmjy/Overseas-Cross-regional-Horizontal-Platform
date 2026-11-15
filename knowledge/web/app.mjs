@@ -54,17 +54,46 @@ function updateResults(){saveState();if(state.view==='library'){
  document.querySelector('#meetingTrail').innerHTML=renderMeetingTrail({meetings,sources,state,feed,project:platformProject.knowledgeKey});
  if(field){const input=document.querySelector('#meetingTrail [name=query]');input?.focus();input?.setSelectionRange(cursor,cursor);}
  }renderSyncLabels();}
+function meetingFollowups(actions){
+ const groups=new Map();
+ const known=['待办','进行中','已完成'];
+ for(const action of actions){
+  const label=known.includes(action.status)?action.status:action.structured?'状态待确认':'历史待办';
+  if(!groups.has(label))groups.set(label,[]);
+  groups.get(label).push(action);
+ }
+ if(!groups.size)return '';
+ const row=action=>{
+  const [title,description]=action.title.split(/[:：](?=\s*\D)/,2);
+  const shortTitle=description&&title.trim().length<=32?title.trim():action.title;
+  const body=shortTitle!==action.title?action.title.slice(title.length+1).trim():'';
+  const note=action.note?.trim();
+  return `<li><strong data-business-text>${esc(shortTitle)}</strong>${body?`<p data-business-text>${esc(body)}</p>`:''}${note&&note!==body&&note!==action.title?`<p data-business-text>${esc(note)}</p>`:''}<div class="followup-meta">${action.owner?`<span translate="no">${esc(action.owner)}</span>`:''}${action.due?`<time datetime="${esc(action.due)}">${esc(action.due.replace('T',' '))}</time>`:''}${action.priority?`<span class="followup-priority">${esc(action.priority)}</span>`:''}</div></li>`;
+ };
+ const content=[...known,'状态待确认','历史待办'].filter(label=>groups.has(label)).map(label=>{
+  const items=groups.get(label),list=`<ul class="followup-list">${items.map(row).join('')}</ul>`;
+  return label==='历史待办'?`<details class="followup-group"><summary>${label}</summary>${list}</details>`:`<section class="followup-group"><h4>${label} <span>${items.length}</span></h4>${list}</section>`;
+ }).join('');
+ return `<section class="detail-section"><h3>跟进事项</h3>${content}</section>`;
+}
 function openDetail(kind,id,trigger){
  const isDocument=kind==='document',r=(isDocument?libraryDocuments(documents,{project:platformProject.knowledgeKey}):meetings).find(item=>item.id===id);
  if(!r)return;
  cancelMinutes();detailTrigger=trigger;
  const hasMinutes=!isDocument&&r.links.some(l=>l.label==='会议纪要');
  const canEdit=isDocument&&canEditDocument(r,currentPageEditable('knowledge'));
- const sections=isDocument?(r.members&&r.note?[['备注',r.note],...r.sections]:r.sections):[['会议概要',r.summary],['参与人员',r.participants.join('、')],['跟进事项',r.actions.map((a,i)=>(i+1)+'. '+a.title+[a.owner,a.due?.replace('T',' '),a.status].filter(Boolean).map(v=>' · '+v).join('')).join('\n')]].filter(([,body])=>body);
- dialog.innerHTML=`<header><div><span class="section-kicker">${isDocument?'资料详情':'会议记录'}</span><h2 id="detail-title"><span data-business-text>${esc(r.title)}</span></h2></div><button class="close-button" data-close aria-label="关闭详情" title="关闭详情">${icon('close')}</button></header><div class="detail-content"><div class="detail-meta">${esc(r.sourceName)}${r.date?' · '+esc(r.date+' '+(r.time||'')):''}</div>${sections.map(([name,body])=>`<section class="detail-section"><h3>${esc(name)}</h3><p data-business-text>${esc(body)}</p></section>`).join('')}${hasMinutes?'<section class="detail-section minutes-section"><h3>会议纪要</h3><div id="meeting-minutes"></div></section>':''}<section class="detail-section"><h3>资料与来源</h3><div class="source-links">${r.links.map(l=>link(l.url,l.label)).join('')}${r.sourceLink?link(r.sourceLink,'打开多维表记录'):''}${isDocument?'':r.actions.filter(a=>a.sourceLink).map(a=>link(a.sourceLink,a.title)).join('')}</div></section></div><footer><span>${r.sync&&r.sync.status!=='success'?'待同步':''}</span>${canEdit?'<button class="button primary" data-edit-document>编辑资料</button>':'<button class="button" data-close>关闭详情</button>'}</footer>`;
+ const sections=isDocument?(r.members&&r.note?[['备注',r.note],...r.sections]:r.sections):[['会议概要',r.summary],['参与人员',r.participants.join('、')]].filter(([,body])=>body);
+ const recording=isDocument?null:r.links.find(l=>l.label==='会议妙记'&&l.url);
+ const sourceLinks=isDocument?r.links.map(l=>link(l.url,l.label)).join('')+(r.sourceLink?link(r.sourceLink,'打开多维表记录'):''):recording?link(recording.url,'会议妙记'):'';
+ const sourceSection=sourceLinks?`<section class="detail-section"><h3>${isDocument?'资料与来源':'来源'}</h3><div class="source-links">${sourceLinks}</div></section>`:'';
+ dialog.innerHTML=`<header><div><span class="section-kicker">${isDocument?'资料详情':'会议记录'}</span><h2 id="detail-title"><span data-business-text>${esc(r.title)}</span></h2></div><button class="close-button" data-close aria-label="关闭详情" title="关闭详情">${icon('close')}</button></header><div class="detail-content"><div class="detail-meta">${esc(r.sourceName)}${r.date?' · '+esc(r.date+' '+(r.time||'')):''}</div>${sections.map(([name,body])=>`<section class="detail-section"><h3>${esc(name)}</h3>${(isDocument?[body]:body.split(/\r?\n+/).filter(Boolean)).map(text=>`<p data-business-text>${esc(text)}</p>`).join('')}</section>`).join('')}${isDocument?'':meetingFollowups(r.actions)}${hasMinutes?'<details class="detail-section minutes-section" data-meeting-minutes><summary>会议纪要</summary><div id="meeting-minutes"></div></details>':''}${sourceSection}</div><footer><span>${r.sync&&r.sync.status!=='success'?'待同步':''}</span>${canEdit?'<button class="button primary" data-edit-document>编辑资料</button>':'<button class="button" data-close>关闭详情</button>'}</footer>`;
  const edit=dialog.querySelector('[data-edit-document]');
  if(edit)edit.onclick=()=>startDocumentUpdate(r,edit);
- dialog.showModal();if(hasMinutes)readMinutes(dialog.querySelector('#meeting-minutes'),id);
+ dialog.showModal();
+ if(hasMinutes){
+  const panel=dialog.querySelector('[data-meeting-minutes]');
+  panel.addEventListener('toggle',()=>{if(panel.open&&!panel.dataset.loaded){panel.dataset.loaded='true';readMinutes(panel.querySelector('#meeting-minutes'),id);}});
+ }
 }
 function startDocumentUpdate(record,trigger){
  if(!canEditDocument(record,currentPageEditable('knowledge')))return;

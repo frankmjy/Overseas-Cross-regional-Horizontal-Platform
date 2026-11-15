@@ -21,6 +21,8 @@
 
 自动部署时，发布入口加 `-PrepareRemote`，在发包清理 ZIP 前先把同哈希内层包暂存并完成服务器只读预检和上传。随后运行 `deploy-remote.py start --release <版本> --notice-file <本次通知JSON>`，状态查询 `deploy-remote.py status --release <版本>`。通知文件必须提供本次版本及1–5条业务更新，禁止沿用上次内容；本次预览加 `--notification-preview`，后续默认发指定群。失败候选禁止复用为新候选的基线。
 
+在 Codex 中用独立的 `python release-tools/deploy-remote.py start --release <版本> --notice-file <本次通知JSON>` 调用启动部署，状态查询也独立执行。读取本机网络配置和核对通知身份属于发布预检。20261114.2 的复合 PowerShell 调用曾在创建进程前被宿主拒绝，同一候选的单独启动调用成功。遇到进程创建失败，先通过状态查询和通知台账确认是否已发卡、是否已建立服务器任务，再决定能否继续使用原候选。
+
 SSH凭据配置入口为 `release-tools/Configure-RemoteDeploy.ps1`；本机专用启动文件存放在忽略提交的 `reports/remote-deploy/`。首次从可信服务器控制台核对主机指纹，密码通过隐藏输入后使用当前Windows用户DPAPI加密，目录ACL只允许当前用户及SYSTEM。后续部署读取本机密文；主机密钥变化、解密失败或登录失败即停止，不自动换账号、换主机或重置凭据。
 
 证书中心换证验收：已启用统一 TLS 中心时，安装器按中心 current.json 与不可变 fullchain.pem 的哈希、域名及有效期核对当前指纹，HTTPS 仍校验可信链与域名；未启用中心时保留原基线指纹。发布预检的真实安装与回滚夹具必须让审计旧指纹不同于中心当前证书，不能只测试两者相同的场景。证书来源在同一次安装中变化时应中止，禁止从网络返回值学习新指纹或跳过 TLS 校验。

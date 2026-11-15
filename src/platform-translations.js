@@ -321,6 +321,11 @@ const labels = new Map(`
 资料链接|Document Link
 资料详情|Document Details
 资料与来源|Document and Source
+来源|Source
+待办|To do
+历史待办|Legacy Action Items
+状态待确认|Status Pending
+参与人员|Participants
 新增资料|Add document
 新增类别|Add category
 编辑资料|Edit document
@@ -433,7 +438,7 @@ const labels = new Map(`
 卡点|Blocker
 下一步|Next Steps
 会议纪要|Meeting Notes
-会议妙记|Meeting Minutes
+会议妙记|Feishu Minutes
 新增会议|Add meeting
 关闭新增会议|Close new meeting
 会议主题|Meeting Title

@@ -10,7 +10,7 @@ const held=m=>m.type==='已开';
 const hasMinutes=m=>m.links.some(l=>l.label==='会议纪要');
 const recent=(m,today,period)=>held(m)&&m.date>=days(today,1-period)&&m.date<=today;
 const badge=type=>Object.hasOwn(types,type)?`<span class="type" style="--type-color:${types[type][0]};--type-bg:${types[type][1]}">${type}</span>`:'';
-const openMeeting=(m)=>`<button class="agenda-row" data-meeting="${esc(m.id)}"><time>${esc(short(m.date)||'—')}<span class="date-separator"> · </span>${esc(m.time||'')}</time><span><strong data-business-text>${esc(m.title)}</strong><small>${projects[m.project]} · ${esc(m.type||'—')}</small></span>${badge(m.meetingType)||'<span></span>'}<span aria-hidden="true">›</span></button>`;
+const openMeeting=(m)=>`<button class="agenda-row" data-meeting="${esc(m.id)}"><time><span class="row-date">${esc(short(m.date)||'—')}</span>${m.time?`<span class="row-time">${esc(m.time)}</span>`:''}</time><span><strong data-business-text>${esc(m.title)}</strong><small>${projects[m.project]}${m.type?`<span class="meeting-status" data-status="${esc(m.type)}">${esc(m.type)}</span>`:''}</small></span>${badge(m.meetingType)||'<span></span>'}<span class="agenda-chevron" aria-hidden="true">›</span></button>`;
 const rowsHtml=rows=>rows.map(m=>`<article class="meeting-row">${openMeeting(m)}</article>`).join('')||'<p class="empty">暂无会议</p>';
 const scopeButton=(id,selected)=>`<button class="tab${id==='overseas'?' shared-tab':''}" data-meeting-scope="${id}"${id===selected?' aria-current="page"':''}>${projects[id]||'总览'}</button>`;
 
