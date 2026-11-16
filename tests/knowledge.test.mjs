@@ -52,3 +52,32 @@ test('knowledge routes serve only explicit public assets and support direct relo
   assert.equal((await fetch(origin + '/knowledge-sharing', { method: 'POST' })).status, 405);
   for (const route of ['/knowledge/http.mjs', '/knowledge/../.env', '/knowledge/unknown.mjs']) assert.equal((await fetch(origin + route)).status, 404);
 });
+
+test('总览只读取当前项目和海外同频近30天会议的三条正式待办', async () => {
+  const action=(title,extra={})=>({title,status:'待办',structured:true,...extra});
+  const row=(id,date,project,actions,type='已开')=>({id,date,project,title:id,type,actions});
+  const snapshot={state:'ready',refreshing:false,meetings:[
+    row('future','2026-11-17','thailand',[action('future')]),
+    row('other-project','2026-11-16','malaysia',[action('private')]),
+    row('planned','2026-11-16','thailand',[action('planned')],'待开'),
+    row('latest','2026-11-13','overseas',[
+      action('later',{priority:'P1',due:'2026-11-30'}),
+      action('soon',{priority:'P1',due:'2026-11-18',note:'private-note'}),
+      action('done',{priority:'P0',status:'已完成'}),
+      action('draft',{structured:false}),
+    ]),
+    row('previous','2026-11-09','thailand',[action('older',{priority:'P0'}),action('fourth')]),
+    row('stale','2026-10-17','overseas',[action('stale')]),
+  ]};
+  const handler=createKnowledgeHandler({service:{read:()=>snapshot},now:()=>Date.parse('2026-11-15T18:00:00Z')});
+  const call=async view=>{
+    const response={writeHead(code){this.code=code;},end(body){this.body=body;}};
+    await handler({url:'/api/knowledge?meetingTodos=1',method:'GET',auth:{isAdmin:true,project:{knowledgeKey:'thailand'},permissions:{meetings:{view}}}},response);
+    return response;
+  };
+  assert.equal((await call(false)).code,403);
+  const response=await call(true);
+  assert.equal(response.code,200);
+  assert.deepEqual(JSON.parse(response.body).items.map(item=>item.title),['soon','later','older']);
+  assert.doesNotMatch(response.body,/private-note|other-project|draft/);
+});

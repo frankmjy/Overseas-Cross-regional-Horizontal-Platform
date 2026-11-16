@@ -23,6 +23,27 @@ export function weeklyData(tasks,anchor,today){
  const overdue=tasks.filter(r=>!completedStatus(r.status)&&r.end&&r.end<cutoff),completed=tasks.filter(r=>r.actualCompletion&&r.actualCompletion>=start&&r.actualCompletion<=end),current=tasks.filter(r=>(!completedStatus(r.status)&&((r.start&&r.end&&r.start<=end&&r.end>=start)||overdue.some(x=>x.id===r.id)))||completed.some(x=>x.id===r.id)),next=tasks.filter(r=>!completedStatus(r.status)&&r.start&&r.end&&r.start<=nextEnd&&r.end>=nextStart);
  return{start,end,nextStart,nextEnd,overdue,completed,current,next};
 }
+export function renderMeetingTodos({state='loading',items=[]}={}){
+ if(state==='forbidden')return '';
+ const rows=items.map(({title,owner,due,priority,meetingId,meetingTitle,meetingDate})=>`
+  <li><a class="overview-weekly-task" href="/meeting-trail?meeting=${encodeURIComponent(meetingId)}" title="${esc(title)}">
+   <span class="overview-weekly-task-copy">
+    <strong data-business-text>${esc(title)}</strong>
+    <small><time datetime="${esc(meetingDate)}">${esc(meetingDate?.slice(5).replace('-','/'))}</time> · <span data-business-text>${esc(meetingTitle)}</span>${owner?' · '+esc(owner):''}</small>
+   </span>
+   <span class="overview-weekly-task-meta">
+    ${/^P[012]$/.test(priority)?`<b class="overview-weekly-priority priority-${priority.toLowerCase()}">${priority}</b>`:''}
+    ${due?`<span class="overview-weekly-due"><span>截止</span> <time datetime="${esc(due)}">${esc(due.slice(5,10).replace('-','/'))}</time></span>`:''}
+   </span>
+   <span class="overview-weekly-chevron" aria-hidden="true">›</span>
+  </a></li>`).join('');
+ const status=state==='loading'?'正在读取会议待办…':state==='unavailable'?'会议待办暂不可用':'近期会议暂无待办';
+ return `<section class="overview-weekly" aria-labelledby="overviewWeeklyTitle">
+  <header class="overview-weekly-heading"><h2 id="overviewWeeklyTitle">近期会议待办</h2>
+  <a class="overview-weekly-open" href="/meeting-trail?actions=all"><span>议事航迹</span><span aria-hidden="true">›</span></a></header>
+  ${rows?`<ol class="overview-weekly-items">${rows}</ol>`:`<p class="overview-weekly-empty" role="status">${status}</p>`}
+ </section>`;
+}
 export function monthlyData(tasks,month){
  const rows=tasks.filter(r=>r.end?.startsWith(month)||r.actualCompletion?.startsWith(month)),completed=tasks.filter(r=>r.actualCompletion?.startsWith(month)),planned=tasks.filter(r=>r.end?.startsWith(month));
  return{rows,completed,planned,late:rows.filter(r=>r.status==='逾期进行'||r.status==='逾期完成')};
@@ -101,7 +122,7 @@ function renderOverviewCycle(cycle,today){
  const todayMarker=today>=start&&today<=end?`<span class="cycle-today" style="--cycle-position:${position(today)}%" title="${display(today)}">今天</span>`:'';
  return `<section class="overview-cycle" aria-labelledby="overviewCycleTitle"><header class="cycle-heading"><h2 id="overviewCycleTitle">项目周期</h2></header><div class="cycle-axis"><div class="cycle-track" aria-hidden="true">${ticks}${todayMarker}</div><div class="cycle-boundaries"><span>计划开始 ${time(start)}</span><span>计划结束 ${time(end)}</span></div></div>${groups.length?`<ol class="cycle-milestones" aria-label="关键里程碑">${groups.map(([d,rows])=>`<li>${time(d)}${rows.map(r=>`<button class="cycle-milestone" data-project-title-tooltip data-record="${esc(r.id)}" title="${esc(r.title)}"><span><span data-project-title>${esc(r.title)}</span></span><span aria-hidden="true">›</span></button>`).join('')}</li>`).join('')}</ol>`:''}</section>`;
 }
-export function renderOverview(model,{month,today,keyword='',selectedDay=''}){
+export function renderOverview(model,{month,today,keyword='',selectedDay='',meetingTodos}){
  const overdue=model.tasks.filter(r=>r.status==='逾期进行'),delivered=model.tasks.filter(r=>r.attachments?.length||r.deliverableLinks),cycle=overviewCycle(model);
  const definitions=[['交付物任务',delivered.length,'项','deliverables','document'],['执行任务',model.tasks.length,'项','tasks','tasks'],['关键里程碑',model.milestones.length,'个','milestones','flag'],['计划跨度',cycle?.span??'—','天','period','clock'],['逾期进行',overdue.length,'项','overdue','alert']];
  const top=`<div class="overview-metrics">${definitions.map(([label,count,unit,key,icon])=>`<button data-summary="${key}" class="overview-metric metric-${key}"><span class="overview-metric-icon">${overviewIcon(icon)}</span><span class="overview-metric-copy"><span>${label}</span><strong>${count}<small>${unit}</small></strong></span></button>`).join('')}</div>`;
@@ -111,7 +132,7 @@ export function renderOverview(model,{month,today,keyword='',selectedDay=''}){
  const agenda=overviewAgenda(model,{month,selectedDay}),agendaTitle=selectedDay?`${Number(selectedDay.slice(5,7))}月${Number(selectedDay.slice(8))}日 · 当日安排`:'本月安排';
  const calendar=`<section class="overview-calendar" aria-label="项目日历"><header><h2>项目日历</h2><button class="overview-calendar-today" data-action="calendar-today">今日</button></header><div class="overview-calendar-month"><button data-calendar="-1" aria-label="上个月" title="上个月">‹</button><div class="calendar-month-controls"><select id="overviewCalendarYear" aria-label="日历年份">${Array.from({length:5},(_,i)=>year+i-2).map(y=>`<option value="${y}"${y===year?' selected':''}>${y}年</option>`).join('')}</select><select id="overviewCalendarMonth" aria-label="日历月份">${Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}"${m===Number(month.slice(5))?' selected':''}>${m}月</option>`).join('')}</select></div><button data-calendar="1" aria-label="下个月" title="下个月">›</button></div><div class="calendar-grid">${['一','二','三','四','五','六','日'].map(d=>`<span class="calendar-day-head" data-weekday-label>${d}</span>`).join('')}${cells.map((c,i)=>`<button class="calendar-day${c.current?'':' other'}${c.date===today?' today':''}${i%7>4?' weekend':''}" data-overview-day="${c.date}"${c.date===today?' aria-current="date"':''} title="${c.date.replaceAll('-','/')} · ${c.due.length}项截止 · ${c.milestones.length}个里程碑" aria-pressed="${selectedDay===c.date}" aria-label="${c.date}，${c.due.length}项截止，${c.milestones.length}个里程碑"><strong>${Number(c.date.slice(8))}</strong><span class="calendar-markers" aria-hidden="true">${c.current&&c.due.length?'<i></i>':''}${c.current&&c.milestones.length?'<i class="milestone-dot"></i>':''}</span></button>`).join('')}</div><footer><span><i></i>截止 ${due}</span><span><i></i>里程碑 ${milestones}</span></footer></section>`;
  const list=`<section class="overview-agenda"><header><h3>${agendaTitle}</h3>${selectedDay?'<button data-action="overview-month">本月</button>':`<span>${agenda.length}项</span>`}</header><div class="agenda-items">${agenda.slice(0,4).map(r=>{const milestone=r.level==='里程碑'||r.milestone;return `<button class="agenda-item${milestone?' milestone':''}" data-project-title-tooltip data-record="${esc(r.id)}" title="${esc(r.title)}"><time datetime="${r.end}"><strong>${Number(r.end.slice(8))}</strong><span>${Number(r.end.slice(5,7))}月</span></time><span class="agenda-item-copy"><strong><span data-project-title>${esc(r.title)}</span></strong><span>${milestone?'里程碑':esc(r.stageName||model.stages.find(s=>s.id===r.stage)?.name||'任务')}${phase(r)?' · '+phase(r):''}</span></span><span aria-hidden="true">›</span></button>`;}).join('')||`<p class="overview-empty">${selectedDay?'当天没有计划安排':'本月没有计划安排'}</p>`}</div>${agenda.length>4?`<button class="agenda-all" data-overview-agenda>查看全部 ${agenda.length}项 ↗</button>`:''}</section>`;
- return `<div class="project-overview" data-filtered="${Boolean(q)}">${top}${renderOverviewCycle(cycle,today)}<div class="overview-main"><section class="overview-shell"><header class="overview-shell-heading"><div class="overview-section-title"><h2>阶段进度</h2><span>${model.stages.length}个阶段</span></div><div class="overview-toolbar"><label class="overview-search">${overviewIcon('search')}<input id="overviewSearch" type="search" aria-label="搜索总览阶段" placeholder="搜索阶段 / 分类 / 任务" value="${esc(keyword)}"></label></div></header><div class="overview-stages">${cards||'<p class="overview-empty">没有匹配的事项</p>'}</div></section><aside class="overview-schedule">${calendar}${list}</aside></div></div>`;
+ return `<div class="project-overview" data-filtered="${Boolean(q)}">${top}<div class="overview-spotlight">${renderMeetingTodos(meetingTodos)}<overseas-brief class="overview-brief"></overseas-brief></div>${renderOverviewCycle(cycle,today)}<div class="overview-main"><section class="overview-shell"><header class="overview-shell-heading"><div class="overview-section-title"><h2>阶段进度</h2><span>${model.stages.length}个阶段</span></div><div class="overview-toolbar"><label class="overview-search">${overviewIcon('search')}<input id="overviewSearch" type="search" aria-label="搜索总览阶段" placeholder="搜索阶段 / 分类 / 任务" value="${esc(keyword)}"></label></div></header><div class="overview-stages">${cards||'<p class="overview-empty">没有匹配的事项</p>'}</div></section><aside class="overview-schedule">${calendar}${list}</aside></div></div>`;
 }
 
 function rowsTable(rows,{page=1,pageSize=12}={}){

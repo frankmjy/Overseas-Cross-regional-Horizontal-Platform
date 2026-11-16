@@ -1,4 +1,4 @@
-import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections} from '/knowledge/library-model.mjs';
+import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,compactDriveDocuments} from '/knowledge/library-model.mjs';
 import {handoverStages,documentLifecycle,lifecycleDocuments} from '/knowledge/lifecycle.mjs';
 import {visibleDirectory,directoryDocuments,documentDirectory} from '/knowledge/directory.mjs';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -82,27 +82,36 @@ function materialCard(document,editable,grouped){
  const editableCard=canEditDocument(document,editable);
  return `<article class="material-card"${editableCard?' data-card-edit':''}><span class="material-file-icon${document.members?' is-collection':''}">${icon(document.members?'folder':'file')}</span><div class="material-card-content">${title}${document.members&&document.note?`<p class="material-note" title="${esc(document.note)}">${esc(document.note)}</p>`:''}${document.date||specialties.length||document.members||document.sync||(editableCard&&!destination)?`<div class="material-meta">${document.date?`<time>${esc(document.date)}</time>`:''}${specialties.length?`<span title="${esc(specialties.join(' / '))}">${esc(specialties.slice(0,3).join(' / '))}${specialties.length>3?'…':''}</span>`:''}${document.members?`<span>${document.members.length} 条记录</span>`:''}${editableCard&&!destination?'<span class="document-missing">待补</span>':''}${document.sync?`<span class="document-sync ${document.sync.status==='error'?'error':''}" title="${esc(document.sync.error||'')}">${document.sync.status==='success'?'已同步':document.sync.uploads?.some(u=>!u.ready)?'待上传':document.sync.status==='error'?'同步失败':'同步中'}</span>${document.sync.canRetry&&document.sync.status!=='success'?`<button class="document-sync-retry" data-${document.sync.uploads?.some(u=>!u.ready)?'document-upload':'document-retry'}="${esc(document.sync.id)}">${document.sync.uploads?.some(u=>!u.ready)?'补传附件':'重试'}</button>`:''}`:''}</div>`:''}</div><div class="material-actions"><button data-document="${esc(document.id)}" title="资料详情" aria-label="查看 ${esc(document.title)} 详情">${icon('info')}</button>${editableCard?`<button data-edit-document="${esc(document.id)}" title="编辑资料" aria-label="编辑 ${esc(document.title)}">${icon('edit')}</button>`:destination?`<a href="${esc(destination)}" target="_blank" rel="noopener noreferrer" title="打开资料" aria-label="打开 ${esc(document.title)}">${icon('external')}</a>`:'<span class="document-missing">待补</span>'}</div></article>`;
 }
-export function renderDocumentCards(rows,{limit=60,collapsedGroups=[],editable=false,selection={}}={}){
+function renderDriveFolder(document,children=[]){
+ const parent=`<a class="material-drive-folder" href="${esc(document.driveFolder)}" target="_blank" rel="noopener noreferrer"><span class="material-file-icon is-collection">${icon('folder')}</span><span><strong data-business-text>${esc(document.title)}</strong><small>${document.documentCount} 条归档记录</small></span><span class="material-drive-action">打开云盘 ${icon('external')}</span></a>`;
+ const folders=children.filter(child=>child.name&&url(child.url));
+ if(!folders.length)return parent;
+ return `<div class="material-drive-group">${parent}<details class="material-drive-children"${folders.length<=4?' open':''}><summary>${icon('chevron')}<span>资料入口</span><b>${folders.length}</b></summary><ul>${folders.map(child=>`<li><a href="${esc(child.url)}" target="_blank" rel="noopener noreferrer">${icon('folder')}<span data-business-text>${esc(child.name.replace(/^\d{1,2}(?:\s*[-—.]\s*|\s+)(?=\S)/u,''))}</span>${icon('external')}</a></li>`).join('')}</ul></details></div>`;
+}
+export function renderDocumentCards(rows,{limit=60,collapsedGroups=[],editable=false,selection={},driveFolders={}}={}){
  if(!rows.length)return '<p class="library-empty">暂无资料</p>';
+ const showFolders=Boolean(selection.directory||selection.natures?.length===1)&&!selection.specialties?.length&&!selection.specialty;
  const collapsed=new Set(collapsedGroups);
  let visible=0,expandedCount=0;
  function grid(documents,grouped){
   expandedCount+=documents.length;
   const shown=documents.slice(0,Math.max(0,limit-visible));
   visible+=shown.length;
-  return shown.length?`<div class="material-grid">${shown.map(document=>materialCard(document,editable,grouped)).join('')}</div>`:'';
+  return shown.length?`<div class="material-grid">${shown.map(document=>document.driveFolder?renderDriveFolder(document,showFolders?driveFolders[document.driveFolder]:undefined):materialCard(document,editable,grouped)).join('')}</div>`:'';
  }
  const body=groupBy(rows,natureOf).sort(([a],[b])=>natureCompare(a,b)).map(([name,documents])=>{
   const isGrouped=equipmentNatures.has(name);
   const isCollapsed=collapsed.has(name);
   let content='';
   if(!isCollapsed){
-   content=isGrouped?groupBy(documents,document=>document.specialty||unmarkedSpecialty)
+   const display=documents.some(document=>document.driveCollection)?compactDriveDocuments(documents,selection):documents;
+   const folders=display.filter(document=>document.driveFolder);
+   content=isGrouped?grid(folders,false)+groupBy(display.filter(document=>!document.driveFolder),document=>document.specialty||unmarkedSpecialty)
     .sort(([a],[b])=>specialtyCompare(a,b)).map(([specialty,items])=>{
      const key='specialty:'+JSON.stringify([name,specialty]);
      const hidden=collapsed.has(key),cards=hidden?'':grid(items,true);
      return hidden||cards?`<div class="material-specialty"><h4>${groupHeading(key,specialty,items.length,hidden,editable&&groupDefaults(name,items,selection,specialty))}</h4>${cards}</div>`:'';
-    }).join(''):grid(documents,false);
+    }).join(''):grid(display,false);
   }
   return isCollapsed||content?`<section class="material-section${isGrouped?' is-specialty-grouped':''}"><h3>${groupHeading(name,name,documents.length,isCollapsed,editable&&groupDefaults(name,documents,selection,selection.specialties?.length===1?selection.specialties[0]:''))}</h3>${content}</section>`:'';
  }).join('');

@@ -1,7 +1,7 @@
 import { filterTasks, hierarchy, timeRange, timelineColumns, stageNames, colors, naturalCompare, day, calendarCells, text } from './model.mjs';
 import { translateProjectTitle } from '../../src/platform-translations.js';
 import {completedStatus,statusPresentation} from '../../project-tasks/handover/status.mjs';
-import {pageDefinitions,renderOverview,renderWeekly,renderMonthly,renderOrganization,monthlyData,organizationData,overviewAgenda,stageInsightRows,ganttRowControls,taskDeliverableCount} from './pages.mjs';
+import {pageDefinitions,renderOverview,renderWeekly,renderMonthly,renderOrganization,monthlyData,organizationData,overviewAgenda,stageInsightRows,ganttRowControls,taskDeliverableCount,renderMeetingTodos} from './pages.mjs';
 import {createHandoverEditor} from './editor.mjs';
 import {createInlineTaskEntry} from './inline.mjs';
 import {taskResources,renderResourceLinks,bindOutsideDismiss} from '../../project-tasks/handover/resources.mjs';
@@ -46,6 +46,7 @@ const state = { mode: ['gantt', 'list', 'milestones', 'calendar'].includes(query
   overviewKeyword:'', overviewDay:'', stage: Number(query.get('stage')) || 0, keyword: query.get('q') || '', category: '', status: '', review: false, unscheduled: false,
   range: 'project', scale: 'fit', open: new Set(), calendar: today().slice(0, 7),week:today(),reviewMonth:today().slice(0,7),weeklyView:'current',periodPage:1 };
 let model, phase = 'idle', searchTimer, focusedBeforeDialog,lastRead=0,retryReadAt=0,organization=null,organizationError='',organizationLoading=false;
+let meetingTodos={state:'loading'}, meetingTodosRequested=false;
 state.mode=state.page==='milestones'?'milestones':'gantt';
 const dialog = $('#detailDialog');
 const editor=createHandoverEditor({dialog:$('#taskEditorDialog'),getModel:()=>model,getContext:()=>state,api:securePage?api:'/api/handover-plan',onAccepted:data=>{model=data;render();if(data.needsRefresh)load(false,true);},onMessage:showMessage});
@@ -185,12 +186,36 @@ function calendar() {
   const filteredModel = { ...model, tasks: tasks(), milestones: nodes() };
   return `<div class="calendar-wrap"><div class="calendar-grid">${['一', '二', '三', '四', '五', '六', '日'].map(d => `<span class="calendar-day-head" data-weekday-label>${d}</span>`).join('')}${calendarCells(filteredModel, state.calendar).map(c => `<button class="calendar-day${c.current ? '' : ' other'}${c.date === today() ? ' today' : ''}" data-day="${c.date}" aria-label="${c.date}，${c.due.length}项截止，${c.milestones.length}个里程碑"><strong>${Number(c.date.slice(8))}</strong>${c.milestones.slice(0, 2).map(r => `<span class="calendar-event"><span data-project-title>${esc(r.title)}</span></span>`).join('')}${c.due.length ? `<span class="calendar-due">${c.due.length}项截止</span>` : ''}</button>`).join('')}</div></div>`;
 }
+async function loadMeetingTodos() {
+  if(meetingTodosRequested)return;
+  meetingTodosRequested=true;
+  const update=value=>{
+    meetingTodos=value;
+    const panel=$('.overview-weekly');
+    if(panel)panel.outerHTML=renderMeetingTodos(meetingTodos);
+  };
+  try {
+    for(let attempt=0;attempt<30;attempt++){
+      const response=await fetch('/api/knowledge?meetingTodos=1',{signal:AbortSignal.timeout(8000)});
+      if(response.status===403){update({state:'forbidden'});return;}
+      if(!response.ok)throw Error('会议待办读取失败');
+      const {items,refreshing,state}=await response.json();
+      if(items.length||!refreshing){
+        update({items,state:['error','partial'].includes(state)?'unavailable':'ready'});
+        return;
+      }
+      await new Promise(resolve=>setTimeout(resolve,1500));
+    }
+    update({state:'unavailable'});
+  } catch {update({state:'unavailable'});}
+}
 function renderBoard() {
   closeRowMenu();
   controls();
   const scroll = $('.gantt-scroll'), position = { left: scroll?.scrollLeft || 0, top: scroll?.scrollTop || 0 };
-  const renderers={gantt,milestones,overview:()=>renderOverview(model,{month:state.calendar,today:today(),keyword:state.overviewKeyword,selectedDay:state.overviewDay}),weekly:()=>renderWeekly(model,{anchor:state.week,today:today(),view:state.weeklyView,page:state.periodPage}),monthly:()=>renderMonthly(model,{month:state.reviewMonth,page:state.periodPage}),organization:()=>renderOrganization(organization,{loading:organizationLoading,error:organizationError,loginUrl:securePage?'':loginUrl()})};
+  const renderers={gantt,milestones,overview:()=>renderOverview(model,{month:state.calendar,today:today(),keyword:state.overviewKeyword,selectedDay:state.overviewDay,meetingTodos}),weekly:()=>renderWeekly(model,{anchor:state.week,today:today(),view:state.weeklyView,page:state.periodPage}),monthly:()=>renderMonthly(model,{month:state.reviewMonth,page:state.periodPage}),organization:()=>renderOrganization(organization,{loading:organizationLoading,error:organizationError,loginUrl:securePage?'':loginUrl()})};
   $('.plan-panel').dataset.page=state.page;$('#board').dataset.page=state.page;$('#board').innerHTML=renderers[state.page]();
+  if(state.page==='overview')loadMeetingTodos();
   if (state.page === 'gantt') { const next = $('.gantt-scroll'); if (next) { next.scrollLeft = position.left; next.scrollTop = position.top; } }
 }
 function render() {

@@ -23,6 +23,43 @@ function req(url, cookie = '', extra = {}) { return { url, method: 'GET', header
 function res() { return { headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, writeHead(status, headers = {}) { this.status = status; for (const [k, v] of Object.entries(headers)) this.setHeader(k, v); }, end(body = '') { this.body = body; } }; }
 async function login(service) { const started = service.begin(origin, '/project-management'); return service.finish(origin, started.state, started.browser, 'code'); }
 
+test('the login page can read the published brief without a session, and writes are rejected', async t => {
+  const f = fixture(t);
+  const snapshot = {day:'2026-11-16',state:'ready',items:[]};
+  const handle = createAuthHandler({service:f.service,root:process.cwd(),readOverseasBrief:()=>snapshot});
+  const publicResponse = res();
+  assert.equal(await handle(req('/api/overseas-brief'),publicResponse),true);
+  assert.equal(publicResponse.status,200);
+  assert.equal(publicResponse.headers['cache-control'],'no-store');
+  assert.deepEqual(JSON.parse(publicResponse.body),snapshot);
+  const writeResponse = res();
+  await handle(req('/api/overseas-brief','',{method:'POST'}),writeResponse);
+  assert.equal(writeResponse.status,405);
+});
+
+test('manual brief refresh requires project view, same origin and CSRF', async t => {
+  const f=fixture(t),started=f.service.begin(origin,'/project-management','th-001');
+  const logged=await f.service.finish(origin,started.state,started.browser,'code');
+  const cookie=`__Host-vnet_session=${logged.token}`,csrf=f.service.session(logged.token).csrf;
+  let calls=0,view=false;
+  const handle=createAuthHandler({
+    service:f.service,root:process.cwd(),access:{summary:()=>({permissions:{projects:{view}}})},
+    refreshOverseasBrief:async()=>({state:'ready',items:[],calls:++calls}),
+  });
+  async function call(sessionCookie,source=origin,key=csrf) {
+    const response=res();
+    await handle(req('/api/overseas-brief/refresh',sessionCookie,{method:'POST',headers:{host:'localhost:3333',cookie:sessionCookie,origin:source,'x-csrf-token':key}}),response);
+    return response.status;
+  }
+  assert.equal(await call(''),401);
+  assert.equal(await call(cookie),403);
+  view=true;
+  assert.equal(await call(cookie,'https://outside.example'),403);
+  assert.equal(await call(cookie,origin,'invalid'),403);
+  assert.equal(await call(cookie),200);
+  assert.equal(calls,1);
+});
+
 test('business translation is optional and requires an authenticated same-origin session', async t => {
   const f = fixture(t), logged = await login(f.service);
   const cookie = `__Host-vnet_session=${logged.token}`;

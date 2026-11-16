@@ -82,3 +82,25 @@
 .document-update-grid input[type="file"]::file-selector-button { margin-right: 8px; padding: 3px 8px; border: 0; border-radius: 4px; background: #edf3ff; color: #3159a1; font: inherit; cursor: pointer; }
 body:has(.document-editor[open]) #detail[open], body:has(.document-editor[open]) #detail::backdrop { visibility: hidden; }
 @media (min-width: 761px) { .document-form-grid.document-update-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+.material-drive-folder{display:flex;align-items:center;gap:12px;min-width:0;padding:12px;border:1px solid #cadcf0;border-radius:10px;background:#f5f9ff;color:#24466c;text-decoration:none}
+.material-drive-folder:hover,.material-drive-folder:focus-visible{border-color:#6e9bda;background:#ebf3ff}
+.material-drive-folder>span:nth-child(2){min-width:0;overflow-wrap:anywhere}
+.material-drive-folder strong,.material-drive-folder small{display:block}
+.material-drive-folder small{margin-top:3px;color:#506d8e;font-size:12px}
+.material-drive-action{display:flex;align-items:center;gap:5px;margin-left:auto;white-space:nowrap;font-size:12px;font-weight:600;color:#315e9b}
+.material-drive-action svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6}
+.material-drive-group{grid-column:1/-1;max-width:920px;min-width:0;border:1px solid #cadcf0;border-radius:10px;background:#f8fbff}
+.material-drive-group .material-drive-folder{border:0;border-radius:9px 9px 0 0}
+.material-drive-children{border-top:1px solid #e0eaf6;padding:0 12px}
+.material-drive-children summary{display:flex;align-items:center;gap:7px;min-height:38px;cursor:pointer;list-style:none;color:#355274;font-size:13px;font-weight:600}
+.material-drive-children summary::-webkit-details-marker{display:none}
+.material-drive-children summary svg{width:13px;height:13px}
+.material-drive-children[open] summary svg{transform:rotate(90deg)}
+.material-drive-children summary b{font-size:12px;color:#5480ac;font-weight:500}
+.material-drive-children ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:6px;margin:0 0 10px;padding:0;list-style:none}
+.material-drive-children li{min-width:0}
+.material-drive-children a{display:flex;align-items:center;gap:8px;min-height:40px;padding:7px 9px;border:1px solid #e0eaf6;border-radius:6px;background:#fff;color:#355274;text-decoration:none;font-size:13px}
+.material-drive-children a:hover{border-color:#a4c0e4;background:#eef5ff}
+.material-drive-children a span{min-width:0;overflow-wrap:anywhere}
+.material-drive-children a svg{width:14px;height:14px;color:#517eae}
+.material-drive-children a svg:last-child{margin-left:auto}

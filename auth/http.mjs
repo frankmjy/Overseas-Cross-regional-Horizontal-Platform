@@ -28,7 +28,7 @@ function loginTarget(value){
   return url.pathname==='/'?(url.search?'/research'+url.search+url.hash:'/project-management'):target;
 }
 
-export function createAuthHandler({ service, root, canBootstrap = () => true, access = new PageAccess({auth:service}), readWeather = readProjectWeather, translateBusiness }) {
+export function createAuthHandler({ service, root, canBootstrap = () => true, access = new PageAccess({auth:service}), readWeather = readProjectWeather, translateBusiness, readOverseasBrief, refreshOverseasBrief }) {
   const publicFiles = {
     '/auth/login.js': ['auth/web/login.js', 'text/javascript'],
     '/auth/login.css': ['auth/web/login.css', 'text/css'],
@@ -38,6 +38,8 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
     '/src/platform-language.js': ['src/platform-language.js', 'text/javascript'],
     '/src/platform-translations.js': ['src/platform-translations.js', 'text/javascript'],
     '/src/platform-language.css': ['src/platform-language.css', 'text/css'],
+    '/src/overseas-brief.js': ['src/overseas-brief.js', 'text/javascript'],
+    '/src/overseas-brief.css': ['src/overseas-brief.css', 'text/css'],
   };
   return async (req, res) => {
     let url;
@@ -59,6 +61,22 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
         const loginEnabled = (service.config().oauthOrigins || service.config().origins).includes(origin);
         json(res, 200, { ok: true, authenticated: !!session, user: session ? { name: session.user.name } : null, project, projects: platformProjects.map(({id,name})=>({id,name})), csrf: session?.csrf, expiresInMs: session?.expiresInMs, auditStatus: service.auditStatus(token), ...authorization, isAdmin, canConfigure: isAdmin || localBootstrap, loginEnabled, businessTranslationEnabled: !!session && typeof translateBusiness === 'function' }); return true;
+      }
+      if (url.pathname === '/api/overseas-brief' && readOverseasBrief) {
+        if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
+        json(res, 200, readOverseasBrief()); return true;
+      }
+      if (url.pathname === '/api/overseas-brief/refresh' && refreshOverseasBrief) {
+        if (req.method !== 'POST') throw authError('不支持此请求方法。', 405);
+        if (!session) throw authError('请先使用飞书登录。', 401);
+        if (!project || !authorization.permissions.projects?.view) throw authError('无权刷新项目总览。', 403);
+        sameOrigin(req, origin);
+        const csrf = req.headers['x-csrf-token'];
+        if (typeof csrf !== 'string' || Buffer.byteLength(csrf) !== Buffer.byteLength(session.csrf) || !timingSafeEqual(Buffer.from(csrf), Buffer.from(session.csrf))) throw authError('刷新请求已失效。', 403);
+        let brief;
+        try { brief=await refreshOverseasBrief(); }
+        catch { throw authError('海外速览同步失败，请重试。', 503); }
+        json(res, 200, brief); return true;
       }
       if (url.pathname === '/api/auth/feishu/authorize') {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);

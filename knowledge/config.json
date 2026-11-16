@@ -1,6 +1,7 @@
 {
   "baseToken": "CID8b8V7CaCtKesWGFKcHTdqnlc",
   "baseUrl": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc",
+  "overseasBriefTable": "tblluJsAVBzayJ5U",
   "categories": [
     {
       "id": "index",
@@ -33,7 +34,9 @@
       "name": "01.01 Resource Index（资料索引）",
       "category": "index",
       "kind": "index",
+      "libraryView": "vewMhoh5Td",
       "fields": {
+        "Review Status": {"id": "fldaWmvxOW", "name": "资料核查状态"},
         "Document Title": {
           "id": "fldgMSPCEH",
           "name": "Document Title（文档名称）"
@@ -484,7 +487,58 @@
       "name": "01.03.01 Maintenance & Specifications（维保与技术资料）",
       "kind": "equipment",
       "category": "shared",
+      "libraryView": "vewBUob9Zh",
+      "driveCollections": [
+        {
+          "sourceLibrary": "泰国项目-01工程与设备",
+          "nature": "施工图纸",
+          "projectScope": "泰国",
+          "title": "施工图纸云盘",
+          "url": "https://vnet.feishu.cn/drive/folder/GEDDfJWO7lWE6qdQxwqcd7scnLb",
+          "extensions": ["dwg", "dxf", "pdf"]
+        },
+        {
+          "sourceLibrary": "泰国项目-01工程与设备",
+          "nature": "设备技术规格",
+          "projectScope": "泰国",
+          "title": "设备技术规格云盘",
+          "url": "https://vnet.feishu.cn/drive/folder/NHgRfhRuNlPVlxdstl2c48pZnoh",
+          "allLinked": true,
+          "standaloneTokens": ["CHIBbxKKQadKNgsheu9cPOwlnZd", "VQq7shVsBhheFEt50QWcDdxyn5v"]
+        },
+        {
+          "sourceLibrary": "泰国项目-01工程与设备",
+          "nature": "运维维保需求规范",
+          "projectScope": "泰国",
+          "title": "维保规范云盘",
+          "url": "https://vnet.feishu.cn/drive/folder/IXyNfaKw7lB1gedke4xclhXvnkd",
+          "allLinked": true,
+          "standaloneTokens": ["U3dddtVwkovXbmxR38pczTuBngg", "Hx24bousoaLpvVsUkGXcTMUVnqh"],
+          "sharedTokens": ["Hx24bousoaLpvVsUkGXcTMUVnqh"]
+        },
+        {
+          "sourceLibrary": "泰国项目-01工程与设备",
+          "nature": "DX空调",
+          "projectScope": "泰国",
+          "title": "DX 空调资料云盘",
+          "url": "https://vnet.feishu.cn/drive/folder/VElefPwJYlhhBNdfZELciI52nue",
+          "allLinked": true
+        },
+        {
+          "sourceLibrary": "泰国项目-DX空调技术文件",
+          "nature": "DX空调",
+          "projectScope": "泰国",
+          "title": "DX 空调资料云盘",
+          "url": "https://vnet.feishu.cn/drive/folder/VElefPwJYlhhBNdfZELciI52nue",
+          "allLinked": true
+        }
+      ],
       "fields": {
+        "Source Library": {
+          "id": "fldEDdjLcr",
+          "name": "Source Library（来源资料库）"
+        },
+        "Review Status": {"id": "fldV41HH6P", "name": "资料核查状态"},
         "Equipment Name": {
           "id": "fldG6ILJ8d",
           "name": "Equipment Name（设备名称）"
@@ -550,7 +604,9 @@
       "kind": "project-document",
       "category": "projects",
       "projectScope": "泰国",
+      "libraryView": "vewBSHm4kD",
       "fields": {
+        "Review Status": {"id": "fldNGxb5qE", "name": "资料核查状态"},
         "Summary": {
           "id": "fldEEbPTLF",
           "name": "Document Summary（资料简述）"
@@ -608,7 +664,9 @@
       "kind": "project-document",
       "category": "projects",
       "projectScope": "马来",
+      "libraryView": "vewN5FN9ss",
       "fields": {
+        "Review Status": {"id": "fldotcuB2r", "name": "资料核查状态"},
         "Summary": {
           "id": "fldcXHw13r",
           "name": "Document Summary（资料简述）"
@@ -799,11 +857,11 @@
   "projectLibraries": [
     {
       "project": "thailand",
-      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblCTyrV3BYSZkTv"
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblCTyrV3BYSZkTv&view=vewBSHm4kD"
     },
     {
       "project": "malaysia",
-      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblblTWYgpjMsaUh"
+      "url": "https://vnet.feishu.cn/base/CID8b8V7CaCtKesWGFKcHTdqnlc?table=tblblTWYgpjMsaUh&view=vewN5FN9ss"
     }
   ],
   "directoryTable": "tbly9YjCOdjqDRIn"

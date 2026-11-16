@@ -6,12 +6,29 @@ import { projects, filterDocuments, filterMeetings, meetingMetrics } from '../kn
 import { renderLibraryOverview } from '../knowledge/web/overview.mjs';
 import { meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups } from '../knowledge/web/meetings-overview.mjs';
 import { renderMeetingTrail } from '../knowledge/web/meeting-trail.mjs';
-import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections} from '../knowledge/library-model.mjs';
+import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,compactDriveDocuments} from '../knowledge/library-model.mjs';
 import {handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments} from '../knowledge/lifecycle.mjs';
 import {visibleDirectory,directoryDocuments,documentDirectory} from '../knowledge/directory.mjs';
 
+test('云盘归档可下钻到业务子目录，并保留总目录直达',async()=>{
+ const {table}=await fixture();
+ const parent='https://vnet.feishu.cn/drive/folder/DxRoot';
+ const first='https://vnet.feishu.cn/drive/folder/AirCooled';
+ const second='https://vnet.feishu.cn/drive/folder/DualCoil';
+ const row={id:'dx1',nature:'DX空调',title:'文件',projectScope:'泰国',driveCollection:{title:'DX 空调资料云盘',url:parent}};
+ const children=[{name:'风冷精密空调（电力方舱空调）技术文件',url:first},{name:'双盘管空调技术文件',url:second}];
+ const options={selection:{directory:'prep:equipment-specifications'},driveFolders:{[parent]:children}};
+ const html=table([row],options);
+ assert.match(html,/<details class="material-drive-children" open>/);
+ assert.match(html,/<span>资料入口<\/span><b>2<\/b>/);
+ assert.ok(html.includes('href="'+parent+'"')&&html.includes('href="'+first+'"')&&html.includes('href="'+second+'"'));
+ const long=table([row],{...options,driveFolders:{[parent]:Array.from({length:5},(_,i)=>({name:'设备'+i,url:first+i}))}});
+ assert.match(long,/<details class="material-drive-children">/);
+ assert.doesNotMatch(table([row],{...options,selection:{}}),/双盘管/);
+});
+
 async function fixture(overrides = {}) {
-  const uiContext=vm.createContext({libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,documentDirectory,URL,URLSearchParams});
+  const uiContext=vm.createContext({libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,compactDriveDocuments,handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,documentDirectory,URL,URLSearchParams});
   vm.runInContext((await readFile(new URL('../knowledge/web/library-ui.mjs',import.meta.url),'utf8')).replace(/^import .+;\r?\n/gm,'').replace(/^export /gm,''),uiContext);
   const nodes = new Map();
   const document = {

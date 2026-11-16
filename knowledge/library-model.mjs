@@ -50,11 +50,27 @@ export function sourceTableEntries(documents){
   return [{...document,title:definition.title,note:definition.note||'',date:members.map(member=>member.date||'').sort().at(-1)||'',summary:[...new Set(members.map(member=>member.summary).filter(Boolean))].join('\n'),sections:[...sections.values()],tags:[...tags],specialties:[...specialties],specialty:specialties.size===1?[...specialties][0]:'',members,sourceLink:entryUrl,links:entryUrl?[{label:'打开源表',url:entryUrl}]:[]}];
  });
 }
+export const isLibraryDocument=document=>!document.reviewStatus||document.reviewStatus==='有效';
 export function libraryDocuments(documents,{project='',scope=''}={}){
- const rows=documents.map(document=>withLibraryMetadata(document)).filter(document=>matchesDocumentProject(document,project)&&(!scope||document.libraryScope===scope));
+ const rows=documents.filter(isLibraryDocument).map(document=>withLibraryMetadata(document)).filter(document=>matchesDocumentProject(document,project)&&(!scope||document.libraryScope===scope));
  return sourceTableEntries(rows);
 }
 export function libraryMetrics(documents,project=''){
  const rows=libraryDocuments(documents,{project});
  return Object.fromEntries(libraryScopes.map(scope=>[scope.id,rows.filter(document=>document.libraryScope===scope.id).length]));
+}
+export function compactDriveDocuments(documents,{query=''}={}){
+ if(query.trim())return documents;
+ const collections=new Map(),independent=[];
+ for(const document of documents){
+  const {title,url}=document.driveCollection||{};
+  if(!title||!/^https:\/\/[a-z\d-]+\.feishu\.cn\/drive\/folder\/[a-z\d]+$/i.test(url)){
+   independent.push(document);
+   continue;
+  }
+  const key=JSON.stringify([url,document.projectScope,document.nature]);
+  if(!collections.has(key))collections.set(key,{...document,id:key,title,driveFolder:url,documentCount:0});
+  collections.get(key).documentCount++;
+ }
+ return [...collections.values(),...independent];
 }

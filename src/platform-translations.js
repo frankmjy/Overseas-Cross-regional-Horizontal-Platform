@@ -149,6 +149,10 @@ const labels = new Map(`
 复盘计划覆盖|Review Schedule
 项目组织|Project Team
 每周跟进|Weekly Tracking
+近期会议待办|Recent Meeting Actions
+近期会议暂无待办|No open actions from recent meetings
+正在读取会议待办…|Loading meeting actions…
+会议待办暂不可用|Meeting actions unavailable
 月度回顾|Monthly Review
 本周推进|This Week
 下周计划|Next Week
@@ -321,6 +325,7 @@ const labels = new Map(`
 资料链接|Document Link
 资料详情|Document Details
 资料与来源|Document and Source
+资料入口|Resource Links
 来源|Source
 待办|To do
 历史待办|Legacy Action Items

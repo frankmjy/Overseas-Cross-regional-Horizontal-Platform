@@ -19,6 +19,7 @@ import { ApplicationSettings, createApplicationSettingsHandler, isLocalConfigura
 import { createKnowledgeHandler } from './knowledge/http.mjs';
 import { KnowledgeService } from './knowledge/service.mjs';
 import { startNightlySync } from './knowledge/nightly-sync.mjs';
+import { createOverseasBrief } from './knowledge/overseas-brief.mjs';
 import { MeetingService } from './knowledge/meeting-service.mjs';
 import { MinutesService } from './knowledge/minutes.mjs';
 import { createMeetingHandler } from './knowledge/meeting-http.mjs';
@@ -64,7 +65,9 @@ if (translationModule) {
     console.error('Business translation disabled: check VNET_TRANSLATION_MODULE and its translateBusiness export.');
   }
 }
-const handleAuth = createAuthHandler({service:authService,root:ROOT,canBootstrap,access:pageAccess,translateBusiness});
+const knowledgeConfig = JSON.parse(readFileSync(path.join(ROOT, 'knowledge/config.json'), 'utf8'));
+const overseasBrief = createOverseasBrief({config:knowledgeConfig,isPaused:()=>isMaintenance()||applicationSettings.saving});
+const handleAuth = createAuthHandler({service:authService,root:ROOT,canBootstrap,access:pageAccess,translateBusiness,readOverseasBrief:overseasBrief.snapshot,refreshOverseasBrief:overseasBrief.refreshOnDemand});
 const handleAdmin = createAdminHandler({root:ROOT,reader:loginAuditReader,access:pageAccess,availability:appAvailability});
 authService.start();
 const researchConfig = JSON.parse(readFileSync(path.join(ROOT, 'research/config.json'), 'utf8'));
@@ -78,7 +81,6 @@ try {
 } catch (error) { await Promise.allSettled(Object.values(researchServices).map(service => service.close())); throw error; }
 const projectOptions = () => Object.values(researchServices).map(service => ({ ...service.project, categories: service.snapshot()?.categories || [] }));
 const handleResearch = createProjectResearchHandler({ defaultProject: researchConfig.defaultProject, handlers: Object.fromEntries(Object.entries(researchServices).map(([key, service]) => [key, createResearchHandler({ root: ROOT, service, projectOptions })])) });
-const knowledgeConfig = JSON.parse(readFileSync(path.join(ROOT, 'knowledge/config.json'), 'utf8'));
 const knowledgeService = new KnowledgeService({ config: knowledgeConfig, cacheFile: path.join(process.env.KNOWLEDGE_DATA_DIR || path.join(ROOT,'.runtime/knowledge'),'cache.json') });
 await knowledgeService.init();
 const coordinationService=new CoordinationService({config:materials,cacheFile:path.join(process.env.COORDINATION_DATA_DIR||path.join(ROOT,'.runtime/coordination'),'cache.json'),isMaintenance:()=>isMaintenance()||applicationSettings.saving});
@@ -117,6 +119,7 @@ const nightlySync=startNightlySync({
  dir:knowledgeDir,
  isPaused:()=>isMaintenance()||applicationSettings.saving,
  jobs:{
+  'overseas-brief':()=>overseasBrief.refresh(),
   'knowledge-meetings':confirmedRefresh(()=>knowledgeService.refresh(),()=>knowledgeService.errors.length>0),
   'knowledge-directory':confirmedRefresh(()=>documentService.refresh(),()=>!!documentService.lastError),
   'meeting-fields':confirmedRefresh(()=>meetingService.refresh(),()=>!!meetingService.lastError),
@@ -326,10 +329,11 @@ const server = httpsOptions
 server.listen(PORT, HOST, () => {
   console.log(`Overseas project platform: ${protocol}://${HOST}:${PORT}/`);
   nightlySync.tick();
+  overseasBrief.start();
 });
 async function shutdown() {
   server.close();
-  await nightlySync.close();
+  await Promise.all([nightlySync.close(),overseasBrief.close()]);
   await handoverService.close();
   authService.close();
   await loginAuditReader.close();

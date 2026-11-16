@@ -101,7 +101,6 @@ project-local-conditions[hidden], project-local-conditions [hidden] { display: n
 @media (max-width: 920px) {
   .platform-header:has(.handover-header-tools platform-account) > .brand > span,
   .handover-header-tools:has(platform-account) .preview-tag { display: none; }
-  .handover-header-tools .account-trigger.account-trigger-named { max-width: 104px; }
 }
 @media (max-width: 560px) {
   .platform-header:has(.handover-header-tools platform-account) {

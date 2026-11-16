@@ -33,7 +33,8 @@ export function projectRecord(source,row,baseUrl){
  if(edit){const link=editableDocumentLink(c[fields.url]);if(link)edit.url=link.url;}
  const attachments=Array.isArray(c.Attachments)?c.Attachments:[];
  const links=source.kind==='equipment'&&attachments.length?[...record.links,{label:'查看附件',url:record.sourceLink}]:record.links;
- return {...record,links,...edit?{edit,attachmentCount:attachments.length}:{},...['project','shared','domestic','general'].includes(scope)?{libraryScope:source.kind==='project-document'?'project':scope}:{},...note?{note,sections:[...record.sections.filter(([label])=>label!=='备注'),['备注',note]]}:{},...directoryId?{directoryId}:{},...chapter?{lifecycle:{chapter,stage,directoryId}}:{},...specialty?{specialty}:{},...source.kind==='project-document'&&text(c.Category)?{nature:text(c.Category)}:{},...source.regionalOffice?{libraryScope:'regional',projectScope:''}:{}};
+ const reviewStatus=text(c['Review Status']);
+ return {...record,links,...reviewStatus?{reviewStatus}:{},...edit?{edit,attachmentCount:attachments.length}:{},...['project','shared','domestic','general'].includes(scope)?{libraryScope:source.kind==='project-document'?'project':scope}:{},...note?{note,sections:[...record.sections.filter(([label])=>label!=='备注'),['备注',note]]}:{},...directoryId?{directoryId}:{},...chapter?{lifecycle:{chapter,stage,directoryId}}:{},...specialty?{specialty}:{},...source.kind==='project-document'&&text(c.Category)?{nature:text(c.Category)}:{},...source.regionalOffice?{libraryScope:'regional',projectScope:''}:{}};
 }
 function baseRecord(source,row,baseUrl){
  const c=row.cells,t=n=>text(c[n]),sourceLink=`${baseUrl}?table=${source.id}&record=${row.id}`,id=source.id+':'+row.id;
@@ -65,7 +66,18 @@ function baseRecord(source,row,baseUrl){
  }
  if(source.kind==='equipment'){
   const nature=t('Document Category'),links=[...documentLinks(c['Linked Document']),...safeLinks(c['Final PDF'],'定稿PDF')];
-  return {id,sourceId:source.id,sourceName:source.name,sourceLink,title:t('Equipment Name')||'未命名设备',summary:'',sections:[],category:source.category,subcategory:nature,specialty,date:'',tags:[nature],links,libraryScope:'shared',projectScope:'海外',nature,format:t('Link Type'),classification:'S1.3.3',status:t('Document Status')};
+  const title=t('Equipment Name')||'未命名设备', primary=editableDocumentLink(c['Linked Document']);
+  const collection=source.driveCollections?.find(entry=>entry.nature===nature&&entry.sourceLibrary===t('Source Library'));
+  const extension=/\.([a-z\d]+)$/i.exec(primary?.label||title)?.[1].toLowerCase();
+  const folder=primary?.url&&/^https:\/\/[^/]+\.feishu\.cn\/drive\/folder\/[a-z\d]+\/?(?:\?[^#]*)?$/i.test(primary.url);
+  const resource=primary?.url && new URL(primary.url);
+  const token=resource?resource.pathname.split('/').filter(Boolean).at(-1):'';
+  const projectScope=collection&&!['shared','domestic','general'].includes(t('Library Scope'))&&!collection.sharedTokens?.includes(token)?collection.projectScope:'';
+  const standalone=collection?.standaloneTokens?.includes(token);
+  const keepSeparate=/(?:审图|反馈|意见|评审|\breview\b|\bcomments?\b)/i.test(title)||standalone;
+  const driveCollection=projectScope&&resource&&/\.feishu\.cn$/i.test(resource.hostname)&&!keepSeparate&&(collection.allLinked||folder||collection.extensions?.includes(extension))
+   ?{title:collection.title,url:collection.url}:undefined;
+  return {id,sourceId:source.id,sourceName:source.name,sourceLink,title,summary:'',sections:[],category:source.category,subcategory:nature,specialty,date:'',tags:[nature],links,libraryScope:projectScope?'project':'shared',projectScope:projectScope||'海外',nature,format:t('Link Type'),classification:'S1.3.3',status:t('Document Status'),...(driveCollection?{driveCollection}:{})};
  }
  if(source.kind==='lesson'){title=t('Title');summary=t('Key Points');subcategory=t('Lesson Type');sections=[['经验要点',summary],['现场核查要点',t('Checkpoints')],['适用场景',t('Scenario')],['原始场景',t('Source Context')]];}
  else if(source.kind==='index'){title=t('Document Title');summary=t('Summary');subcategory=t('Topic');sections=[['文档摘要',summary],['备注',t('Notes')]];}

@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "release": "20261116.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261114.3",
+  "candidateSha256": "8fb63e61433625e07a5650ea05fa57f0817c39904a4e4d01171e84c80a16cd32",
+  "manifestSha256": "129228fe3d2302ecc8c98874c0ea63d9e6d9f06d121a493d97277301e5eff6dc",
+  "payloadSha256": "c32a939b7ac9aa42ec63d8530310052c1efe7ef4cc120efc04a1c429460c1aed",
+  "filesChanged": [
+    "server.mjs",
+    "src/overseas-brief.css",
+    "src/overseas-brief.js",
+    "src/platform-account.js",
+    "src/platform-navigation.css",
+    "src/platform-translations.js",
+    "src/project-local-conditions.css",
+    "knowledge/config.json",
+    "knowledge/http.mjs",
+    "knowledge/library-model.mjs",
+    "knowledge/model.mjs",
+    "knowledge/overseas-brief.mjs",
+    "knowledge/service.mjs",
+    "knowledge/web/app.mjs",
+    "knowledge/web/library-ui.mjs",
+    "knowledge/web/library.css",
+    "auth/http.mjs",
+    "auth/web/login.css",
+    "auth/web/login.html",
+    "samples/handover-preview/index.html",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/pages.mjs",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "项目总览新增近期会议待办前三项，支持直达会议详情",
+    "海外速览在登录与总览展示，支持凌晨同步及总览手动刷新",
+    "顶栏保留头像，知识共享按有效资料展示并提供分级云盘入口"
+  ],
+  "checks": {
+    "businessTests": 497,
+    "exactDeployedFilesVerified": 374,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "independentSessionSurvivalSeconds": 627
+  },
+  "recordedAt": "2026-11-16T10:15:33.6590043Z"
+}

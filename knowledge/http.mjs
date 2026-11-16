@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { matchesDocumentProject } from '../src/project-context-model.mjs';
+import { isLibraryDocument } from './library-model.mjs';
 
 const routes = {
   '/knowledge/directory.mjs': ['../directory.mjs', 'text/javascript; charset=utf-8'],
@@ -22,7 +23,7 @@ const routes = {
   '/knowledge/styles.css': ['styles.css', 'text/css; charset=utf-8'],
 };
 
-export function createKnowledgeHandler({ root, service, meetings, documents, minutes }) {
+export function createKnowledgeHandler({ root, service, meetings, documents, minutes, now = Date.now }) {
   return async (req, res) => {
     const url = new URL(req.url, 'http://localhost'), route = url.pathname;
     if (route === '/knowledge-sharing' && url.searchParams.get('view') === 'meetings' && ['GET','HEAD'].includes(req.method)) {
@@ -34,6 +35,25 @@ export function createKnowledgeHandler({ root, service, meetings, documents, min
       if (!['GET','HEAD'].includes(req.method)) { res.setHeader('Allow','GET, HEAD');send(405,{ok:false,error:'知识共享当前为只读。'}); }
       else if (!service) send(503,{ok:false,error:'知识共享数据连接未就绪。'});
       else try {
+        if (url.searchParams.get('meetingTodos')==='1') {
+          const project=req.auth?.project?.knowledgeKey;
+          if (!project||!req.auth?.permissions?.meetings?.view) {
+            send(403,{ok:false,error:'无权查看会议待办。'});return true;
+          }
+          const snapshot=service.read({});
+          const time=now()+8*3600000;
+          const today=new Date(time).toISOString().slice(0,10);
+          const since=new Date(time-29*86400000).toISOString().slice(0,10);
+          const items=(snapshot.meetings||[])
+            .filter(meeting=>(meeting.project===project||meeting.project==='overseas')&&meeting.type==='已开'&&meeting.date>=since&&meeting.date<=today)
+            .sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')))
+            .flatMap(meeting=>(meeting.actions||[])
+              .filter(action=>action.structured&&action.title&&action.status!=='已完成')
+              .sort((a,b)=>(a.priority||'P9').localeCompare(b.priority||'P9')||(a.due||'9999').localeCompare(b.due||'9999'))
+              .map(({title,owner,due,priority})=>({title,owner,due,priority,meetingId:meeting.id,meetingTitle:meeting.title,meetingDate:meeting.date})))
+            .slice(0,3);
+          send(200,{ok:true,items,refreshing:snapshot.refreshing,state:snapshot.state});return true;
+        }
         const meetingOverview=url.searchParams.get('meetingOverview')==='1';
         const meetingOverviewAll=meetingOverview&&req.auth?.isAdmin===true;
         const refresh=url.searchParams.get('refresh')==='1';
@@ -46,7 +66,10 @@ export function createKnowledgeHandler({ root, service, meetings, documents, min
         const visible=(merged.meetings||[]).filter(meeting=>inScope(meeting.project));
         const sources=(merged.sources||[]).filter(source=>source.kind!=='meeting'||inScope(source.project)).map(source=>
           source.kind==='meeting-action'&&project&&!meetingOverviewAll?{...source,count:null}:source);
-        const scoped={...merged,sources,meetings:visible,documents:meetingOverview?[]:(merged.documents||[]).filter(document=>!project||matchesDocumentProject(document,project))};
+        const visibleDocuments=meetingOverview||req.auth?.permissions?.knowledge?.view===false?[]:(merged.documents||[]).filter(document=>isLibraryDocument(document)&&(!project||matchesDocumentProject(document,project)));
+        const folderUrls=new Set(visibleDocuments.map(document=>document.driveCollection?.url).filter(Boolean));
+        const driveFolders=Object.fromEntries([...folderUrls].filter(url=>Object.hasOwn(service.driveFolders||{},url)).map(url=>[url,service.driveFolders[url]]));
+        const scoped={...merged,sources,meetings:visible,documents:visibleDocuments,driveFolders};
         send(200,{ok:true,...scopeKnowledgeAccess(scoped,req.auth?.permissions),meetingOverviewAll});
       } catch { send(503,{ok:false,error:'知识共享读取失败，请重试。'}); }
       return true;

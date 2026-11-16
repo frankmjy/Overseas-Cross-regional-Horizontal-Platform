@@ -13,6 +13,24 @@ test('只读状态标签替代完成勾选，交付物及优先级仍在原行',
 
 test('工作台导航分页面，不提供独立任务清单或项目日历入口',()=>{assert.ok(pageDefinitions.some(p=>p.id==='overview'));assert.ok(pageDefinitions.some(p=>p.id==='gantt'));assert.ok(pageDefinitions.some(p=>p.id==='weekly'));assert.ok(!pageDefinitions.some(p=>['list','calendar'].includes(p.id)));});
 test('周跟进包含未完成逾期和本周实际完成，下周计划独立',()=>{const v=weeklyData(tasks,'2026-11-01','2026-11-01');assert.equal(v.start,'2026-10-26');assert.equal(v.end,'2026-11-01');assert.deepEqual(v.overdue.map(r=>r.id),['late']);assert.deepEqual(v.completed.map(r=>r.id),['done']);assert.deepEqual(v.next.map(r=>r.id),['next']);});
+test('总览展示会议待办，保留会议直达与真实状态',()=>{
+ const model={tasks,parents:[],milestones:[],stages:[]};
+ const options={month:'2026-11',today:'2026-11-16'};
+ const html=renderOverview(model,{...options,meetingTodos:{state:'ready',items:[{
+  title:'<检查>',owner:'马进宇',due:'2026-11-19T12:00',priority:'P1',
+  meetingId:'shared:rec11',meetingTitle:'海外双周会',meetingDate:'2026-11-13',
+ }]}});
+ const panel=html.match(/<section class="overview-weekly".*?<\/section>/s)?.[0];
+ assert.ok(panel);
+ assert.match(panel,/&lt;检查&gt;/);
+ assert.match(panel,/海外双周会/);
+ assert.match(panel,/马进宇/);
+ assert.match(panel,/datetime="2026-11-19T12:00"/);
+ assert.match(panel,/href="\/meeting-trail\?meeting=shared%3Arec11"/);
+ assert.doesNotMatch(panel,/逾期检查|每周跟进/);
+ assert.match(renderOverview(model,{...options,meetingTodos:{state:'ready'}}),/近期会议暂无待办/);
+ assert.doesNotMatch(renderOverview(model,{...options,meetingTodos:{state:'forbidden'}}),/id="overviewWeeklyTitle"/);
+});
 test('月度完成只按实际完成日期，不把计划结束当作完成',()=>{const v=monthlyData(tasks,'2026-11');assert.deepEqual(v.completed.map(r=>r.id),['done']);assert.deepEqual(v.rows.map(r=>r.id).sort(),['done','next']);});
 test('总览中提供日历，空数据无虚构进度，图表分类转义',()=>{const model={tasks:[...tasks,{...tasks[0],id:'xss',category:'<img onerror=alert(1)>'}],parents:[],milestones:[],stages:[{id:1,name:'项目筹备',color:'#4f7fe0',total:4}],summary:{tasks:4,groups:0,milestones:0,unscheduled:0,completed:1}};const html=renderOverview(model,{month:'2026-11',today:'2026-11-01'});assert.ok(html.includes('项目日历'));assert.ok(!html.includes('<img onerror'));assert.ok(html.includes('&lt;img'));});
 test('项目组织按已确认任职显示主岗，兼任不重复计人，不按旧岗位猜楼栋',()=>{const data=organizationData({people:[{id:'a',name:'甲',active:true,assignments:['第二栋 · 楼栋经理（兼任）','园区 · 运维经理']},{id:'b',name:'乙',active:true,assignments:[]},{id:'x',name:'退出',active:false,assignments:['园区 · 园区经理']}],positions:[{building:'第一栋',role:'专业主管-电气',candidates:'乙'}]});assert.equal(data.people.length,2);assert.equal(data.people[0].building,'园区');assert.equal(data.people[0].role,'运维经理');assert.match(data.people[0].concurrent,/第二栋/);assert.equal(data.people[1].building,'第一栋');});
