@@ -60,6 +60,20 @@ test('manual brief refresh requires project view, same origin and CSRF', async t
   assert.equal(calls,1);
 });
 
+test('public brief accepts only supported date ranges', async t => {
+  const f = fixture(t), calls = [];
+  const handle = createAuthHandler({service:f.service,root:process.cwd(),readOverseasBrief:days => {
+    calls.push(days);
+    return {state:'ready', items:[]};
+  }});
+  for (const [query, status] of [['', 200], ['?days=7', 200], ['?days=30', 200], ['?days=31', 400], ['?days=7&days=30', 400]]) {
+    const response = res();
+    await handle(req('/api/overseas-brief' + query), response);
+    assert.equal(response.status, status);
+  }
+  assert.deepEqual(calls, [1, 7, 30]);
+});
+
 test('business translation is optional and requires an authenticated same-origin session', async t => {
   const f = fixture(t), logged = await login(f.service);
   const cookie = `__Host-vnet_session=${logged.token}`;

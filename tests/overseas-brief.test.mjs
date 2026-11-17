@@ -46,6 +46,34 @@ test('海外速览提供五条以外的当日公开资讯供继续浏览',()=>{
   assert.equal(entries[6].title,'资讯6');
 });
 
+test('时段包括当日和北京时间边界，历史记录只取公开条目并按新到旧排序', async () => {
+  const rows = [
+    row('本日跨区', {地区: ['美国', '东南亚']}),
+    row('欧洲', {展示日期: '2026-11-14', 地区: '芬兰'}),
+    row('起始边界', {展示日期: '2026-11-09T16:00:00Z', 地区: '阿联酋'}),
+    row('上一个月', {展示日期: '2026-10-24', 地区: '日本/韩国、中国台湾'}),
+    row('七天之外', {展示日期: '2026-11-09T15:59:59Z', 地区: '泰国'}),
+    row('历史草稿', {展示日期: '2026-11-13', 展示状态: ['草稿']}),
+    row('未来', {展示日期: '2026-11-17'}),
+    row('旧重复', {展示日期: '2026-11-13', 原文链接: 'https://example.test/本日跨区'}),
+  ];
+  let calls = 0;
+  const service = createOverseasBrief({now: () => Date.parse('2026-11-16T12:00:00Z'), readRows: async () => {
+    calls++;
+    return rows;
+  }});
+  await service.refresh();
+  assert.deepEqual(service.snapshot().items.map(x => x.title), ['本日跨区']);
+  const week = service.snapshot(7).items;
+  assert.deepEqual(week.map(x => x.title), ['本日跨区', '欧洲', '起始边界']);
+  assert.deepEqual(week.map(x => x.regions), [['americas', 'southeastAsia'], ['europe'], ['middleEast']]);
+  assert.equal(week[2].day, '2026-11-10');
+  const month = service.snapshot(30).items;
+  assert.deepEqual(month.map(x => x.title), ['本日跨区', '欧洲', '起始边界', '七天之外', '上一个月']);
+  assert.deepEqual(month.at(-1).regions, ['japanKorea', 'china']);
+  assert.equal(calls, 1);
+});
+
 test('手动刷新立刻回读多维表，并复用并发及短间隔的结果',async()=>{
   let time=Date.parse('2026-11-16T07:00:00Z'),calls=0,paused=false;
   const service=createOverseasBrief({now:()=>time,isPaused:()=>paused,readRows:async()=>[row('第'+(++calls)+'次')]});

@@ -65,7 +65,9 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
       }
       if (url.pathname === '/api/overseas-brief' && readOverseasBrief) {
         if (req.method !== 'GET') throw authError('不支持此请求方法。', 405);
-        json(res, 200, readOverseasBrief()); return true;
+        const period = url.searchParams.getAll('days');
+        if (period.length > 1 || period.length && !['1', '7', '30'].includes(period[0])) throw authError('请选择有效的时间范围。', 400);
+        json(res, 200, readOverseasBrief(Number(period[0] ?? 1))); return true;
       }
       if (url.pathname === '/api/overseas-brief/refresh' && refreshOverseasBrief) {
         if (req.method !== 'POST') throw authError('不支持此请求方法。', 405);

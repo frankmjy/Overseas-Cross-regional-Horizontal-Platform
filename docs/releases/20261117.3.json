@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "release": "20261117.3",
+  "status": "deployed-server-verified",
+  "predecessor": "20261117.2",
+  "candidateSha256": "839599aade36a9a1d4891d79df973a703e385270777e8747444529629c54a505",
+  "manifestSha256": "850b45b9cf1fd870a2f4e139ed41e7ac959e31a86fb045313dca78e4b627f13a",
+  "payloadSha256": "a029710c14bf796ae60e5af315c9d75d9715c960d8fadf3abf1e77d2085220ca",
+  "filesChanged": [
+    "src/overseas-brief.css",
+    "src/overseas-brief.js",
+    "knowledge/overseas-brief.mjs",
+    "auth/http.mjs"
+  ],
+  "features": [
+    "登录页与项目总览的海外速览支持六个地区快捷筛选",
+    "支持今天、近 7 天和近 30 天，历史资讯标注展示日期",
+    "两页统一胶囊样式，选中底轻滑切换，窄屏自动换行"
+  ],
+  "checks": {
+    "businessTests": 500,
+    "exactDeployedFilesVerified": 375,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "onlineBrief": [
+      {
+        "host": "www.sm.sjhl.online",
+        "width": 1440,
+        "today": 18,
+        "week": 20,
+        "month": 20,
+        "regionMatches": 10
+      },
+      {
+        "host": "www.sm.sjhl.online",
+        "width": 390,
+        "today": 18,
+        "week": 20,
+        "month": 20,
+        "regionMatches": 10
+      }
+    ],
+    "independentSessionSurvivalSeconds": 136
+  },
+  "recordedAt": "2026-11-17T03:24:35.8903500Z"
+}
