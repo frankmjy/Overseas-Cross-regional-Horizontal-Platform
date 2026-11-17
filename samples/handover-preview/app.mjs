@@ -35,7 +35,11 @@ const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai'
 const query = new URL(location.href).searchParams;
 const securePage=location.protocol==='https:'&&['/project-management','/index.html'].includes(location.pathname);
 const localPreview=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
-$('.preview-tag').hidden=!localPreview;
+const previewLogin=$('.preview-tag');
+if(localPreview&&!securePage){
+  previewLogin.href='/login?'+new URLSearchParams({returnTo:location.pathname+location.search+location.hash});
+  previewLogin.hidden=false;
+}
 document.title='接维项目工作台 · 海外运维协作平台'+(localPreview?' · 本地预览':'');
 if(!securePage)for(const link of document.querySelectorAll('[data-platform-page]')){
   link.href=new URL(link.getAttribute('href'),'https://localhost:3333').href;
@@ -213,12 +217,21 @@ function renderBoard() {
   closeRowMenu();
   controls();
   const scroll = $('.gantt-scroll'), position = { left: scroll?.scrollLeft || 0, top: scroll?.scrollTop || 0 };
-  const meetingScroll=$('.overview-weekly-items')?.scrollTop||0;
+  const previousMeetingList=$('.overview-weekly-items');
+  const meetingScroll=previousMeetingList?.scrollTop||0;
+  const meetingAnchor=previousMeetingList?.querySelector('a')?.title;
+  const meetingPaused=previousMeetingList?.parentElement.paused;
   const renderers={gantt,milestones,overview:()=>renderOverview(model,{month:state.calendar,today:today(),keyword:state.overviewKeyword,selectedDay:state.overviewDay,meetingTodos}),weekly:()=>renderWeekly(model,{anchor:state.week,today:today(),view:state.weeklyView,page:state.periodPage}),monthly:()=>renderMonthly(model,{month:state.reviewMonth,page:state.periodPage}),organization:()=>renderOrganization(organization,{loading:organizationLoading,error:organizationError,loginUrl:securePage?'':loginUrl()})};
   $('.plan-panel').dataset.page=state.page;$('#board').dataset.page=state.page;$('#board').innerHTML=renderers[state.page]();
   if(state.page==='overview'){
     const list=$('.overview-weekly-items');
-    if(list)list.scrollTop=meetingScroll;
+    if(list&&meetingAnchor){
+      const start=[...list.children].findIndex(row=>row.firstElementChild.title===meetingAnchor);
+      for(let i=0;i<start;i++)list.append(list.firstElementChild);
+      list.scrollTop=meetingScroll;
+      list.parentElement.paused=meetingPaused;
+      list.parentElement.syncPauseButton?.();
+    }
     loadMeetingTodos();
   }
   if (state.page === 'gantt') { const next = $('.gantt-scroll'); if (next) { next.scrollLeft = position.left; next.scrollTop = position.top; } }

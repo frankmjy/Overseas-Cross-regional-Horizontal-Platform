@@ -33,6 +33,7 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
     '/auth/login.js': ['auth/web/login.js', 'text/javascript'],
     '/auth/login.css': ['auth/web/login.css', 'text/css'],
     '/assets/vnet-official-logo.png': ['assets/vnet-official-logo.png', 'image/png'],
+    '/assets/login-southeast-asia.png': ['assets/login-southeast-asia.png', 'image/png'],
     '/src/application-settings.js': ['src/application-settings.js', 'text/javascript'],
     '/src/platform-navigation.css': ['src/platform-navigation.css', 'text/css'],
     '/src/platform-language.js': ['src/platform-language.js', 'text/javascript'],

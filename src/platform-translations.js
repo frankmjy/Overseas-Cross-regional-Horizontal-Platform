@@ -57,6 +57,9 @@ const labels = new Map(`
 退出登录|Sign out
 切换飞书账号|Switch Feishu account
 本地预览|Local preview
+只读数据快照|Read-only data snapshot
+返回登录页|Back to sign-in
+进入本地预览|Open local preview
 只读预览|Read-only preview
 泰国 Araya 项目|Thailand Araya
 泰国 · Araya|Thailand · Araya

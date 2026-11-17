@@ -30,6 +30,7 @@ test('正式项目入口直接进入新版，兼容旧书签并隔离其他项�
   const response=await fetch(f.origin+route);assert.equal(response.status,200,route);
   const html=await response.text();assert.match(html,/\/handover-preview\/app.mjs/);assert.match(html,/tblgQsrBMFd9eeuX/);
   assert.match(html,/<platform-account><\/platform-account>/);
+  assert.match(html,/<a class="preview-tag" href="\/login" title="本地预览" hidden>返回登录页<\/a>/);
   assert.match(html,/src="\/src\/platform-account.js"/);
  }
  assert.equal((await fetch(f.origin+'/project-management?project=my-001')).status,409);

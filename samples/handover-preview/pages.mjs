@@ -48,9 +48,9 @@ export function renderMeetingTodos({state='loading',items=[]}={}){
  const status=state==='loading'?'正在读取会议待办…':state==='unavailable'?'会议待办暂不可用':'近期会议暂无待办';
  return `<section class="overview-weekly" aria-labelledby="overviewWeeklyTitle">
   <header class="overview-weekly-heading"><h2 id="overviewWeeklyTitle"><span class="overview-module-icon">${overviewIcon('tasks')}</span><span>近期会议待办</span></h2>
-  <a class="overview-weekly-open" href="/meeting-trail?actions=all"><span>议事航迹</span><span aria-hidden="true">›</span></a></header>
+  <div class="overview-weekly-controls">${items.length>3?'<button class="brief-motion" type="button"></button>':''}<a class="overview-weekly-open" href="/meeting-trail?actions=all"><span>议事航迹</span><span aria-hidden="true">›</span></a></div></header>
+  ${rows?`<brief-ticker${items.length>3?' data-can-scroll':''}><ol class="overview-weekly-items"${items.length>3?' tabindex="0" aria-labelledby="overviewWeeklyTitle"':''}>${rows}</ol></brief-ticker>`:`<p class="overview-weekly-empty" role="status">${status}</p>`}
   ${shared?`<p class="overview-weekly-source">${meetingContext(first)}</p>`:''}
-  ${rows?`<ol class="overview-weekly-items"${items.length>5?' tabindex="0" aria-labelledby="overviewWeeklyTitle"':''}>${rows}</ol>`:`<p class="overview-weekly-empty" role="status">${status}</p>`}
  </section>`;
 }
 export function monthlyData(tasks,month){

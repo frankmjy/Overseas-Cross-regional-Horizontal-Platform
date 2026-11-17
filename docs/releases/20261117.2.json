@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "release": "20261117.2",
+  "status": "deployed-server-verified",
+  "predecessor": "20261117.1",
+  "candidateSha256": "d5192f0fbed41262574ea1fc69fd158c4a9a1fb55b96254aaf4e8b35f292fbc5",
+  "manifestSha256": "2ba29acfa821223b20aafc34e1b08745b53c01e1bab72f7fdc4153e0084f87e9",
+  "payloadSha256": "3bae1a068aabbf98f456ec95949bc6cd817c67092b2509405c5e537921f863e8",
+  "filesChanged": [
+    "src/overseas-brief.css",
+    "src/overseas-brief.js",
+    "src/platform-account.js",
+    "src/platform-translations.js",
+    "assets/login-southeast-asia.png",
+    "knowledge/web/app.mjs",
+    "auth/http.mjs",
+    "auth/web/login.css",
+    "auth/web/login.html",
+    "samples/handover-preview/index.html",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/pages.mjs",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "登录页采用淡化东南亚地图，海外速览精简标题与来源",
+    "项目总览的会议待办和海外速览各显示三条，卡片对齐，支持渐隐轮播及手动滑动",
+    "修复本地预览返回登录页和返回原项目总览的入口"
+  ],
+  "checks": {
+    "businessTests": 499,
+    "exactDeployedFilesVerified": 375,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "independentSessionSurvivalSeconds": 179
+  },
+  "retry": {
+    "attempt": 2,
+    "originalCandidateReused": true,
+    "initialFailure": "EPERM",
+    "originalRollbackVerified": true
+  },
+  "recordedAt": "2026-11-17T02:00:58.5648562Z"
+}

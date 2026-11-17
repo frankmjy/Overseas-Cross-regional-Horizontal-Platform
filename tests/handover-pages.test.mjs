@@ -46,12 +46,13 @@ test('总览把同场会议信息展示一次，不重复标题中已包含的�
  assert.match(separate,/海外双周会/);
  assert.match(separate,/项目周会/);
 });
-test('超过五条待办可滚动，简述及跳转与原事项对应',()=>{
+test('超过三条待办可滚动，简述及跳转与原事项对应',()=>{
  const options={month:'2026-11',today:'2026-11-16',meetingTodos:{state:'ready',items:Array.from({length:6},(_,index)=>({
   title:'原待办'+index,brief:'简述'+index,owner:'负责人',due:'2026-11-20T15:30',meetingId:'rec'+index,
  }))}};
  const html=renderOverview({tasks,parents:[],milestones:[],stages:[]},options);
  assert.match(html,/class="overview-weekly-items" tabindex="0"/);
+ assert.match(html,/<brief-ticker data-can-scroll>/);
  assert.match(html,/href="\/meeting-trail\?meeting=rec5" title="原待办5"/);
  assert.match(html,/简述5/);
  assert.match(html,/11\/20 15:30/);

@@ -44,12 +44,38 @@ def observe_post_task(operation, observation, now_ms=None):
     return now_ms - operation["postTask"]["firstMs"] >= 60000
 
 
+def retry_process(ticket, operation, before, health):
+    result = operation.get("result") or {}
+    if (operation["status"] != "error" or result.get("status") != "error"
+            or result.get("rollbackVerified") is not True or ticket.get("attempt", 1) != 1
+            or result.get("release") != ticket["release"]
+            or result.get("manifestSha256") != ticket["manifestSha256"]):
+        raise ssh.DeployError("RETRY_REQUIRES_VERIFIED_FIRST_ROLLBACK")
+    transaction = before.get("transaction") or {}
+    processes = before.get("processes", [])
+    if (before.get("ok") is not True or before["maintenance"] or before["releaseOwner"]
+            or len(processes) != 1 or before["environmentSha256"] != ticket["environmentSha256"]
+            or transaction.get("release") != ticket["release"] or transaction.get("phase") != "rolled-back"
+            or transaction.get("schema") != 1 or transaction.get("root") != ticket["root"]
+            or transaction.get("beforeCore") != ticket["baselineCore"]
+            or any(item["pending"] or item["pendingUploads"] for item in before["ledgers"])):
+        raise ssh.DeployError("RETRY_SERVER_STATE_CHANGED")
+    process = processes[0]
+    if (process.get("entryPathVerified") is not True or process.get("name", "").lower() != "node.exe"
+            or process.get("executable", "").casefold() != ticket["node"].casefold()
+            or health.get("ok") is not True or health.get("waitingForTask")
+            or not process.get("pid") or not process.get("created")
+            or (health.get("pid"), health.get("created")) != (process["pid"], process["created"])):
+        raise ssh.DeployError("RETRY_RESTORED_PROCESS_UNVERIFIED")
+    return process
+
+
 def notify(local, ticket, phase, ended_at=None):
     if ticket.get("notificationPolicy") == "none-by-user":
         return {"status": "suppressed", "reason": "user-request"}
     info = {"release": ticket["release"], "phase": phase,
             "startedAt": ticket["startedAt"], "baseline": ticket["baselineRelease"],
-            "changes": ticket["changes"], "eventId": "attempt-" + str(ticket.get("attempt", 1))}
+            "changes": ticket["changes"], "eventId": "attempt-" + str(1 if phase == "start" else ticket.get("attempt", 1))}
     if ended_at:
         info["endedAt"] = ended_at
     if phase == "success":
@@ -182,36 +208,100 @@ foreach($entry in $ticket.uploadHashes.PSObject.Properties){if((Get-FileHash -Li
             ticket_file = local / "ticket.json"
             ticket = read(ticket_file)
             if args.mode == "retry":
-                if operation["status"] != "error" or not operation.get("result", {}).get("rollbackVerified") or ticket.get("attempt", 1) != 1:
-                    raise ssh.DeployError("RETRY_REQUIRES_VERIFIED_FIRST_ROLLBACK")
+                proof = read(ROOT / "reports" / ("project-release-" + args.release + ".proof.json"))
+                if (proof.get("status") != "LOCAL_INSTALL_ROLLBACK_AND_CANDIDATE_SMOKE_PASSED"
+                        or ticket["manifestSha256"] != proof["manifestSha256"]
+                        or ticket["payloadSha256"] != proof["payloadSha256"]
+                        or digest(local / "project-payload.zip") != proof["payloadSha256"]
+                        or digest(ticket_file) != operation["ticketSha256"]):
+                    raise ssh.DeployError("RETRY_CANDIDATE_PROOF_MISMATCH")
+                prior = ROOT / ".runtime" / ("remote-deploy-" + ticket["baselineRelease"])
+                baseline_op = read(prior / "operation.json")
+                baseline_ticket = read(prior / "ticket.json")
+                baseline_proof = read(ROOT / "reports" / ("project-release-" + ticket["baselineRelease"] + ".proof.json"))
+                if (baseline_op.get("status") != "success" or not baseline_op.get("postTaskVerified")
+                        or baseline_op["manifestSha256"] != baseline_proof["manifestSha256"]
+                        or baseline_ticket["manifestSha256"] != baseline_proof["manifestSha256"]
+                        or digest(prior / "ticket.json") != baseline_op["ticketSha256"]):
+                    raise ssh.DeployError("RETRY_BASELINE_RECEIPT_MISMATCH")
                 before = ssh.powershell(client, (ROOT / "release-tools/Remote-Preflight.ps1").read_text(), timeout=60)
-                if (before["maintenance"] or before["releaseOwner"] or before["processes"] != [ticket["process"]]
-                        or before["environmentSha256"] != ticket["environmentSha256"]
-                        or before["transaction"]["release"] != args.release or before["transaction"]["phase"] != "rolled-back"
-                        or any(item["pending"] or item["pendingUploads"] for item in before["ledgers"])):
-                    raise ssh.DeployError("RETRY_SERVER_STATE_CHANGED")
-                script = """$ErrorActionPreference='Stop';[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
-$stage=@STAGE@;$ticket=Get-Content -LiteralPath (Join-Path $stage 'ticket.json') -Raw|ConvertFrom-Json
+                health_script = """$ErrorActionPreference='Stop';[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+try{
+$tool=Join-Path @BASELINE@ 'Remote-Verify.ps1';$file=Join-Path @BASELINE@ 'ticket.json'
+if((Get-FileHash -LiteralPath $tool -Algorithm SHA256).Hash.ToLowerInvariant() -cne @VERIFYHASH@ -or
+   (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne @BASELINETICKET@){throw 'BASELINE_HEALTH_PROOF_CHANGED'}
+& $tool -TicketFile $file
+}catch{@{ok=$false;error='RETRY_BASELINE_HEALTH_UNAVAILABLE';line=$_.InvocationInfo.ScriptLineNumber}|ConvertTo-Json -Compress;exit 1}
+""".replace("@BASELINE@", literal(baseline_op["stage"])).replace(
+                    "@VERIFYHASH@", literal(baseline_ticket["uploadHashes"]["Remote-Verify.ps1"])).replace(
+                    "@BASELINETICKET@", literal(baseline_op["ticketSha256"]))
+                health = ssh.powershell(client, health_script, timeout=60)
+                process = retry_process(ticket, operation, before, health)
+                script = r"""$ErrorActionPreference='Stop';[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+try{
+$stage=@STAGE@
+$ticket=Get-Content -LiteralPath (Join-Path $stage 'ticket.json') -Raw -Encoding UTF8|ConvertFrom-Json
 if((Get-FileHash -LiteralPath (Join-Path $stage 'ticket.json') -Algorithm SHA256).Hash.ToLowerInvariant() -cne @TICKET@){throw 'OLD_TICKET_CHANGED'}
+if((Get-FileHash -LiteralPath (Join-Path $ticket.root '.hotfix-transaction.json') -Algorithm SHA256).Hash.ToLowerInvariant() -cne @JOURNAL@){throw 'RETRY_JOURNAL_CHANGED'}
+if((Get-FileHash -LiteralPath (Join-Path $ticket.root '.env') -Algorithm SHA256).Hash.ToLowerInvariant() -cne $ticket.environmentSha256){throw 'RETRY_ENVIRONMENT_CHANGED'}
+$ids=@(Get-NetTCPConnection -LocalPort $ticket.port -State Listen | Select-Object -ExpandProperty OwningProcess -Unique)
+if($ids.Count -ne 1 -or $ids[0] -ne @PID@){throw 'RETRY_LISTENER_CHANGED'}
+$owner=Get-CimInstance Win32_Process -Filter "ProcessId=$($ids[0])"
+if(([DateTimeOffset]$owner.CreationDate).ToUnixTimeMilliseconds() -ne @CREATED@ -or $owner.ExecutablePath -ine $ticket.node -or $owner.CommandLine.IndexOf((Join-Path $ticket.root 'server.mjs'),[StringComparison]::OrdinalIgnoreCase) -lt 0){throw 'RETRY_PROCESS_CHANGED'}
 foreach($entry in $ticket.uploadHashes.PSObject.Properties){if((Get-FileHash -LiteralPath (Join-Path $stage $entry.Name) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.Value){throw 'OLD_UPLOAD_CHANGED'}}
 foreach($entry in $ticket.baselineCore.PSObject.Properties){if((Get-FileHash -LiteralPath (Join-Path $ticket.root $entry.Name) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.Value){throw 'BASELINE_CHANGED'}}
+$manifestFile=Join-Path $stage 'bundle\release-manifest.json'
+if((Get-FileHash -LiteralPath $manifestFile -Algorithm SHA256).Hash.ToLowerInvariant() -cne $ticket.manifestSha256){throw 'RETRY_MANIFEST_CHANGED'}
+Add-Type -AssemblyName System.Web.Extensions
+$serializer=[System.Web.Script.Serialization.JavaScriptSerializer]::new()
+$serializer.MaxJsonLength=67108864
+$manifest=$serializer.DeserializeObject([IO.File]::ReadAllText($manifestFile))
+$result=Get-Content -LiteralPath (Join-Path $stage 'result.json') -Raw -Encoding UTF8|ConvertFrom-Json
+if($result.status -ne 'error' -or -not $result.rollbackVerified -or $result.release -cne $ticket.release -or $result.manifestSha256 -cne $ticket.manifestSha256){throw 'RETRY_SERVER_RESULT_CHANGED'}
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+public static class RetryShareCheck {
+ [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+ static extern SafeFileHandle CreateFile(string name,uint access,uint share,IntPtr security,uint disposition,uint flags,IntPtr template);
+ public static int CanReplace(string file) {
+   using(var handle=CreateFile(file,0x10000,7,IntPtr.Zero,3,0,IntPtr.Zero)) {
+     return handle.IsInvalid ? Marshal.GetLastWin32Error() : 0;
+   }
+ }
+}
+'@
+foreach($unit in $manifest.units){
+ if($unit -notmatch '^[a-zA-Z0-9_-]+\.xlsx$'){continue}
+ $file=Join-Path $ticket.root $unit
+ if(Test-Path -LiteralPath $file){
+  if((Get-Item -LiteralPath $file -Force).Attributes -band ([IO.FileAttributes]::ReparsePoint -bor [IO.FileAttributes]::Directory)){throw 'RETRY_WORKBOOK_PATH_UNSAFE'}
+  if([RetryShareCheck]::CanReplace($file) -ne 0){@{ok=$false;error='RETRY_WORKBOOK_IN_USE'}|ConvertTo-Json -Compress;exit 1}
+ }
+}
 $archive=Join-Path $stage 'attempt-1';if(Test-Path -LiteralPath $archive){throw 'ATTEMPT_ARCHIVE_EXISTS'}
 foreach($item in @(Get-Item -LiteralPath $stage -Force)+@(Get-ChildItem -LiteralPath $stage -Force -Recurse)){if($item.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'REPARSE_STAGE'}}
 [void][IO.Directory]::CreateDirectory($archive)
 foreach($name in @('ticket.json','remote-install.cjs','Remote-Run.ps1','worker.log','archive-check.log')){$file=Join-Path $stage $name;if(Test-Path -LiteralPath $file){Copy-Item -LiteralPath $file -Destination (Join-Path $archive $name)}}
 Move-Item -LiteralPath (Join-Path $stage 'result.json') -Destination (Join-Path $archive 'result.json')
 @{ok=$true;archived=$true}|ConvertTo-Json -Compress
-""".replace("@STAGE@", literal(stage)).replace("@TICKET@", literal(operation["ticketSha256"]))
+}catch{
+  $code=[string]$_.Exception.Message
+  if($code -notmatch '^[A-Z_]+$'){$code='RETRY_ARCHIVE_CHECK_FAILED'}
+  @{ok=$false;error=$code;line=$_.InvocationInfo.ScriptLineNumber}|ConvertTo-Json -Compress
+  exit 1
+}
+""".replace("@STAGE@", literal(stage)).replace("@TICKET@", literal(operation["ticketSha256"])).replace(
+                    "@JOURNAL@", literal(before["transaction"]["sha256"])).replace(
+                    "@PID@", str(int(process["pid"]))).replace("@CREATED@", str(int(process["created"])))
                 ssh.powershell(client, script, timeout=60)
                 write(local / "operation-attempt-1.json", operation)
-                files = {name: ROOT / "release-tools" / name for name in ["Remote-Run.ps1", "Remote-Stop.ps1", "remote-install.cjs"]}
-                ticket["uploadHashes"].update({name: digest(file) for name, file in files.items()})
+                ticket["process"] = process
                 ticket["attempt"] = 2
                 write(ticket_file, ticket)
                 with paramiko.SFTPClient.from_transport(client) as sftp:
                     remote = sftp.normalize(stage.replace("\\", "/"))
-                    for name, file in files.items():
-                        sftp.put(str(file), remote + "/" + name, confirm=True)
                     sftp.put(str(ticket_file), remote + "/ticket.json", confirm=True)
                 operation.update({"status": "ready", "attempt": 2, "task": task + "-attempt2", "ticketSha256": digest(ticket_file)})
                 operation.pop("result", None)
@@ -270,6 +360,11 @@ $result=$null;if(Test-Path -LiteralPath $file){$result=Get-Content -LiteralPath 
                     if terminal["status"] == "success" and not all(terminal.get(key) is True for key in ["ok", "remoteServerVerified", "privateDataCheckedBeforeStart", "environmentPreserved", "httpsHealthPassed"]):
                         raise ssh.DeployError("REMOTE_SUCCESS_EVIDENCE_INCOMPLETE")
                     if terminal["status"] == "success" and ticket.get("postTaskVerification") and not operation.get("postTaskVerified"):
+                        if result.get("taskState") in ("Running", "Queued"):
+                            operation["status"] = "running"
+                            write(ledger_file, operation)
+                            print(json.dumps({"ok": True, "release": args.release, "data": {"status": "running", "phase": "waiting-for-deploy-task"}}))
+                            return
                         verify_script = "& " + literal(stage + "\\Remote-Verify.ps1") + " -TicketFile " + literal(stage + "\\ticket.json")
                         observation = ssh.powershell(client, verify_script, timeout=60)
                         try:

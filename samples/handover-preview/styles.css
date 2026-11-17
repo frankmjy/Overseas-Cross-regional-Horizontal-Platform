@@ -29,20 +29,22 @@
 .board[data-page=overview]{padding:0;background:transparent}
 .project-overview{--ov-ink:#243950;--ov-copy:#536983;--ov-muted:#7b8da7;--ov-line:#e1e8f2;color:var(--ov-ink);font-size:14px}
 .overview-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:18px}
-.overview-spotlight{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start;gap:14px;margin-bottom:18px}
+.overview-spotlight{--overview-ticker-row:72px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:14px;margin-bottom:18px}
 .overview-spotlight>overseas-brief:only-child{grid-column:1/-1}
-.overview-weekly{min-width:0;padding:16px 18px;border:1px solid var(--ov-line);border-radius:12px;background:#fff}
+.overview-weekly{display:flex;flex-direction:column;min-width:0;padding:16px 18px;border:1px solid var(--ov-line);border-radius:12px;background:#fff}
 .overview-weekly-heading{display:flex;align-items:baseline;gap:8px 12px;flex-wrap:wrap}
-.overview-weekly-heading{justify-content:space-between;margin-bottom:10px}
+.overview-weekly-heading{align-items:center;justify-content:space-between;margin-bottom:12px}
+.overview-weekly-controls{display:flex;align-items:center;gap:8px}
 .overview-weekly-heading h2{display:flex;align-items:center;gap:8px;margin:0;font-size:18px;font-weight:650}
 .overview-module-icon{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;color:#345b98;background:#eaf0fb}
 .overview-module-icon svg,.overview-weekly-task svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .overview-weekly-open{display:inline-flex;align-items:center;gap:6px;padding:4px 0;border:0;background:none;color:#305897;font-size:13px;font-weight:650;cursor:pointer}
 .overview-weekly-open:hover{text-decoration:underline}
-.overview-weekly-items{list-style:none;margin:0;padding:0;max-block-size:calc(56px * 5);overflow-y:auto;scrollbar-width:thin}
-.overview-weekly-items li{box-sizing:border-box;block-size:56px}
+.overview-weekly-items{list-style:none;margin:0;padding:0;max-block-size:calc(var(--overview-ticker-row) * 3);overflow-x:hidden;overflow-y:auto}
+.overview-weekly-items li{box-sizing:border-box;block-size:var(--overview-ticker-row)}
 .overview-weekly-items:focus-visible{outline:2px solid #305897;outline-offset:2px;border-radius:4px}
-.overview-weekly-source{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:0 0 4px;padding:7px 10px;background:#f2f6fc;border-radius:6px;color:#536f90;font-size:12px}
+.overview-weekly-source{display:flex;align-items:baseline;gap:8px;margin:auto 0 0;padding:10px 2px 0;color:#536f90;font-size:12px;line-height:18px}
+.overview-weekly-source span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .overview-weekly-source time{font-weight:650;font-variant-numeric:tabular-nums;color:#365d87}
 .overview-weekly-items li+li{border-top:1px solid #eaf0f6}
 .overview-weekly-task{display:flex;align-items:center;gap:8px;width:100%;height:100%;padding:6px 5px;margin:0;border:0;border-radius:6px;background:none;color:inherit;text-align:left;cursor:pointer}
@@ -416,4 +418,5 @@
 
 .editor-calculated .task-status-label{justify-self:start}
 .handover-header-tools{display:contents}
+.preview-tag:hover{background:#f7ecd1;color:#775613}
 @media(max-width:440px){.platform-header>.brand>span{display:none}}

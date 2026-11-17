@@ -13,6 +13,14 @@ class PlatformAccount extends HTMLElement {
     if (!session.authenticated) { this.innerHTML = `<a class="account-login" href="${escape(loginUrl())}">飞书登录</a>`; return; }
     applyPagePermissions(session);
     const name = escape(session.user.name), initials = escape([...session.user.name].slice(-2).join(''));
+    if (session.preview === true) {
+      this.innerHTML = `<details class="account-menu"><summary class="account-trigger" aria-label="${name}，打开用户菜单" title="${name}"><span aria-hidden="true">${initials}</span></summary><div class="account-dropdown"><div class="account-identity"><span class="account-avatar">${initials}</span><div><strong>${name}</strong><span>只读数据快照</span></div></div><span class="account-project">${escape(session.project?.name || '')}</span><a href="/login"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3H4v18h6m4-15 6 6-6 6M8 12h12"/></svg>返回登录页</a></div></details>`;
+    } else {
+      this.drawAccountMenu(session, name, initials);
+    }
+    this.querySelector('details').addEventListener('keydown', event => { if (event.key === 'Escape') { event.currentTarget.open = false; this.querySelector('summary').focus(); } });
+  }
+  drawAccountMenu(session, name, initials) {
     const configuration = session.isAdmin ? '<a href="/admin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3z"/><circle cx="12" cy="12" r="3"/></svg>管理员配置</a>' : '';
     const projectChoice = session.project ? '' : `<a href="${escape(loginUrl().replace('/login?', '/login?selectProject=1&'))}">选择项目</a>`;
     this.innerHTML = `<details class="account-menu"><summary class="account-trigger" aria-label="${name}，打开用户菜单" title="${name}"><span aria-hidden="true">${initials}</span></summary><div class="account-dropdown"><div class="account-identity"><span class="account-avatar">${initials}</span><div><strong>${name}</strong><span>已登录</span></div></div><span class="account-project">${escape(session.project?.name || '未选择项目')}</span>${configuration}${projectChoice}<a href="/api/auth/feishu/authorize?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 8 5 10-4-5 11-5 2 0-9M3 6h9l9 1"/></svg>切换飞书账号</a><button type="button" data-account-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3H4v18h6m4-15 6 6-6 6M8 12h12"/></svg>退出登录</button><p class="account-status" role="status" aria-live="polite">${session.auditStatus === 'pending' ? '登录记录待同步' : ''}</p></div></details>`;
@@ -28,7 +36,6 @@ class PlatformAccount extends HTMLElement {
         this.dataset.state = 'error'; status.textContent = '退出未确认，请重试。'; button.disabled = false;
       }
     };
-    this.querySelector('details').addEventListener('keydown', event => { if (event.key === 'Escape') { event.currentTarget.open = false; this.querySelector('summary').focus(); } });
   }
 }
 if (!customElements.get('platform-account')) customElements.define('platform-account', PlatformAccount);
