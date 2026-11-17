@@ -7,3 +7,20 @@
 .access-role-control input { width:16px; height:16px; margin:0; accent-color:#275cc6; }
 .access-count { margin-left:6px; color:#657f9f; font-size:12px; font-weight:500; }
 .access-roster-status { margin:0 0 12px; color:#516c90; font-size:13px; }
+.admin-filters > label > span:not(.sr-only) { inline-size: 4ch; flex: none; }
+.admin-filters select[name="status"] { inline-size: 112px; }
+@media (min-width: 601px) and (max-width: 980px) {
+  .admin-filters .admin-search { flex-basis: 100%; }
+}
+@media (max-width: 600px) {
+  .admin-page .admin-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 6px;
+  }
+  .admin-page .admin-tabs > button { font-size: 12px; }
+}
+@media (max-width: 360px) {
+  .admin-page .admin-tabs > button { min-height: 43px; line-height: 1.3; }
+}

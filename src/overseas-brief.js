@@ -1,13 +1,13 @@
 const requests = new Map();
 const overviewFilters = {region: 'all', days: 1};
 const regionNames = {
-  all: ['全部', 'All'],
-  southeastAsia: ['东南亚', 'Southeast Asia'],
-  middleEast: ['中东', 'Middle East'],
-  europe: ['欧洲', 'Europe'],
-  japanKorea: ['日韩', 'Japan & Korea'],
-  americas: ['美洲', 'Americas'],
-  china: ['中国', 'China'],
+  all: ['全部', 'All', 'All'],
+  southeastAsia: ['东南亚', 'Southeast Asia', 'SEA'],
+  middleEast: ['中东', 'Middle East', 'ME'],
+  europe: ['欧洲', 'Europe', 'EUR'],
+  japanKorea: ['日韩', 'Japan & Korea', 'JP/KR'],
+  americas: ['美洲', 'Americas', 'AMER'],
+  china: ['中国', 'China', 'CN'],
 };
 let manualRequest;
 
@@ -121,6 +121,7 @@ class OverseasBrief extends HTMLElement {
     const canScroll=state==='ready'&&items.length>visibleRows;
     const header = node('header', 'brief-heading');
     const title=node('h2');
+    title.title=copy.title;
     const icon=node('span','brief-module-icon');
     icon.append(briefIcon());
     title.append(icon,node('span','',copy.title));
@@ -179,8 +180,12 @@ class OverseasBrief extends HTMLElement {
       const {x, y, width} = selection.getBoundingClientRect();
       return {x: x - track.x, y: y - track.y, width};
     };
-    for (const [key, names] of Object.entries(regionNames)) {
-      const button = node('button', 'brief-region-button', names[Number(english)]);
+    for (const [key, [chinese, fullEnglish, shortEnglish]] of Object.entries(regionNames)) {
+      const button = node('button', 'brief-region-button', english ? shortEnglish : chinese);
+      if (english) {
+        button.title = fullEnglish;
+        button.setAttribute('aria-label', fullEnglish);
+      }
       button.type = 'button';
       button.dataset.briefRegion = key;
       button.setAttribute('aria-pressed', String(key === region));

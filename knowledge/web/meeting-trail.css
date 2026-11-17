@@ -81,3 +81,51 @@ html[lang="en"] .meeting-trail .weekday-prefix{display:none}
 @media(max-width:760px){
  .meeting-trail .agenda-chevron{display:none}
 }
+.meeting-trail .tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.meeting-trail .tab,
+.meeting-trail .matrix-summary h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meeting-trail .matrix-summary { min-width: 0; }
+.meeting-trail .period-picker { flex: none; }
+.meeting-trail .period-picker button { min-width: 74px; }
+.meeting-trail .matrix :is(th,.column-link) {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meeting-trail .panel-head h2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meeting-trail .panel-head :is(.week-controls,.date-buttons) { flex-wrap: nowrap; min-width: 0; }
+.meeting-trail .panel-head .source-link {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meeting-trail :is(.agenda-row, .action, .minutes-row) strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 760px) {
+  .meeting-trail .period-picker button { min-width: 61px; }
+  .meeting-trail .matrix-total > span { display: none; }
+  .meeting-trail .panel-head .source-link { max-width: 104px; }
+}
+@media (max-width: 420px) {
+  body:has(.meeting-trail) .knowledge-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  body:has(.meeting-trail) .connection-tools { justify-self: start; }
+}

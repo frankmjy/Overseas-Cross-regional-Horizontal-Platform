@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "release": "20261117.4",
+  "status": "deployed-server-verified",
+  "predecessor": "20261117.3",
+  "candidateSha256": "40d316c2b2faae8b874098c178c05c50ccc7054e3881c20e0047157b992829f5",
+  "manifestSha256": "ca4e0ad678852f88ccc236cab8af431c8bafe87ad8bded859f40da677103e76b",
+  "payloadSha256": "d1902e944ddbf84051159916597502adb2466d3d2ebf1f0c14b7f211901589c7",
+  "filesChanged": [
+    "src/admin.css",
+    "src/coordination.css",
+    "src/overseas-brief.css",
+    "src/overseas-brief.js",
+    "src/platform-language.css",
+    "src/project-local-conditions.css",
+    "src/staffing.css",
+    "research/web/live.css",
+    "knowledge/web/meeting-trail.css",
+    "auth/web/login.css",
+    "auth/web/login.html",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "登录页收紧飞书登录入口，东南亚地图加入低亮度星点和 VNET、THA、MYS 动态标识",
+    "海外速览的中英文地域标签保持单排，英文用简写",
+    "调整全站中英文导航、筛选和表格布局，修复窄屏错位与横向溢出"
+  ],
+  "checks": {
+    "businessTests": 500,
+    "exactDeployedFilesVerified": 375,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "onlineBrief": [
+      {
+        "host": "www.sm.sjhl.online",
+        "width": 1440,
+        "today": 18,
+        "week": 20,
+        "month": 20,
+        "regionMatches": 10
+      },
+      {
+        "host": "www.sm.sjhl.online",
+        "width": 390,
+        "today": 18,
+        "week": 20,
+        "month": 20,
+        "regionMatches": 10
+      }
+    ],
+    "independentSessionSurvivalSeconds": 91
+  },
+  "recordedAt": "2026-11-17T05:32:30.9094416Z"
+}

@@ -43,3 +43,21 @@
 .staffing-page .staffing-gap-row:hover{background:#f5f8fd}.staffing-gap-row:hover>span:first-child{color:#245bc3}
 @media(max-width:1279px){.staffing-page .staffing-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.staffing-overview-grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}.staffing-timeline-card{grid-column:1/-1}}
 @media(max-width:700px){.staffing-page .staffing-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.staffing-page button.staffing-kpi{padding:10px 13px}.staffing-kpi strong{font-size:25px;line-height:30px}.staffing-overview-grid{grid-template-columns:minmax(0,1fr);gap:14px}.staffing-timeline-card{grid-column:auto}.staffing-overview-grid .staffing-card-head{padding:15px 16px}.staffing-timeline,.staffing-gap-ranking{padding-left:16px;padding-right:16px}.staffing-composition{padding:12px 16px 18px}.staffing-month-columns{gap:4px}.staffing-composition-bar{margin-bottom:16px}.staffing-gap-ranking{gap:6px}.staffing-page .staffing-gap-row{grid-template-columns:112px minmax(0,1fr) 22px}}
+.staffing-toolbar .staffing-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(100%, 390px);
+}
+.staffing-toolbar .staffing-tabs button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .staffing-card-head > div { min-width: 0; }
+  .staffing-card-head h2 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

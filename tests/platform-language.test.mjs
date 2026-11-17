@@ -38,3 +38,13 @@ test('every production page template loads the shared language switch', async ()
     assert.match(html, /href="\/src\/platform-language\.css"/, entry);
   }
 });
+
+test('the login map labels stay decorative and outside the translation pass', async () => {
+  const html = await readFile(new URL('../auth/web/login.html', import.meta.url), 'utf8');
+  const atmosphere = html.match(/<div class="login-atmosphere" aria-hidden="true" translate="no">([\s\S]*?)<\/div>/);
+  assert.ok(atmosphere);
+  assert.deepEqual(
+    [...atmosphere[1].matchAll(/<span[^>]*>([A-Z]+)<\/span>/g)].map(label => label[1]),
+    ['VNET', 'THA', 'MYS']
+  );
+});

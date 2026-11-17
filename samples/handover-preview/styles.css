@@ -420,3 +420,78 @@
 .handover-header-tools{display:contents}
 .preview-tag:hover{background:#f7ecd1;color:#775613}
 @media(max-width:440px){.platform-header>.brand>span{display:none}}
+.overview-weekly-heading { flex-wrap: nowrap; }
+.overview-weekly-heading h2 { min-width: 0; }
+.overview-weekly-heading h2 span:last-child,
+.overview-metric-copy > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.overview-metric-copy { min-width: 0; }
+.overview-weekly-controls { flex: none; }
+.cycle-milestone > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stage-summary { min-width: 0; }
+.stage-summary header button { width: 100%; min-width: 0; }
+.stage-summary header button > span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-item-copy { min-width: 0; overflow-wrap: anywhere; }
+.milestone-table .row-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stage-summary-tasks button { min-width: 0; }
+.stage-summary-tasks button > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-panel[data-page="gantt"] .mode-controls > div {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.work-table { table-layout: fixed; }
+.work-table :is(th, td):first-child { width: 38%; min-width: 0; }
+.work-table :is(th, td):nth-child(2) { width: 16%; }
+.work-table :is(th, td):nth-child(3) { width: 18%; }
+.work-task-link, .work-feedback, .work-table :is(th, td) {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.work-task-link small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 681px) {
+  .period-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .period-tabs button { min-width: 0; }
+}
+@media (max-width: 680px) {
+  .plan-panel .panel-heading .panel-heading-right {
+    flex-wrap: nowrap;
+    gap: 5px;
+    overflow-x: auto;
+  }
+  .plan-panel .panel-heading .command-tools { flex: none; flex-wrap: nowrap; gap: 5px; }
+  .plan-panel .panel-heading #sourceStamp { width: auto; }
+  .plan-panel[data-page="gantt"] .summary-metrics { overflow-x: auto; }
+  .work-table :is(th, td):first-child { width: 51%; }
+  .work-table :is(th, td):nth-child(2) { width: 26%; }
+  .work-table :is(th, td):nth-child(3) { width: 23%; }
+}

@@ -119,3 +119,18 @@ project-local-conditions[hidden], project-local-conditions [hidden] { display: n
   .platform-header-tools > project-local-conditions { grid-column: 1/-1; grid-row: 2; justify-self: end; }
   .platform-header:has(.platform-header-tools) .platform-navigation { grid-row: 3; }
 }
+.platform-header .local-project { width: 148px; }
+.platform-header .local-time { width: 5ch; }
+.platform-header .local-weather-state {
+  width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.platform-header .local-weather-label {
+  width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 760px) {
+  .platform-header .local-project { width: 112px; }
+}

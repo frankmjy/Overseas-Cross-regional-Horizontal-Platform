@@ -33,20 +33,37 @@ platform-language button:focus-visible { outline: 2px solid #4777e4; outline-off
 .login-header-tools .login-configuration[hidden] { display: none; }
 .platform-header .handover-header-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
-html[lang="en"] :is(.platform-navigation>a,.platform-coordination>summary,.platform-header>nav>a) { gap: 5px; }
-html[lang="en"] :is(.overview-metric-copy>span,.stage-summary h3,.staffing-kpi-label,.coord-filters label,.document-card-title) {
-  white-space: normal;
-  overflow-wrap: anywhere;
+.platform-header :is(.platform-brand,.brand)>span {
+  inline-size: 246px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.platform-header :is(.platform-navigation,nav:has(+.handover-header-tools)) { flex: none; gap: 12px; }
+.platform-header :is(.platform-navigation>a,.platform-navigation .platform-coordination,.platform-navigation .platform-coordination>summary,nav:has(+.handover-header-tools)>a) {
+  inline-size: 94px;
+  max-inline-size: 100%;
+  justify-content: center;
+  gap: 5px;
+}
+.platform-header :is(.platform-navigation>a,.platform-coordination>summary)>span { min-width: 0; }
+.platform-header .platform-navigation .platform-coordination { inline-size: 126px; }
+.platform-header .platform-navigation .platform-coordination>summary { box-sizing: border-box; inline-size: 100%; min-inline-size: 0; }
 
 @media (max-width: 1360px) {
-  html[lang="en"] :is(.platform-brand,.platform-header>.brand)>span { display: none; }
+  .platform-header :is(.platform-brand,.brand)>span { display: none; }
 }
 
 @media (max-width: 760px) {
   .login-header-tools { grid-row: 1; grid-column: 2; }
-  html[lang="en"] .platform-header .platform-navigation { gap: 6px 10px; flex-wrap: wrap; }
-  html[lang="en"] :is(.platform-navigation>a,.platform-coordination>summary) { font-size: 11px; }
+  .platform-header .platform-header-inner .platform-navigation { gap: 0; flex-wrap: nowrap; }
+  .platform-header .platform-navigation :is(a,.platform-coordination>summary) { font-size: 11px; }
+  .platform-header .platform-navigation>:is(a,.platform-coordination) { flex: 1 0 0; inline-size: auto; min-width: 0; }
+  .platform-header .platform-navigation>.platform-coordination { flex-grow: 1.28; }
+  .platform-header .platform-navigation>a>svg { display: none; }
+  .platform-header .platform-navigation .platform-coordination>summary>span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .admin-page :is(.admin-heading,.admin-tabs,.admin-pagination,.admin-summary) {
     flex-wrap: wrap;
     gap: 10px 14px;
@@ -54,6 +71,10 @@ html[lang="en"] :is(.overview-metric-copy>span,.stage-summary h3,.staffing-kpi-l
   .admin-filters .admin-search { min-width: 0; }
 }
 
+@media (max-width: 360px) {
+  .platform-header .platform-navigation .platform-coordination>summary { gap: 3px; }
+  .platform-header .platform-navigation .platform-menu-chevron { width: 9px; flex: none; }
+}
 @media (max-width: 560px) {
   .platform-header:has(.handover-header-tools platform-account) {
     grid-template-columns: minmax(0,1fr) auto auto auto;

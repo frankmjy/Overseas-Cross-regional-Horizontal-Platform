@@ -10,20 +10,20 @@
 .login-project{display:flex;align-items:center;gap:12px;min-width:0;color:#d7e9f8}
 .login-project>svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .login-project select{appearance:none;min-width:210px;max-width:270px;min-height:46px;padding:10px 40px 10px 15px;border:1px solid var(--login-border);border-radius:8px;background:#ffffff0b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6' fill='none' stroke='%23bfd9ef' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;color:#fff;font:14px "Microsoft YaHei",sans-serif;cursor:pointer;transition:border-color .18s,background-color .18s}
-.login-project select:hover{border-color:#ffffff70;background-color:#ffffff12}.login-project option{background:#fff;color:#294568}.login-project select:disabled{color:var(--login-muted);cursor:wait}
+.login-project select{width:235px}.login-project select:hover{border-color:#ffffff70;background-color:#ffffff12}.login-project option{background:#fff;color:#294568}.login-project select:disabled{color:var(--login-muted);cursor:wait}
 .login-configuration{display:grid;place-items:center;flex:none;width:42px;height:42px;padding:10px;border:1px solid var(--login-border);border-radius:10px;background:#ffffff08;color:var(--login-muted);cursor:pointer}
 .login-configuration svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round}.login-configuration:hover{color:#fff;background:#ffffff12;border-color:#ffffff70}
 .login-content{min-width:0;padding:20px 0}
 .login-kicker{display:flex;align-items:center;gap:12px;margin:0 0 24px;color:#a8d9ef;font-size:11px;font-weight:600;letter-spacing:3px}
 .login-kicker::before{content:"";width:21px;height:1px;background:var(--login-accent)}
-.login-content h1{margin:0;color:#fff;font-size:clamp(45px,5vw,76px);font-weight:600;line-height:1.16;letter-spacing:2px}
+.login-content h1{margin:0;color:#fff;font-size:clamp(45px,5vw,76px);font-weight:600;line-height:1.16;letter-spacing:2px;block-size:2.32em;display:grid;align-items:center}
 .login-content h1 span{display:block}
 .login-modules{display:flex;align-items:center;flex-wrap:wrap;gap:18px;margin-top:28px;color:var(--login-muted);font-size:13px;letter-spacing:.5px}
 .login-modules>span+span::before{content:"";display:inline-block;width:3px;height:3px;margin-right:18px;background:#7bb3d9;border-radius:50%;vertical-align:middle}
-.login-panel{position:relative;width:292px;max-width:100%;margin-top:44px}
-.login-primary{display:flex;align-items:center;gap:13px;width:100%;min-height:58px;padding:0 21px;border:1px solid #fff;border-radius:8px;background:#fff;color:#164785;font-size:15px;font-weight:500;text-decoration:none;box-shadow:0 8px 24px #001b4918;transition:background .18s,box-shadow .18s,transform .18s}
-.login-primary:hover{background:#edf7ff;box-shadow:0 8px 28px #001b4930}.login-primary:active{transform:translateY(1px)}.login-primary .feishu-symbol{width:29px;height:29px;flex:none}
-.login-arrow{width:19px;height:19px;margin-left:auto;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.login-primary[aria-disabled=true]{opacity:.62;cursor:not-allowed}
+.login-panel{position:relative;width:228px;max-width:100%;margin-top:35px}
+.login-primary{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 13px;border:1px solid #a8cce950;border-radius:9px;background:linear-gradient(125deg,#7cc5eb13,#7cc5eb06);color:#ddecfa;font-size:13px;font-weight:550;text-decoration:none;transition:background-color .18s,border-color .18s,transform .18s}
+.login-primary:not([aria-disabled=true]):hover{background-color:#72b4dc22;border-color:#9ad9ee99}.login-primary:not([aria-disabled=true]):active{transform:translateY(1px)}.login-primary .feishu-symbol{width:22px;height:22px;flex:none}
+.login-arrow{width:16px;height:16px;flex:none;margin-left:auto;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.login-primary[aria-disabled=true]{color:#a8bfd6;border-color:#a8cce934;cursor:not-allowed}
 .login-primary:focus-visible,.login-configuration:focus-visible,.login-project select:focus-visible,.login-retry:focus-visible{outline:2px solid var(--login-accent);outline-offset:5px}
 .login-feedback{display:flex;align-items:baseline;gap:12px;min-height:36px;padding-top:13px}#loginStatus{margin:0;color:#ffe0c1;font-size:12px;line-height:1.7}.login-retry{border:0;border-bottom:1px solid #b8d5ee70;padding:0;background:transparent;color:#d8eeff;font:12px "Microsoft YaHei",sans-serif;cursor:pointer}.login-retry:hover{color:#fff}
 .login-configuration[hidden],.login-retry[hidden],#loginStatus:empty{display:none}
@@ -37,7 +37,7 @@
   .login-project{grid-row:2;grid-column:1/-1;width:100%;gap:9px}.login-project select{flex:1;min-width:0;max-width:none;min-height:44px}.login-project>svg{width:18px;height:18px}
   .login-configuration{width:36px;height:36px}.login-content{padding:30px 0 4px}.login-content h1{font-size:clamp(37px,10vw,56px)}
   .login-kicker{font-size:10px;margin-bottom:12px}.login-modules{gap:10px;margin-top:18px;font-size:11px;letter-spacing:0}.login-modules>span+span::before{margin-right:10px}
-  .login-panel{margin-top:24px}.login-primary{min-height:52px;font-size:14px}
+  .login-panel{margin-top:24px}
 }
 @media(max-width:360px){.login-modules{gap:8px}.login-modules>span+span::before{margin-right:8px}}
 @media(prefers-reduced-motion:reduce){.login-primary,.login-project select{transition:none}}
@@ -61,12 +61,66 @@ html[lang="en"] .login-content h1 > .login-title-en {
 
 .login-title-main { font-size: clamp(42px, 4.8vw, 76px); font-weight: 670; }
 .login-title-support { color: #bed6f0; font-size: clamp(21px, 2.4vw, 35px); font-weight: 500; }
-html[lang="en"] .login-modules { margin-top: 24px; }
-html[lang="en"] .login-panel { margin-top: 34px; }
-
 @media (max-width: 760px) {
   html[lang="en"] .login-title-main { font-size: clamp(34px, 8vw, 54px); }
   html[lang="en"] .login-title-support { font-size: clamp(19px, 4.5vw, 26px); }
-  html[lang="en"] .login-modules { margin-top: 18px; }
-  html[lang="en"] .login-panel { margin-top: 24px; }
+}
+
+.login-atmosphere {
+  position: absolute;
+  z-index: -1;
+  inset: 8% 0 2%;
+  pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent 22%, #000 43%, #000 91%, transparent);
+}
+.login-atmosphere > * {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+}
+.login-atmosphere i {
+  width: var(--point, 2px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #b1f7ee;
+  box-shadow: 0 0 8px 2px #72e1e76c;
+  opacity: .22;
+  animation: login-starlight var(--duration) ease-in-out var(--delay) infinite;
+}
+.login-atmosphere i:nth-child(1) { --x: 40%; --y: 26%; --duration: 9s; --delay: -4s; }
+.login-atmosphere i:nth-child(2) { --x: 60%; --y: 13%; --duration: 7s; --delay: -2s; --point: 3px; }
+.login-atmosphere i:nth-child(3) { --x: 77%; --y: 15%; --duration: 11s; --delay: -8s; }
+.login-atmosphere i:nth-child(4) { --x: 93%; --y: 29%; --duration: 10s; --delay: -3s; }
+.login-atmosphere i:nth-child(5) { --x: 45%; --y: 69%; --duration: 8s; --delay: -5s; --point: 3px; }
+.login-atmosphere i:nth-child(6) { --x: 83%; --y: 89%; --duration: 12s; --delay: -7s; }
+.login-atmosphere span {
+  color: #b7e9ee;
+  font: 650 clamp(14px, 1.6vw, 24px)/1 system-ui, sans-serif;
+  letter-spacing: .24em;
+  text-shadow: 0 0 12px #75e7ef82;
+  filter: blur(.7px);
+  opacity: .2;
+  animation: login-map-label 24s ease-in-out var(--delay) infinite;
+}
+.login-map-vnet { --x: 66%; --y: 11%; --delay: -6s; }
+.login-map-tha { --x: 46%; --y: 39%; --delay: -23s; }
+.login-map-mys { --x: 49%; --y: 76%; --delay: -15s; }
+@keyframes login-starlight {
+  0%, 100% { opacity: .14; }
+  55% { opacity: .68; }
+}
+@keyframes login-map-label {
+  0%, 39%, 100% { opacity: 0; }
+  13%, 23% { opacity: .52; }
+}
+@media (max-width: 760px) {
+  .login-atmosphere { inset: 0; mask-image: linear-gradient(90deg, transparent 45%, #000 77%); }
+  .login-atmosphere i:nth-child(1) { --x: 72%; --y: 11%; }
+  .login-atmosphere i:nth-child(5) { --x: 91%; --y: 26%; }
+  .login-map-vnet { --x: 76%; --y: 20%; }
+  .login-map-tha { --x: 77%; --y: 32%; }
+  .login-map-mys { --x: 83%; --y: 41%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-atmosphere > :is(i, span) { animation: none; }
 }
