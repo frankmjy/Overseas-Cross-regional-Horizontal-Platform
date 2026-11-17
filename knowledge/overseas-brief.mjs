@@ -29,7 +29,7 @@ export function selectOverseasBrief(rows, day) {
     if (seen.has(item.url)) return [];
     seen.add(item.url);
     return [item];
-  }).slice(0, 3);
+  });
 }
 
 export function createOverseasBrief({config, now = Date.now, isPaused = () => false, readRows, log = console}) {
@@ -65,8 +65,9 @@ export function createOverseasBrief({config, now = Date.now, isPaused = () => fa
   function start() {
     if (timer || closed) return;
     const tick = () => {
-      refresh().catch(() => log.error('[overseas-brief] Refresh failed.'));
-      timer = setTimeout(tick, refreshInterval - now() % refreshInterval);
+      const paused=isPaused();
+      if (!paused) refresh().catch(() => log.error('[overseas-brief] Refresh failed.'));
+      timer = setTimeout(tick, paused ? 5000 : refreshInterval - now() % refreshInterval);
       timer.unref();
     };
     tick();

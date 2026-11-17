@@ -50,8 +50,7 @@ export function createKnowledgeHandler({ root, service, meetings, documents, min
             .flatMap(meeting=>(meeting.actions||[])
               .filter(action=>action.structured&&action.title&&action.status!=='已完成')
               .sort((a,b)=>(a.priority||'P9').localeCompare(b.priority||'P9')||(a.due||'9999').localeCompare(b.due||'9999'))
-              .map(({title,owner,due,priority})=>({title,owner,due,priority,meetingId:meeting.id,meetingTitle:meeting.title,meetingDate:meeting.date})))
-            .slice(0,3);
+              .map(({title,brief,owner,due,priority})=>({title,brief,owner,due,priority,meetingId:meeting.id,meetingTitle:meeting.title,meetingDate:meeting.date})));
           send(200,{ok:true,items,refreshing:snapshot.refreshing,state:snapshot.state});return true;
         }
         const meetingOverview=url.searchParams.get('meetingOverview')==='1';

@@ -53,7 +53,7 @@ test('knowledge routes serve only explicit public assets and support direct relo
   for (const route of ['/knowledge/http.mjs', '/knowledge/../.env', '/knowledge/unknown.mjs']) assert.equal((await fetch(origin + route)).status, 404);
 });
 
-test('总览只读取当前项目和海外同频近30天会议的三条正式待办', async () => {
+test('总览读取当前项目和海外同频近30天的正式待办，保留可滚动的记录及简述', async () => {
   const action=(title,extra={})=>({title,status:'待办',structured:true,...extra});
   const row=(id,date,project,actions,type='已开')=>({id,date,project,title:id,type,actions});
   const snapshot={state:'ready',refreshing:false,meetings:[
@@ -62,7 +62,7 @@ test('总览只读取当前项目和海外同频近30天会议的三条正式待
     row('planned','2026-11-16','thailand',[action('planned')],'待开'),
     row('latest','2026-11-13','overseas',[
       action('later',{priority:'P1',due:'2026-11-30'}),
-      action('soon',{priority:'P1',due:'2026-11-18',note:'private-note'}),
+      action('soon',{brief:'short',priority:'P1',due:'2026-11-18',note:'private-note'}),
       action('done',{priority:'P0',status:'已完成'}),
       action('draft',{structured:false}),
     ]),
@@ -78,6 +78,8 @@ test('总览只读取当前项目和海外同频近30天会议的三条正式待
   assert.equal((await call(false)).code,403);
   const response=await call(true);
   assert.equal(response.code,200);
-  assert.deepEqual(JSON.parse(response.body).items.map(item=>item.title),['soon','later','older']);
+  const {items}=JSON.parse(response.body);
+  assert.deepEqual(items.map(item=>item.title),['soon','later','older','fourth']);
+  assert.equal(items[0].brief,'short');
   assert.doesNotMatch(response.body,/private-note|other-project|draft/);
 });

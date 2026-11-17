@@ -49,7 +49,7 @@ function baseRecord(source,row,baseUrl){
   const date=t('Due At');
   const time=/^\d{13}$/.test(date)?Number(date):Date.parse(date.replace(' ','T')+(/(?:Z|[+-]\d\d:\d\d)$/.test(date)?'':'+08:00'));
   const due=Number.isFinite(time)?new Date(time+8*3600000).toISOString().slice(0,16):'';
-  return {id,sourceId:source.id,sourceLink,meetingAction:true,meetingRecordId:relations[0].recordId,project:relations[0].project,title,owner:owners.map(p=>p?.name).filter(Boolean).join('、'),due,status:t('Action Status'),priority:t('Action Priority'),note:t('Action Notes'),structured:true};
+  return {id,sourceId:source.id,sourceLink,meetingAction:true,meetingRecordId:relations[0].recordId,project:relations[0].project,title,brief:t('Action Brief'),owner:owners.map(p=>p?.name).filter(Boolean).join('、'),due,status:t('Action Status'),priority:t('Action Priority'),note:t('Action Notes'),structured:true};
  }
  if(source.kind==='meeting'){
   const stamp=t('Meeting Date'),date=/^\d{4}-\d\d-\d\d/.exec(stamp)?.[0]||'',time=t('Meeting Time')||/[T ](\d\d:\d\d)/.exec(stamp)?.[1]||'',timezone=/(Z|[+-]\d\d:\d\d)$/.exec(stamp)?.[1]||'';

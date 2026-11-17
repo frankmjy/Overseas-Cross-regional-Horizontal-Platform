@@ -213,9 +213,14 @@ function renderBoard() {
   closeRowMenu();
   controls();
   const scroll = $('.gantt-scroll'), position = { left: scroll?.scrollLeft || 0, top: scroll?.scrollTop || 0 };
+  const meetingScroll=$('.overview-weekly-items')?.scrollTop||0;
   const renderers={gantt,milestones,overview:()=>renderOverview(model,{month:state.calendar,today:today(),keyword:state.overviewKeyword,selectedDay:state.overviewDay,meetingTodos}),weekly:()=>renderWeekly(model,{anchor:state.week,today:today(),view:state.weeklyView,page:state.periodPage}),monthly:()=>renderMonthly(model,{month:state.reviewMonth,page:state.periodPage}),organization:()=>renderOrganization(organization,{loading:organizationLoading,error:organizationError,loginUrl:securePage?'':loginUrl()})};
   $('.plan-panel').dataset.page=state.page;$('#board').dataset.page=state.page;$('#board').innerHTML=renderers[state.page]();
-  if(state.page==='overview')loadMeetingTodos();
+  if(state.page==='overview'){
+    const list=$('.overview-weekly-items');
+    if(list)list.scrollTop=meetingScroll;
+    loadMeetingTodos();
+  }
   if (state.page === 'gantt') { const next = $('.gantt-scroll'); if (next) { next.scrollLeft = position.left; next.scrollTop = position.top; } }
 }
 function render() {

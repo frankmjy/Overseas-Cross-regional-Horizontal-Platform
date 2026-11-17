@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "release": "20261117.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261116.1",
+  "candidateSha256": "0178bcada4c35f3a550cfde3662516aa5458937d148d36f4e0fce5e3ec412c49",
+  "manifestSha256": "9a965c492f621be35254223e964542f1b19a87a1a6529f5168cbea498b89ff95",
+  "payloadSha256": "788522e72668f649fd2d116247c31cdcf7016f2fa66a3a68c71ba77276568b3b",
+  "filesChanged": [
+    "src/overseas-brief.css",
+    "src/overseas-brief.js",
+    "knowledge/config.json",
+    "knowledge/http.mjs",
+    "knowledge/model.mjs",
+    "knowledge/overseas-brief.mjs",
+    "knowledge/service.mjs",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/pages.mjs",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "修复未登录时海外速览空白，维护结束自动补读",
+    "会议待办展示简述、跟进人和时间，首屏五条并支持继续滚动",
+    "海外速览按五条排布，追加五条核验原文的双语资讯"
+  ],
+  "checks": {
+    "businessTests": 499,
+    "exactDeployedFilesVerified": 374,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "independentSessionSurvivalSeconds": 84
+  },
+  "recordedAt": "2026-11-17T00:54:23.6836519Z"
+}

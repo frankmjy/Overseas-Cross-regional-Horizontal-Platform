@@ -25,23 +25,32 @@ export function weeklyData(tasks,anchor,today){
 }
 export function renderMeetingTodos({state='loading',items=[]}={}){
  if(state==='forbidden')return '';
- const rows=items.map(({title,owner,due,priority,meetingId,meetingTitle,meetingDate})=>`
+ const first=items[0];
+ const shared=first&&items.every(item=>item.meetingId===first.meetingId);
+ const meetingContext=({meetingTitle,meetingDate})=>{
+  const short=meetingDate?.slice(5)||'';
+  const prefix=/^(\d{1,2})[-/](\d{1,2})\s*[|｜·]\s*/u.exec(meetingTitle||'');
+  const name=prefix&&`${prefix[1].padStart(2,'0')}-${prefix[2].padStart(2,'0')}`===short?meetingTitle.slice(prefix[0].length):meetingTitle;
+  return `${short?`<time datetime="${esc(meetingDate)}">${esc(short.replace('-','/'))}</time>`:''}${name?`<span data-business-text>${esc(name)}</span>`:''}`;
+ };
+ const rows=items.map(({title,brief,owner,due,priority,meetingId,meetingTitle,meetingDate})=>`
   <li><a class="overview-weekly-task" href="/meeting-trail?meeting=${encodeURIComponent(meetingId)}" title="${esc(title)}">
    <span class="overview-weekly-task-copy">
-    <strong data-business-text>${esc(title)}</strong>
-    <small><time datetime="${esc(meetingDate)}">${esc(meetingDate?.slice(5).replace('-','/'))}</time> · <span data-business-text>${esc(meetingTitle)}</span>${owner?' · '+esc(owner):''}</small>
+    <strong data-business-text>${esc(brief?.trim()||title)}</strong>
+    ${owner||!shared?`<small>${owner?`<span class="overview-weekly-owner">${overviewIcon('person')}${esc(owner)}</span>`:''}${!shared?meetingContext({meetingTitle,meetingDate}):''}</small>`:''}
    </span>
    <span class="overview-weekly-task-meta">
     ${/^P[012]$/.test(priority)?`<b class="overview-weekly-priority priority-${priority.toLowerCase()}">${priority}</b>`:''}
-    ${due?`<span class="overview-weekly-due"><span>截止</span> <time datetime="${esc(due)}">${esc(due.slice(5,10).replace('-','/'))}</time></span>`:''}
+    ${due?`<span class="overview-weekly-due">${overviewIcon('calendar')}<time datetime="${esc(due)}" title="${esc(due.replace('T',' '))}">${esc(due.slice(5,10).replace('-','/'))}${due.slice(11,16)&&due.slice(11,16)!=='00:00'?' '+esc(due.slice(11,16)):''}</time></span>`:''}
    </span>
    <span class="overview-weekly-chevron" aria-hidden="true">›</span>
   </a></li>`).join('');
  const status=state==='loading'?'正在读取会议待办…':state==='unavailable'?'会议待办暂不可用':'近期会议暂无待办';
  return `<section class="overview-weekly" aria-labelledby="overviewWeeklyTitle">
-  <header class="overview-weekly-heading"><h2 id="overviewWeeklyTitle">近期会议待办</h2>
+  <header class="overview-weekly-heading"><h2 id="overviewWeeklyTitle"><span class="overview-module-icon">${overviewIcon('tasks')}</span><span>近期会议待办</span></h2>
   <a class="overview-weekly-open" href="/meeting-trail?actions=all"><span>议事航迹</span><span aria-hidden="true">›</span></a></header>
-  ${rows?`<ol class="overview-weekly-items">${rows}</ol>`:`<p class="overview-weekly-empty" role="status">${status}</p>`}
+  ${shared?`<p class="overview-weekly-source">${meetingContext(first)}</p>`:''}
+  ${rows?`<ol class="overview-weekly-items"${items.length>5?' tabindex="0" aria-labelledby="overviewWeeklyTitle"':''}>${rows}</ol>`:`<p class="overview-weekly-empty" role="status">${status}</p>`}
  </section>`;
 }
 export function monthlyData(tasks,month){
@@ -56,6 +65,7 @@ const overviewDrawings={
  alert:'<path d="m10 4-8 14a2 2 0 0 0 2 3h16a2 2 0 0 0 2-3L14 4a2.3 2.3 0 0 0-4 0Z"/><path d="M12 9v5m0 3v.1"/>',
  calendar:'<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v5m8-5v5M4 11h16"/>',
  search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
+ person:'<circle cx="12" cy="8" r="3"/><path d="M5 20v-2a7 7 0 0 1 14 0v2"/>',
 };
 const overviewIcon=key=>`<svg viewBox="0 0 24 24" aria-hidden="true">${overviewDrawings[key]||overviewDrawings.tasks}</svg>`;
 export function overviewAgenda(model,{month,selectedDay=''}){

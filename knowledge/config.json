@@ -766,6 +766,10 @@
           "id": "fldOIRo8Fu",
           "name": "Action Title（待办事项）"
         },
+        "Action Brief": {
+          "id": "fldDDg70CB",
+          "name": "简述"
+        },
         "Assignee": {
           "id": "fldqDm6zHE",
           "name": "Assignee（负责人）"

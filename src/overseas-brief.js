@@ -1,5 +1,3 @@
-import {readPlatformSession} from './platform-context.js';
-
 let request;
 let requestedAt = 0;
 let manualRequest;
@@ -20,7 +18,9 @@ function loadBrief() {
 
 function refreshBrief() {
   if (manualRequest) return manualRequest;
-  manualRequest=readPlatformSession().then(async session=>{
+  manualRequest=(async ()=>{
+    const {readPlatformSession}=await import('./platform-context.js');
+    const session=await readPlatformSession();
     if (!session.authenticated || !session.csrf) throw Error('Session expired');
     const response=await fetch('/api/overseas-brief/refresh',{method:'POST',headers:{'X-CSRF-Token':session.csrf},signal:AbortSignal.timeout(25000)});
     if (!response.ok) throw Error('Overseas brief refresh failed');
@@ -29,7 +29,7 @@ function refreshBrief() {
     requestedAt=Date.now();
     request=Promise.resolve(data);
     return data;
-  }).finally(()=>{manualRequest=null;});
+  })().finally(()=>{manualRequest=null;});
   return manualRequest;
 }
 
@@ -43,6 +43,16 @@ function node(tag, className, text) {
   if (className) element.className = className;
   if (text) element.textContent = text;
   return element;
+}
+
+function briefIcon() {
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 24 24');
+  svg.setAttribute('aria-hidden','true');
+  const path=document.createElementNS(svg.namespaceURI,'path');
+  path.setAttribute('d','M5 5h14v14H5zM8 9h8M8 12h8M8 15h5');
+  svg.append(path);
+  return svg;
 }
 
 class OverseasBrief extends HTMLElement {
@@ -81,7 +91,11 @@ class OverseasBrief extends HTMLElement {
     const copy = labels[english ? 'en' : 'zh'];
     const {day, items = [], state = 'loading'} = this.data || {};
     const header = node('header', 'brief-heading');
-    header.append(node('h2', '', copy.title));
+    const title=node('h2');
+    const icon=node('span','brief-module-icon');
+    icon.append(briefIcon());
+    title.append(icon,node('span','',copy.title));
+    header.append(title);
     const controls=node('div','brief-controls');
     if (day) {
       const date = node('time', '', day.replace(/-/g, '/'));
@@ -112,6 +126,10 @@ class OverseasBrief extends HTMLElement {
       return;
     }
     const list = node('ol', 'brief-items');
+    if(items.length>5){
+      list.tabIndex=0;
+      list.setAttribute('aria-label',copy.title);
+    }
     for (const item of items) {
       const title = english && item.titleEn ? item.titleEn : item.title;
       const summary = english && item.summaryEn ? item.summaryEn : item.summary;
@@ -120,8 +138,13 @@ class OverseasBrief extends HTMLElement {
       link.rel = 'noreferrer noopener';
       link.target = '_blank';
       link.setAttribute('aria-label', `${title} · ${copy.read}`);
-      const meta = [item.region, item.source].filter(Boolean).join(' · ');
-      if (meta) link.append(node('span', 'brief-meta', meta));
+      if (item.region || item.source) {
+        const meta=node('span','brief-meta');
+        if (item.region) meta.append(node('span','brief-region',item.region));
+        if (item.region && item.source) meta.append(document.createTextNode(' · '));
+        if (item.source) meta.append(node('span','brief-source',item.source));
+        link.append(meta);
+      }
       const headline = node('span', 'brief-headline');
       const arrow = node('span', 'brief-arrow', '↗');
       arrow.setAttribute('aria-hidden', 'true');
@@ -131,7 +154,14 @@ class OverseasBrief extends HTMLElement {
       entry.append(link);
       list.append(entry);
     }
+    const previousList=this.querySelector('.brief-items');
+    const scroll=previousList?.scrollTop||0;
+    const focusedIndex=previousList?[...previousList.querySelectorAll('a')].indexOf(document.activeElement):-1;
+    const focusList=previousList&&document.activeElement===previousList;
     this.replaceChildren(header, list);
+    list.scrollTop=scroll;
+    if(focusList)list.focus({preventScroll:true});
+    if(focusedIndex>=0)list.querySelectorAll('a')[focusedIndex]?.focus({preventScroll:true});
     if(refocus)controls.querySelector('button')?.focus();
   }
 }

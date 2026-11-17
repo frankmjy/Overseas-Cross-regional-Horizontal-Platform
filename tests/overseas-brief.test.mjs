@@ -40,6 +40,12 @@ test('后台共享一次抓取，登录读缓存，过了北京时间午夜即�
   assert.deepEqual(service.snapshot().items, []);
 });
 
+test('海外速览提供五条以外的当日公开资讯供继续浏览',()=>{
+  const entries=selectOverseasBrief(Array.from({length:7},(_,i)=>row('资讯'+i,{展示顺序:i})),day);
+  assert.equal(entries.length,7);
+  assert.equal(entries[6].title,'资讯6');
+});
+
 test('手动刷新立刻回读多维表，并复用并发及短间隔的结果',async()=>{
   let time=Date.parse('2026-11-16T07:00:00Z'),calls=0,paused=false;
   const service=createOverseasBrief({now:()=>time,isPaused:()=>paused,readRows:async()=>[row('第'+(++calls)+'次')]});
@@ -53,4 +59,19 @@ test('手动刷新立刻回读多维表，并复用并发及短间隔的结果',
   paused=true;
   await assert.rejects(service.refreshOnDemand());
   assert.equal(calls,3);
+});
+
+test('维护中启动后尽快补读，不等下一个十五分钟刷新点',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  let paused=true,calls=0;
+  const service=createOverseasBrief({now:()=>Date.parse('2026-11-16T12:03:00Z'),isPaused:()=>paused,readRows:async()=>{calls++;return [row('头条')];}});
+  t.after(()=>service.close());
+  service.start();
+  t.mock.timers.tick(5000);
+  assert.equal(calls,0);
+  paused=false;
+  t.mock.timers.tick(5000);
+  await service.close();
+  assert.equal(calls,1);
+  assert.equal(service.snapshot().items[0].title,'头条');
 });

@@ -32,6 +32,7 @@ export class KnowledgeService{
  constructor({config,adapter=new KnowledgeAdapter(config),cacheFile,now=()=>Date.now()}){this.config=config;this.adapter=adapter;this.cacheFile=cacheFile;this.now=now;this.sections={};this.errors=[];this.attemptedAt=0;this.refreshing=null;this.driveFolders={};this.nextDriveRefresh=0;}
  async init(){if(!this.cacheFile)return;try{const cache=JSON.parse(await fs.readFile(this.cacheFile,'utf8'));if(cache.baseUrl===this.config.baseUrl&&cache.sections&&typeof cache.sections==='object'){for(const s of this.config.sources){const v=cache.sections[s.id];if(!Array.isArray(v?.records))continue;
   if(s.fields?.['Review Status']&&v.reviewStatusField!==s.fields['Review Status'].id)continue;
+  if(s.kind==='meeting-action'&&s.fields?.['Action Brief']&&v.records.some(record=>!Object.hasOwn(record,'brief')))continue;
   if(s.driveCollections&&v.driveCollectionsKey!==JSON.stringify(s.driveCollections)){
    const needsSource=new Set(s.driveCollections.map(entry=>entry.nature));
    this.sections[s.id]={...v,records:v.records.filter(record=>!needsSource.has(record.nature))};
