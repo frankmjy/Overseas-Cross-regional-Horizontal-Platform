@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "release": "20261117.5",
+  "status": "deployed-server-verified",
+  "predecessor": "20261117.4",
+  "candidateSha256": "69abccb66a7c1862bbf7378940c0b8e1a381b430158d9a7eb98c9dda822c74b1",
+  "manifestSha256": "c101a4eacf49cdecde9599b8d3dc170a441b0df57eed22a449e38cd0eef988e9",
+  "payloadSha256": "8b69f83ca71c446278e2fe82cdfcb13a32e94782e42f67161818c7aa1c7c5042",
+  "filesChanged": [
+    "auth/web/login.css",
+    "auth/web/login.html",
+    "auth/web/login.js"
+  ],
+  "features": [
+    "登录页项目改为并排直选，统一显示 THA-ARAYA 和 MSA-KULAI",
+    "背景星点缓慢呼吸并渐变，桌面增加低频彗星，适配系统减少动态效果"
+  ],
+  "checks": {
+    "businessTests": 500,
+    "exactDeployedFilesVerified": 375,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "onlineBrief": [
+      {
+        "host": "www.sm.sjhl.online",
+        "width": 1440,
+        "today": 18,
+        "week": 20,
+        "month": 20,
+        "regionMatches": 10
+      },
+      {
+        "host": "www.sm.sjhl.online",
+        "width": 390,
+        "today": 18,
+        "week": 20,
+        "month": 20,
+        "regionMatches": 10
+      },
+      {
+        "host": "www.sm.sjhl.online",
+        "width": 320,
+        "today": 18,
+        "week": 20,
+        "month": 20,
+        "regionMatches": 10
+      }
+    ],
+    "independentSessionSurvivalSeconds": 139
+  },
+  "recordedAt": "2026-11-17T07:56:01.0546620Z"
+}
