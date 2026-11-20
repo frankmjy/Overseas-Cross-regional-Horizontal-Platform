@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "release": "20261120.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261117.5",
+  "candidateSha256": "4f465aba29fd6bf52c21c6c3f7c4ba502317d438b6ea66496ca20f49c538aa43",
+  "manifestSha256": "383829794f7d4f8c17cffb87eb2737e938a0feb79dc8f0b87f0afced1fa13557",
+  "payloadSha256": "85960ebdacfbd241f7907fa46e158ba17d8fdf5fae782539099741c8075ad6c8",
+  "filesChanged": [
+    "src/platform-translations.js",
+    "knowledge/directory.mjs",
+    "knowledge/document-service.mjs",
+    "knowledge/web/app.mjs",
+    "knowledge/web/library-ui.mjs",
+    "knowledge/web/library.css",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/pages.mjs",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "泰国项目组织按园区、楼栋和 A–D 班展示，保留未落实人员的岗位",
+    "岗位空缺可展开查看，外包、外派、LH 并列展示",
+    "优化知识共享搜索框聚焦样式，调整设备技术规格与人员组织目录，保留旧链接"
+  ],
+  "checks": {
+    "businessTests": 506,
+    "exactDeployedFilesVerified": 375,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "onlineBrowser": {
+      "passed": true,
+      "protocol": "https",
+      "authenticated": true,
+      "browser": "Chrome",
+      "organization": {
+        "confirmed": 17,
+        "positionsPlanned": 106,
+        "vacancies": 89,
+        "vacanciesByBuilding": [
+          42,
+          47
+        ],
+        "architectureRoles": 22,
+        "unfilledRoleCards": 4,
+        "shiftBuildings": 2,
+        "shiftCards": 8,
+        "shiftPlans": [
+          1,
+          8,
+          1,
+          8
+        ],
+        "vacancyColumns": [
+          "外包",
+          "外派",
+          "LH"
+        ],
+        "unknownCells": 18,
+        "escapeClosed": true,
+        "focusRestored": true,
+        "shiftCollapseExpand": true,
+        "englishLayoutWithoutOverflow": true
+      },
+      "knowledge": {
+        "legacyLinkResolved": true,
+        "oldMenuHidden": true,
+        "equipmentSpecifications": 309,
+        "staffingResources": 5,
+        "searchOuterFocus": true,
+        "searchInnerOutline": "none"
+      }
+    },
+    "independentSessionSurvivalSeconds": 88
+  },
+  "recordedAt": "2026-11-20T08:50:16.2995171Z"
+}

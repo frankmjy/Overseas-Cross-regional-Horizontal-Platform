@@ -6,7 +6,7 @@ import {DocumentAdapter,uuid,validateDocument,validateDocumentUpdate,encodeDocum
 import {editableText,editableDocumentLink,projectRecord} from './model.mjs';
 import {matchesDocumentProject} from '../src/project-context-model.mjs';
 import {DirectoryAdapter} from './directory-adapter.mjs';
-import {visibleDirectory,rootDirectory,isPreparationDirectory} from './directory.mjs';
+import {visibleDirectory,rootDirectory,isPreparationDirectory,canonicalDirectoryId} from './directory.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const canonical=v=>v&&typeof v==='object'?Array.isArray(v)?v.map(canonical):Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 export class DocumentService{
@@ -54,7 +54,7 @@ export class DocumentService{
    const project=value.scope==='shared'?'shared':value.project,parentId=value.level==='minor'?parent.id:'';
    if(nodes.some(n=>n.chapter===value.chapter&&n.parentId===parentId&&n.name===value.nature&&['shared',project].includes(n.project)))throw failure('该位置已有同名类别，请直接使用。',409);
    node={id,name:value.nature,chapter:value.chapter,parentId,project,stage:parent?.stage||'',mutation:id};
-  }else if(value.kind==='document'&&value.directoryId){const selected=nodes.find(n=>n.id===value.directoryId),root=rootDirectory(selected,nodes);if(!selected||!root||selected.chapter!==value.chapter||!['project','shared'].includes(value.scope)||value.scope==='shared'&&selected.project!=='shared')throw failure('资料目录与篇章或范围不一致。');value.stage=root.stage||'';}
+  }else if(value.kind==='document'&&value.directoryId){value.directoryId=canonicalDirectoryId(value.directoryId);const selected=nodes.find(n=>n.id===value.directoryId),root=rootDirectory(selected,nodes);if(!selected||!root||selected.chapter!==value.chapter||!['project','shared'].includes(value.scope)||value.scope==='shared'&&selected.project!=='shared')throw failure('资料目录与篇章或范围不一致。');value.stage=root.stage||'';}
   const source=node?{id:this.config.directoryTable}:this.source(value);if(!node&&!this.state.schemas[source.id])throw failure('对应资料表字段未就绪，请重试连接。',503);
   if(value.uploads.some(u=>this.state.uploads[u.id]))throw failure('附件标识已被使用。',409);
   const op={id,hash:digest,value,...node?{node}:{},sourceId:source.id,project:value.project,editor:user.openId,appId:this.appId(),createdAt:this.now(),updatedAt:this.now(),attempts:0,status:'accepted'};

@@ -1,7 +1,7 @@
 import {renderLibraryShell,renderDocumentCards,renderTemplateEntries,canEditDocument} from './library-ui.mjs';
 import {libraryDocuments} from '/knowledge/library-model.mjs';
 import {handoverStages,lifecycleDocuments} from '/knowledge/lifecycle.mjs';
-import {directoryDocuments} from '/knowledge/directory.mjs';
+import {canonicalDirectoryId,directoryDocuments} from '/knowledge/directory.mjs';
 import { requirePlatformProject, currentPageEditable } from '/src/platform-context.js';
 const platformProject = await requirePlatformProject();
 import {renderPlatformHeader} from '/src/platform-navigation.js';
@@ -23,7 +23,7 @@ function readState(){
  const p=new URLSearchParams(location.search),scope=['all','handover','operations','project','shared','domestic','general','regional','templates'].includes(p.get('scope'))?p.get('scope'):'overview';
  const stage=scope==='handover'?handoverStages.find(stage=>stage.step===p.get('stage')):null;
  return {view:location.pathname==='/meeting-trail'||p.get('view')==='meetings'?'meetings':'library',project:platformProject.knowledgeKey,includeShared:true,scope,
- stage:stage?.step||'',directory:p.get('directory')||'',group:'',folder:'',natures:p.getAll('nature'),specialties:p.getAll('discipline'),collapsedGroups:[],ownership:['project','shared'].includes(p.get('ownership'))?p.get('ownership'):'',
+ stage:stage?.step||'',directory:canonicalDirectoryId(p.get('directory')||''),group:'',folder:'',natures:p.getAll('nature'),specialties:p.getAll('discipline'),collapsedGroups:[],ownership:['project','shared'].includes(p.get('ownership'))?p.get('ownership'):'',
  meetingScope:['thailand','malaysia','overseas'].includes(p.get('meetingScope'))?p.get('meetingScope'):'',meetingType:p.get('meetingType')||'',meetingRange:[30,90].includes(Number(p.get('meetingRange')))?Number(p.get('meetingRange')):0,week:0,allActions:p.get('actions')==='all',missing:p.get('missing')==='1',query:p.get('q')||'',category:p.get('category')||'',subcategory:p.get('subcategory')||'',specialty:p.get('specialty')||'',type:p.get('type')||'',date:/^\d{4}-\d{2}-\d{2}$/.test(p.get('date')||'')?p.get('date'):'',sort:p.get('sort')==='title'?'title':'latest'};
 }
 let state=readState();

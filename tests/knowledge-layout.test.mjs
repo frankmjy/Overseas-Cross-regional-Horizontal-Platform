@@ -8,7 +8,7 @@ import { meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMe
 import { renderMeetingTrail } from '../knowledge/web/meeting-trail.mjs';
 import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,regionalOfficeSections,compactDriveDocuments} from '../knowledge/library-model.mjs';
 import {handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments} from '../knowledge/lifecycle.mjs';
-import {visibleDirectory,directoryDocuments,documentDirectory} from '../knowledge/directory.mjs';
+import {canonicalDirectoryId,visibleDirectory,directoryDocuments,documentDirectory} from '../knowledge/directory.mjs';
 
 test('云盘归档可下钻到业务子目录，并保留总目录直达',async()=>{
  const {table}=await fixture();
@@ -45,7 +45,7 @@ async function fixture(overrides = {}) {
     renderLibraryShell:uiContext.renderLibraryShell,renderDocumentCards:uiContext.renderDocumentCards,renderTemplateEntries:uiContext.renderTemplateEntries,
     selectedProject:{id:'th-001',name:'泰国 Araya 项目',knowledgeKey:'thailand'},
     meetingMonthNow, renderMeetingOverview, renderMeetingCalendar, renderMeetingFollowups, renderMeetingTrail,
-    handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,
+    handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments,visibleDirectory,directoryDocuments,canonicalDirectoryId,
     renderPlatformHeader: active => `<header data-active="${active}"></header>` });
   const source = (await readFile(new URL('../knowledge/web/app.mjs', import.meta.url), 'utf8'))
     .replace(/^import .+;\r?\n/gm, '').replace('const platformProject = await requirePlatformProject();','const platformProject = selectedProject;').replace(/render\(\);load\(\)(?:\.then\([\s\S]*)?;\s*$/, '');
@@ -120,6 +120,36 @@ test('project preparation groups source records by topic and keeps project bound
  assert.equal(f.nodes.get('#doc-count').textContent,'1 份');
  assert.match(f.nodes.get('#results').innerHTML,/泰国施工图审图意见/);
  assert.doesNotMatch(f.nodes.get('#results').innerHTML,/泰国待审施工图/);
+});
+
+test('历史能效目录归设备技术规格，人员资料与项目范围保留，子目录不重复阶段编号',async()=>{
+ const legacy='handover:1:energy-models',equipment='prep:equipment-specifications';
+ const prep={lifecycle:{chapter:'handover',stage:'1'},libraryScope:'shared',links:[],tags:[],sections:[],date:''};
+ const documents=[
+   {...prep,id:'pue',title:'Araya PUE 计算书',directoryId:legacy,nature:'项目交付物',libraryScope:'project',projectScope:'泰国',links:[{url:'https://example.com/pue'}]},
+   {...prep,id:'clf',title:'CLF 能效模型',nature:'能效与计算模型'},
+   {...prep,id:'staff',title:'泰国运维人力配置',nature:'项目规划',libraryScope:'project',projectScope:'泰国'},
+   {...prep,id:'malaysia',title:'马来 PUE 计算书',directoryId:legacy,libraryScope:'project',projectScope:'马来'},
+ ];
+ const directoryNodes=[
+   {id:legacy,name:'能效与计算模型',chapter:'handover',parentId:'handover:1',stage:'1',project:'shared'},
+   {id:'handover:1:custom',name:'独立试验目录',chapter:'handover',parentId:'handover:1',stage:'1',project:'thailand'},
+ ];
+ const before=structuredClone(documents);
+ const f=await fixture({documents,feed:{state:'ready',errors:[],directoryNodes}});
+ f.render('library',{scope:'handover',directory:equipment});
+ const page=f.nodes.get('#app').innerHTML;
+ assert.doesNotMatch(page,/data-directory-node="handover:1:energy-models"/);
+ assert.match(page,/data-directory-node="handover:1:custom"[^>]*><span>独立试验目录/);
+ assert.match(page,/人员与组织<\/span><b>1<\/b>/);
+ assert.equal(f.nodes.get('#doc-count').textContent,'2 份');
+ const results=f.nodes.get('#results').innerHTML;
+ assert.match(results,/Araya PUE 计算书/);
+ assert.match(results,/https:\/\/example\.com\/pue/);
+ assert.doesNotMatch(results,/马来 PUE/);
+ assert.equal(documentDirectory(documents[0]),equipment);
+ assert.deepEqual(directoryDocuments(documents,legacy),directoryDocuments(documents,equipment));
+ assert.deepEqual(documents,before);
 });
 
 test('ordinary cards hide remarks and offer direct edit only for editable records',async()=>{

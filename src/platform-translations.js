@@ -354,6 +354,7 @@ const labels = new Map(`
 施工图及图审记录|Drawings and Reviews
 招采与技术澄清|Procurement and Clarifications
 团队组建与配置|Team Setup and Staffing
+人员与组织|People and Organization
 运维需求与方案|Operations Requirements and Plans
 项目规划|Project Planning
 规范标准|Standards
@@ -411,6 +412,32 @@ const labels = new Map(`
 岗位面试|Interviews
 候选人|Candidates
 编制|Headcount
+已确定|Confirmed
+空缺|Vacant
+总空缺|Total vacant
+岗位空缺|Position vacancies
+当前暂无岗位空缺|No open positions
+项目用工计划|Project staffing plan
+本地招聘|Local hire
+未确认或不适用|Unconfirmed or not applicable
+人|people
+个岗位| roles
+刷新项目组织|Refresh project organization
+管理团队|Management team
+值班团队|Shift teams
+园区管理|Campus management
+楼栋管理与技术|Building management & engineering
+班组|Shift
+个班组|shift teams
+A 班|Shift A
+B 班|Shift B
+C 班|Shift C
+D 班|Shift D
+每班计划编制|Planned per shift
+各班编制待定|Shift allocation pending
+班别待定|Shift pending
+值班长|Shift lead
+值班员|Operator
 编制需求|Headcount Required
 储备人员|Candidates
 当前缺口|Current Gap

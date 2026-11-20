@@ -1,7 +1,7 @@
 import { filterTasks, hierarchy, timeRange, timelineColumns, stageNames, colors, naturalCompare, day, calendarCells, text } from './model.mjs';
 import { translateProjectTitle } from '../../src/platform-translations.js';
 import {completedStatus,statusPresentation} from '../../project-tasks/handover/status.mjs';
-import {pageDefinitions,renderOverview,renderWeekly,renderMonthly,renderOrganization,monthlyData,organizationData,overviewAgenda,stageInsightRows,ganttRowControls,taskDeliverableCount,renderMeetingTodos} from './pages.mjs';
+import {pageDefinitions,renderOverview,renderWeekly,renderMonthly,renderOrganization,renderOrganizationVacancies,monthlyData,organizationData,overviewAgenda,stageInsightRows,ganttRowControls,taskDeliverableCount,renderMeetingTodos} from './pages.mjs';
 import {createHandoverEditor} from './editor.mjs';
 import {createInlineTaskEntry} from './inline.mjs';
 import {taskResources,renderResourceLinks,bindOutsideDismiss} from '../../project-tasks/handover/resources.mjs';
@@ -239,7 +239,8 @@ function renderBoard() {
 function render() {
   if (!model) return;
   renderMetrics(); renderStages(); renderFilters();
-  $('.panel-heading-right').hidden=state.page==='overview';
+  $('.panel-heading-right').hidden=['overview','organization'].includes(state.page);
+  $('.source-footer').hidden=state.page==='organization';
   $('#workspaceTitle').textContent=pageDefinitions.find(p=>p.id===state.page)?.label||'甘特计划';
   $('#planFilters').hidden=!['gantt','milestones'].includes(state.page);
   $('#newTaskButton').textContent=model.capabilities?.editable?'新增条目':'登录编辑';$('#trashButton').hidden=!model.capabilities?.editable;
@@ -359,6 +360,7 @@ document.addEventListener('click', async event => {
     case 'trash': editor.trash();break;
     case 'week-today': state.week=today();state.periodPage=1;renderBoard();break;
     case 'organization-retry': loadOrganization();break;
+    case 'organization-vacancies': openDialog(renderOrganizationVacancies(organization));break;
     case 'close-dialog': closeDialog(); break;
     case 'clear': resetFilters(); setOpen(); render(); break;
     case 'overview': resetFilters(); state.mode = 'gantt'; setOpen(); render(); $('.workspace').classList.remove('nav-open'); break;

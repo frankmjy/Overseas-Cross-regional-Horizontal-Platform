@@ -76,6 +76,19 @@ test('preparation subdirectory persists in the existing Feishu record field',asy
  assert.equal(directoryDocuments(snapshot.documents,'handover:1').length,1);
 });
 
+test('旧能效目录编号提交时保存为设备技术规格目录，资料性质保留',async t=>{
+ const {service,adapter}=await fixture(t);
+ const raw=input({directoryId:'handover:1:energy-models',stage:'',title:'PUE 项目交付'});
+ service.accept(raw,user);
+ await service.flush();
+ const op=service.state.operations[raw.clientMutationId],source=config.sources[0],schema=await adapter.schema(source);
+ assert.equal(op.status,'success');
+ const row=await adapter.get(source,op.recordId);
+ assert.equal(row[schema.directoryId.name],'prep:equipment-specifications');
+ assert.equal(row[schema.nature.name],raw.nature);
+ assert.equal(row[schema.stage.name],'1');
+});
+
 test('named Feishu links can be edited and cleared without overwriting other fields',async t=>{
  const {service,adapter}=await fixture(t),recordId='recTransformer';
  const source={...config.sources[3],writable:true,fields:{'Equipment Name':{name:'equipment'},'Linked Document':{name:'Linked Document（关联云文档）'}}};

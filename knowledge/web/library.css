@@ -29,7 +29,10 @@
 .library-tools{display:flex;align-items:center;gap:12px;padding:12px 22px;border-bottom:1px solid var(--kb-line)}
 .library-query{display:flex;align-items:center;gap:8px;flex:1;min-width:130px;max-width:520px;border:1px solid var(--kb-line);border-radius:6px;padding:0 10px;background:#fff}
 .library-query>svg{color:#91a6c2;width:15px}.library-query input{width:100%;min-width:0;border:0;padding:8px 0;font:inherit;font-size:12px;line-height:20px;color:var(--kb-text);background:transparent;outline:none}
-.library-query:focus-within{border-color:var(--kb-blue);box-shadow:0 0 0 2px #2c5ed10a}
+.library-lifecycle .library-query input:focus-visible{outline:none}
+.library-query:focus-within{border-color:var(--kb-blue);box-shadow:inset 0 0 0 1px var(--kb-blue)}
+.library-query:focus-within>svg{color:var(--kb-blue)}
+@media(forced-colors:active){.library-query:focus-within{outline:2px solid Highlight;outline-offset:-2px}}
 .scope-tags{display:flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--kb-line);border-radius:6px;background:var(--kb-soft);white-space:nowrap}
 .scope-tags button{border:0;background:transparent;padding:6px 9px;border-radius:4px;font:inherit;font-size:11px;color:#627b9d;cursor:pointer}.scope-tags button.selected{background:white;color:var(--kb-blue);box-shadow:0 1px 3px #2945680e}
 .library-sort{margin-left:auto}.library-sort select{border:1px solid var(--kb-line);border-radius:6px;padding:8px;background:white;font:inherit;font-size:11px;color:#627b9d}.filter-reset{border:0;background:transparent;color:var(--kb-muted);cursor:pointer;font:inherit;font-size:11px;white-space:nowrap;padding:6px 0}

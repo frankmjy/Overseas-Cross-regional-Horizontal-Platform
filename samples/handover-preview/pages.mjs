@@ -1,6 +1,7 @@
 import {calendarCells,addDays,day} from './model.mjs';
 import {completedStatus,statusPresentation} from '../../project-tasks/handover/status.mjs';
 import {taskResources} from '../../project-tasks/handover/resources.mjs';
+import {assignedPositions,groupPositions,positionProfession,positionTotals} from '../../src/staffing-model.js';
 export const pageDefinitions=[{id:'overview',label:'项目总览',icon:'grid'},{id:'gantt',label:'甘特计划',icon:'chart'},{id:'milestones',label:'交付里程碑',icon:'flag'},{id:'weekly',label:'每周跟进',icon:'calendar'},{id:'monthly',label:'月度回顾',icon:'chart'},{id:'organization',label:'项目组织',icon:'people'}];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function taskDeliverableCount(row){return taskResources(row).length;}
@@ -66,6 +67,11 @@ const overviewDrawings={
  calendar:'<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v5m8-5v5M4 11h16"/>',
  search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
  person:'<circle cx="12" cy="8" r="3"/><path d="M5 20v-2a7 7 0 0 1 14 0v2"/>',
+ organization:'<rect x="9" y="3" width="6" height="5" rx="1"/><path d="M12 8v5M5 17v-4h14v4"/><rect x="2" y="17" width="6" height="4" rx="1"/><rect x="16" y="17" width="6" height="4" rx="1"/>',
+ building:'<path d="M4 21V8h6m0 13V3h10v18M2 21h20M7 12v1m0 3v1m7-10h2m-2 4h2m-2 4h2m-2 4h2"/>',
+ vacancy:'<rect x="4" y="4" width="16" height="16" rx="4" stroke-dasharray="2 3"/><path d="M9 12h6"/>',
+ refresh:'<path d="M20 7v5h-5M4 17v-5h5M5.6 8a7 7 0 0 1 11.5-3L20 8M4 16l2.9 3A7 7 0 0 0 18.4 16"/>',
+ external:'<path d="M14 4h6v6m0-6-9 9m7 0v6H5V6h6"/>',
 };
 const overviewIcon=key=>`<svg viewBox="0 0 24 24" aria-hidden="true">${overviewDrawings[key]||overviewDrawings.tasks}</svg>`;
 export function overviewAgenda(model,{month,selectedDay=''}){
@@ -157,13 +163,162 @@ export function renderMonthly(model,{month,page=1}){
  const data=monthlyData(model.tasks,month);return `<div class="period-workspace"><header class="period-heading"><h2>月度回顾</h2><input id="reviewMonth" type="month" aria-label="选择回顾月份" value="${month}"></header>${metrics([['本月计划截止',data.planned.length,'项','month-planned'],['本月实际完成',data.completed.length,'项','month-completed'],['相关逾期事项',data.late.length,'项','month-overdue']])}<section class="period-panel"><h3>月度事项</h3>${rowsTable(data.rows,{page})}</section></div>`;
 }
 const organizationRoleRank=role=>/园区.*经理|^园区经理$/.test(role)?0:/运维经理/.test(role)?1:/楼栋经理/.test(role)?2:/主管/.test(role)?3:/工程师/.test(role)?4:/值班长/.test(role)?5:6;
+const organizationFilled = position => position.assignments.filter(member => !member.concurrent).length;
+const organizationVacant = position => Math.max(0, (position.need || 0) - organizationFilled(position));
+const employmentChannels = [['own','外派'],['lh','本地招聘'],['os','外包']];
+const vacancyChannelColumns = [['os','外包','Out.'],['own','外派','Exp.'],['lh','LH','LH']];
+const vacancyColumn = (label,short,style='',compact=label) => `<th scope="col" class="${style}" title="${label}" aria-label="${label}">
+   <span class="vacancy-label">${label}</span>
+   <span class="vacancy-label-short" aria-hidden="true"><span lang="zh-CN">${compact}</span><span lang="en">${short}</span></span></th>`;
+const vacancyChannelHeadings = () => vacancyChannelColumns.map(([,label,short])=>vacancyColumn(label,short,'vacancy-channel-heading')).join('');
+function vacancyChannelCells(position,filled) {
+ const planned = vacancyChannelColumns.map(([key]) => position[key] || 0);
+ const allocated = planned.reduce((sum,count) => sum + count,0);
+ return planned.map((count,index) => {
+   let gap = null;
+   // 岗位来源只记录计划用工，已确定人员尚未记录渠道。仅显示可以确定的渠道缺额。
+   if (count > 0 && allocated <= position.need) {
+     if (!filled) gap = count;
+     else if (count === position.need) gap = Math.max(0,count - filled);
+   }
+   return `<td class="vacancy-channel${gap === null ? ' is-unset' : ''}" data-channel="${vacancyChannelColumns[index][0]}">${gap ?? '/'}</td>`;
+ }).join('');
+}
+const vacancyLegend = '<span>/</span> <span>未确认或不适用</span>';
 export function organizationData(data){
- const active=(data.people||[]).filter(p=>p.active!==false&&p.status!=='已退出'),nameCounts=new Map();for(const p of active)nameCounts.set(p.name,(nameCounts.get(p.name)||0)+1);
- const people=active.flatMap(p=>{const roles=new Map();for(const value of p.assignments||[]){const match=/^(园区|第一栋|第二栋) · (.+?)(（兼任）)?$/.exec(value);if(match)roles.set(match[1]+match[2],{building:match[1],role:match[2]});}if(nameCounts.get(p.name)===1)for(const row of data.positions||[])if(String(row.candidates||'').split(/[、，,；;]/).map(n=>n.trim()).includes(p.name)&&!roles.has(row.building+row.role))roles.set(row.building+row.role,{building:row.building,role:row.role});const ordered=[...roles.values()].sort((a,b)=>organizationRoleRank(a.role)-organizationRoleRank(b.role)||Number(b.building==='园区')-Number(a.building==='园区'));return ordered.length?[{...p,...ordered[0],concurrent:ordered.slice(1).map(r=>r.building+' · '+r.role).join('、')}]:[];});return{people,updatedAt:data.updatedAt,sourceUrl:data.sourceUrl};
+ const active=(data.people||[]).filter(p=>p.active!==false&&['已确认','待入场','已到岗'].includes(p.status)),nameCounts=new Map();for(const p of active)nameCounts.set(p.name,(nameCounts.get(p.name)||0)+1);
+ const people=active.flatMap(p=>{const roles=new Map();for(const value of p.assignments||[]){const match=/^(园区|第一栋|第二栋) · (.+?)(（兼任）)?$/.exec(value);if(match)roles.set(match[1]+match[2],{building:match[1],role:match[2]});}if(nameCounts.get(p.name)===1)for(const row of data.positions||[])if(String(row.candidates||'').split(/[、，,；;]/).map(n=>n.trim()).includes(p.name)&&!roles.has(row.building+row.role))roles.set(row.building+row.role,{building:row.building,role:row.role});const ordered=[...roles.values()].sort((a,b)=>organizationRoleRank(a.role)-organizationRoleRank(b.role)||Number(b.building==='园区')-Number(a.building==='园区'));return ordered.length?[{...p,...ordered[0],concurrent:ordered.slice(1).map(r=>r.building+' · '+r.role).join('、')}]:[];});
+ const positions=assignedPositions(data.positions||[],active).filter(row=>row.need>0||row.assignments.length);
+ return{people,positions,updatedAt:data.updatedAt,sourceUrl:data.sourceUrl};
+}
+export function renderOrganizationVacancies(data) {
+ const positions = data?.positions || [];
+ const totals = positionTotals(positions);
+ const shortage = positions.filter(position => organizationVacant(position) > 0);
+ const total = shortage.reduce((count,position) => count + organizationVacant(position),0);
+ return `<header class="detail-header vacancy-header"><h2 id="detailTitle">岗位空缺</h2>
+   <span class="vacancy-total"><b>${total}</b> <span>人</span></span>
+   <button type="button" class="icon-button" data-action="close-dialog" title="关闭详情" aria-label="关闭详情">×</button></header>
+   <div class="detail-main vacancy-detail">
+   ${totals.need && employmentChannels.some(([key]) => totals[key] > 0) ? `<section class="vacancy-plan">
+     <h3>项目用工计划</h3><ul>${employmentChannels.map(([key,label]) => `<li data-channel="${key}"><span>${label}</span>
+       <strong>${totals[key]}</strong><small>${Math.round(totals[key] / totals.need * 1000) / 10}%</small></li>`).join('')}</ul>
+   </section>` : ''}
+   ${shortage.length ? `<p class="vacancy-legend">${vacancyLegend}</p>` : ''}
+   ${groupPositions(shortage).map(({name,rows}) => `<section class="vacancy-group">
+     <h3>${esc(name)}<span><span>空缺</span> <b>${rows.reduce((count,position) => count + organizationVacant(position),0)}</b></span></h3>
+     <table><thead><tr><th scope="col">岗位</th>${vacancyColumn('编制','Plan')}${vacancyColumn('已确定','Set','','已定')}
+       ${vacancyColumn('空缺','Gap')}${vacancyChannelHeadings()}</tr></thead>
+       <tbody>${rows.map(position => {
+         const filled = organizationFilled(position);
+         return `<tr data-vacancy-position="${esc(position.id)}"><th scope="row">${esc(position.role)}</th>
+         <td>${position.need}</td><td>${filled || '/'}</td><td class="vacancy-number">${organizationVacant(position)}</td>
+         ${vacancyChannelCells(position,filled)}</tr>`;
+       }).join('')}</tbody>
+     </table></section>`).join('') || '<p class="work-empty">当前暂无岗位空缺</p>'}
+   </div>`;
 }
 export function renderOrganization(data,{loading=false,error='',loginUrl=''}={}){
  if(loading)return '<div class="work-empty" role="status">正在读取项目组织…</div>';
  if(error)return `<div class="work-empty" role="status">${esc(error)}${loginUrl?`<a class="work-more" href="${esc(loginUrl)}">登录查看项目组织 ↗</a>`:'<button data-action="organization-retry">重试</button>'}</div>`;
- const people=data?.people||[],buildings=[...new Set(people.map(p=>p.building||'未分配'))].sort((a,b)=>['园区','第一栋','第二栋'].indexOf(a)-['园区','第一栋','第二栋'].indexOf(b)),rank=organizationRoleRank;
- return `<div class="organization-page"><header><h2>项目组织 <small>${people.length}人</small></h2>${data?.sourceUrl?`<a class="work-more" href="${esc(data.sourceUrl)}" target="_blank" rel="noreferrer">打开来源 ↗</a>`:''}</header>${buildings.map(building=>`<section class="organization-building"><h3>${esc(building)}</h3><div class="organization-people">${people.filter(p=>(p.building||'未分配')===building).sort((a,b)=>rank(a.role)-rank(b.role)||a.name.localeCompare(b.name,'zh-CN')).map(p=>`<article><strong>${esc(p.name)}</strong><span>${esc(p.role||'—')}</span>${p.concurrent?`<small>兼任 ${esc(p.concurrent)}</small>`:''}${p.status?`<em>${esc(p.status)}</em>`:''}${p.actualArrival?`<small>到岗 ${date(p.actualArrival)}</small>`:p.plannedArrival?`<small>计划 ${date(p.plannedArrival)}</small>`:''}</article>`).join('')}</div></section>`).join('')||'<div class="work-empty">当前项目暂无人员记录</div>'}</div>`;
+ const people = data?.people || [];
+ const positions = data?.positions || [];
+ const shiftCodes = ['A', 'B', 'C', 'D'];
+ const shiftBuildings = ['第一栋', '第二栋'];
+ const shiftPositions = positions.filter(position =>
+   shiftBuildings.includes(position.building) && ['值班长', '值班员'].includes(position.role));
+ const teams = new Map();
+ for (const position of positions.filter(position => !shiftPositions.includes(position))) {
+   const building = position.building || '未分配';
+   if (!teams.has(building)) teams.set(building, []);
+   teams.get(building).push(position);
+ }
+ const order = ['园区', '第一栋', '第二栋', '未分配'];
+ const sorted = rows => [...rows].sort((a,b) => organizationRoleRank(a.role)-organizationRoleRank(b.role)||a.role.localeCompare(b.role,'zh-CN'));
+ const icon = key => `<span class="organization-icon">${overviewIcon(key)}</span>`;
+ const personLink = member => {
+   const person = people.find(person => person.id === member.personId);
+   if (!person) return '';
+   const url = data.sourceUrl ? new URL(data.sourceUrl) : null;
+   if (url) url.searchParams.set('record', person.id);
+   const details = [person.name, person.role, person.concurrent ? '兼任 ' + person.concurrent : '', person.status,
+     person.plannedArrival ? '计划 ' + person.plannedArrival : '', person.actualArrival ? '到岗 ' + person.actualArrival : ''].filter(Boolean).join(' · ');
+   return `<span class="organization-member${member.concurrent?' is-concurrent':''}" data-person-id="${esc(person.id)}">
+     ${url?`<a href="${esc(url.href)}" title="${esc(details)}" target="_blank" rel="noreferrer">${esc(person.name)}</a>`:esc(person.name)}
+     ${member.concurrent?'<small>兼任</small>':''}
+   </span>`;
+ };
+ const tones = {管理:'management', 电气:'electrical', 暖通:'hvac', 弱电:'elv', 消防:'safety', EHS:'safety', 值班:'operations'};
+ const card = position => `<article class="organization-position" data-position-id="${esc(position.id)}" data-role-tone="${tones[positionProfession(position)] || 'other'}">
+   <h4 class="organization-role">${esc(position.role)}</h4>
+   ${position.assignments.length ? `<div class="organization-members">${position.assignments.map(personLink).join('')}</div>` : ''}
+ </article>`;
+ const sectionHeader = (id, label, symbol) => `<header class="organization-section-heading">
+   ${icon(symbol)}<h2 id="${id}">${label}</h2>
+ </header>`;
+ const roster = (rows, campus) => {
+   const ordered = sorted(rows);
+   const leads = campus ? ordered.filter(position => organizationRoleRank(position.role) < 2) : [];
+   return `<div class="organization-roster">
+     ${leads.length ? `<div class="organization-leads">${leads.map(card).join('')}</div>` : ''}
+     <div class="organization-roles">${ordered.filter(position => !leads.includes(position)).map(card).join('')}</div>
+   </div>`;
+ };
+ const branchPanel = (label,content,count,{campus=false,shift=false}={}) => `<details class="organization-branch${campus?' organization-management':''}${shift?' organization-shift-building':''}" open>
+   <summary>${icon(campus?'organization':'building')}<${campus?'h2':'h3'}>${esc(label)}</${campus?'h2':'h3'}>
+     <span class="organization-branch-count">${count} <span>${shift?'个班组':'个岗位'}</span></span></summary>
+   ${content}
+ </details>`;
+ const branch = (building,rows,campus=false) => branchPanel(campus?'园区管理':building,roster(rows,campus),rows.length,{campus});
+ const shiftBranch = building => {
+   const rows = sorted(shiftPositions.filter(position => position.building === building)).map(position => {
+     const need = position.need || 0;
+     const perShift = need > 0 && need % shiftCodes.length === 0 ? need / shiftCodes.length : null;
+     return {position,need,perShift};
+   });
+   if (!rows.length) return '';
+   // 当前任职来源只到楼栋岗位，未记录个人班别。
+   const groups = shiftCodes.map(code=>`<article class="organization-shift-card" data-shift-team="${code}">
+     <h4>${code} 班</h4>
+     <ul class="organization-shift-roles">${rows.map(({position})=>`<li class="organization-shift-role">${esc(position.role)}</li>`).join('')}</ul>
+   </article>`).join('');
+   const plan = rows.filter(({need})=>need>0).map(({position,perShift})=>`<span class="organization-shift-plan">
+     <span>${esc(position.role)}</span> ${perShift === null ? '<span>各班编制待定</span>' : `<b>${perShift}</b>`}</span>`).join('');
+   const pending = rows.filter(({position})=>position.assignments.length).map(({position})=>`<div class="organization-shift-note organization-members">
+     <span>班别待定</span><span>${esc(position.role)}</span>${position.assignments.map(personLink).join('')}</div>`).join('');
+   return branchPanel(building,`<div class="organization-roster">
+     <div class="organization-shift-roster">${groups}</div>
+     ${pending}
+     ${plan?`<div class="organization-shift-note"><span>每班计划编制</span>${plan}</div>`:''}
+   </div>`,shiftCodes.length,{shift:true});
+ };
+ const required = positions.reduce((total, position) => total + (position.need || 0), 0);
+ const vacant = positions.reduce((total, position) => total + organizationVacant(position), 0);
+ const totals = [['已确定',people.length,'person'],...(required?[['编制',required,'organization'],['空缺',vacant,'vacancy']]:[])];
+ const campus = teams.get('园区');
+ const buildings = [...teams].filter(([building])=>building!=='园区').sort(([a],[b])=>order.indexOf(a)-order.indexOf(b));
+ return `<div class="organization-page"><header class="organization-summary">
+   <div class="organization-totals">${totals.map(([label,total,symbol])=>{
+    const content = `
+     ${icon(symbol)}<div class="organization-total-copy"><span>${label}</span><div><strong>${total}</strong><small>人</small></div></div>
+   `;
+    return symbol==='vacancy'
+     ? `<button type="button" class="organization-total" data-total="${symbol}" data-action="organization-vacancies" aria-haspopup="dialog" aria-controls="detailDialog">${content}<span class="organization-total-arrow" aria-hidden="true">›</span></button>`
+     : `<div class="organization-total" data-total="${symbol}">${content}</div>`;
+   }).join('')}</div>
+   <div class="organization-tools">${data?.sourceUrl?`<a class="organization-source" href="${esc(data.sourceUrl)}" target="_blank" rel="noreferrer" title="打开来源" aria-label="打开来源">${overviewIcon('external')}<span>打开来源</span></a>`:''}
+     <button class="icon-button" data-action="organization-retry" title="刷新项目组织" aria-label="刷新项目组织">${overviewIcon('refresh')}</button>
+   </div></header>
+   ${positions.length?`<div class="organization-chart">
+     ${campus?branch('园区',campus,true):''}
+     ${buildings.length?`<section class="organization-technical" aria-labelledby="organizationTechnicalTitle">
+       ${sectionHeader('organizationTechnicalTitle','楼栋管理与技术','building')}
+       <div class="organization-teams">${buildings.map(([building,rows])=>branch(building,rows)).join('')}</div>
+     </section>`:''}
+     ${shiftPositions.length?`<section class="organization-shifts" aria-labelledby="organizationShiftsTitle">
+       ${sectionHeader('organizationShiftsTitle','值班团队','clock')}
+       <div class="organization-teams">${shiftBuildings.map(shiftBranch).join('')}</div>
+     </section>`:''}
+   </div>`:'<div class="work-empty">当前项目暂无人员记录</div>'}
+ </div>`;
 }

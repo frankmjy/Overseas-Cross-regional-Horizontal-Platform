@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pageDefinitions,weeklyData,monthlyData,renderOverview,organizationData,overviewAgenda,overviewCalendarCells,overviewCycle,stageInsight,stageInsightRows,ganttRowControls,taskDeliverableCount} from '../samples/handover-preview/pages.mjs';
+import {pageDefinitions,weeklyData,monthlyData,renderOverview,organizationData,renderOrganization,renderOrganizationVacancies,overviewAgenda,overviewCalendarCells,overviewCycle,stageInsight,stageInsightRows,ganttRowControls,taskDeliverableCount} from '../samples/handover-preview/pages.mjs';
 const tasks=[{id:'late',code:'1',title:'逾期检查',stage:1,status:'逾期进行',start:'2026-10-01',end:'2026-10-20',actualCompletion:''},{id:'done',code:'2',title:'已完成检查',stage:1,status:'已完成',start:'2026-10-01',end:'2026-11-01',actualCompletion:'2026-11-01'},{id:'next',code:'3',title:'下周检查',stage:1,status:'未开始',start:'2026-11-02',end:'2026-11-06',actualCompletion:''}];
 test('只读状态标签替代完成勾选，交付物及优先级仍在原行',()=>{
  const row={...tasks[1],priority:'🔴P0-高优',attachments:[{name:'交付.txt'}],deliverableLinks:'https://example.com/doc\nhttps://example.com/doc'};
@@ -59,7 +59,94 @@ test('超过三条待办可滚动，简述及跳转与原事项对应',()=>{
 });
 test('月度完成只按实际完成日期，不把计划结束当作完成',()=>{const v=monthlyData(tasks,'2026-11');assert.deepEqual(v.completed.map(r=>r.id),['done']);assert.deepEqual(v.rows.map(r=>r.id).sort(),['done','next']);});
 test('总览中提供日历，空数据无虚构进度，图表分类转义',()=>{const model={tasks:[...tasks,{...tasks[0],id:'xss',category:'<img onerror=alert(1)>'}],parents:[],milestones:[],stages:[{id:1,name:'项目筹备',color:'#4f7fe0',total:4}],summary:{tasks:4,groups:0,milestones:0,unscheduled:0,completed:1}};const html=renderOverview(model,{month:'2026-11',today:'2026-11-01'});assert.ok(html.includes('项目日历'));assert.ok(!html.includes('<img onerror'));assert.ok(html.includes('&lt;img'));});
-test('项目组织按已确认任职显示主岗，兼任不重复计人，不按旧岗位猜楼栋',()=>{const data=organizationData({people:[{id:'a',name:'甲',active:true,assignments:['第二栋 · 楼栋经理（兼任）','园区 · 运维经理']},{id:'b',name:'乙',active:true,assignments:[]},{id:'x',name:'退出',active:false,assignments:['园区 · 园区经理']}],positions:[{building:'第一栋',role:'专业主管-电气',candidates:'乙'}]});assert.equal(data.people.length,2);assert.equal(data.people[0].building,'园区');assert.equal(data.people[0].role,'运维经理');assert.match(data.people[0].concurrent,/第二栋/);assert.equal(data.people[1].building,'第一栋');});
+test('项目组织按已确认任职显示主岗，兼任不重复计人，不按旧岗位猜楼栋',()=>{const data=organizationData({people:[{id:'a',name:'甲',project:'泰国A项目',status:'已确认',active:true,assignments:['第二栋 · 楼栋经理（兼任）','园区 · 运维经理']},{id:'b',name:'乙',project:'泰国A项目',status:'待入场',active:true,assignments:[]},{id:'x',name:'退出',status:'已确认',active:false,assignments:['园区 · 园区经理']}],positions:[{building:'第一栋',role:'专业主管-电气',candidates:'乙'}]});assert.equal(data.people.length,2);assert.equal(data.people[0].building,'园区');assert.equal(data.people[0].role,'运维经理');assert.match(data.people[0].concurrent,/第二栋/);assert.equal(data.people[1].building,'第一栋');});
+
+test('未确认候选人不进入项目组织，空缺按编制及已确认主岗人数计算', () => {
+ const people = [
+   {id:'a',name:'甲',project:'泰国A项目',active:true,status:'已确认'},
+   {id:'b',name:'乙',project:'泰国A项目',active:true,status:'待沟通'},
+   {id:'c',name:'丙',project:'泰国A项目',active:true,status:'已退出'},
+ ];
+ const positions = [
+   {id:'electrical',building:'第一栋',role:'白班工程师-电气',need:4,candidates:'甲、乙、丙',interviewTotal:3},
+   {id:'hvac',building:'第一栋',role:'专业主管-暖通',need:1,candidates:''},
+   {id:'disabled',building:'第二栋',role:'白班工程师-消防',need:0,candidates:''},
+ ];
+ const model = organizationData({people,positions});
+ assert.deepEqual(model.people.map(p=>p.id),['a']);
+ assert.equal(model.positions.length,2);
+ assert.equal(model.positions.find(p=>p.id==='electrical').assignments.length,1);
+ const html = renderOrganization(model);
+ assert.match(html,/<span>空缺<\/span><div><strong>4<\/strong>/);
+ assert.match(html,/data-position-id="hvac"[^>]*>\s*<h4 class="organization-role">专业主管-暖通<\/h4>\s*<\/article>/);
+ for (const [,card] of html.matchAll(/<article class="organization-position"[^>]*>([\s\S]*?)<\/article>/g)) {
+   assert.doesNotMatch(card,/编制|空缺|—/);
+ }
+ assert.doesNotMatch(html,/data-person-id="(?:b|c)"|data-position-id="disabled"/);
+ assert.match(html,/<details class="organization-branch" open>/);
+ assert.equal(people[1].status,'待沟通');
+});
+
+test('组织兼任按原岗位注明，兼职不重复占编制', () => {
+ const person={id:'manager',name:'甲',project:'泰国A项目',active:true,status:'已确认',assignments:['园区 · 运维经理','第二栋 · 楼栋经理（兼任）']};
+ const model=organizationData({people:[person],positions:[{id:'second',building:'第二栋',role:'楼栋经理',need:1,candidates:'甲'}]});
+ assert.equal(model.people.length,1);
+ const posts=model.positions;
+ assert.equal(posts.reduce((n,p)=>n+(p.need||0),0),1);
+ const second=posts.find(p=>p.id==='second');
+ assert.equal(second.need,0);
+ assert.equal(second.assignments[0].concurrent,true);
+ const html=renderOrganization(model);
+ assert.match(html,/is-concurrent/);
+ assert.doesNotMatch(html,/<span>空缺<\/span><div><strong>[1-9]/);
+});
+
+test('每栋楼展示 A–D 班组卡，已确认未分班人员留在楼栋并占对应岗位名额', () => {
+ const person = {id:'operator',name:'甲',project:'泰国A项目',status:'已确认',assignments:['第一栋 · 值班员']};
+ const model = organizationData({people:[person],positions:[
+   {id:'lead', building:'第一栋', role:'值班长', need:4,own:4},
+   {id:'operator', building:'第一栋', role:'值班员', need:32,own:7,lh:7,os:18},
+   {id:'second', building:'第二栋', role:'值班员', need:31},
+   {id:'supervisor', building:'园区', role:'值班主管', need:1},
+ ]});
+ const html = renderOrganization(model);
+ const cards=[...html.matchAll(/class="organization-shift-card" data-shift-team="([A-D])">([\s\S]*?)<\/article>/g)];
+ assert.deepEqual(cards.map(match=>match[1]),[...'ABCDABCD']);
+ assert.match(cards[0][2],/值班长<\/li>.*?<li class="organization-shift-role">值班员<\/li>/s);
+ assert.ok(cards.every(([,code,content])=>content.includes(`${code} 班`)&&!/data-person-id|编制|空缺/.test(content)));
+ assert.doesNotMatch(html,/<table/);
+ assert.match(html,/<span class="organization-shift-plan">\s*<span>值班长<\/span> <b>1<\/b>/);
+ assert.match(html,/<span class="organization-shift-plan">\s*<span>值班员<\/span> <b>8<\/b>/);
+ assert.match(html,/班别待定[\s\S]*?data-person-id="operator"/);
+ assert.match(html,/各班编制待定/);
+ assert.match(html,/<article class="organization-position" data-position-id="supervisor"/);
+ assert.deepEqual([...html.matchAll(/<strong>(\d+)<\/strong>/g)].map(match=>match[1]),['1','68','67']);
+});
+
+test('空缺明细右侧显示可核实的渠道缺额，无法拆分的渠道留斜杠',()=>{
+ const model={positions:[
+   {id:'a',building:'第一栋',role:'值班员',need:32,own:7,lh:7,os:18,mode:'自有外派20%+Local Hire 20%+外包60%',gapOwn:3,assignments:[{concurrent:false},{concurrent:true}]},
+   {id:'b',building:'第一栋',role:'值班长',need:1,own:1,assignments:[{concurrent:false}]},
+   {id:'c',building:'第二栋',role:'值班员',need:10,own:2,lh:1,os:2,assignments:[]},
+   {id:'d',building:'第二栋',role:'值班长',need:4,own:4,gapOwn:0,assignments:[{concurrent:false}]},
+ ]};
+ const detail=renderOrganizationVacancies(model);
+ assert.match(renderOrganization(model),/data-action="organization-vacancies" aria-haspopup="dialog"/);
+ assert.match(detail,/vacancy-total"><b>44<\/b>/);
+ assert.match(detail,/aria-label="外包"[\s\S]*?aria-label="外派"[\s\S]*?aria-label="LH"/);
+ const row = id => detail.match(new RegExp(`data-vacancy-position="${id}"[\\s\\S]*?</tr>`))[0];
+ const channelGaps = id => [...row(id).matchAll(/data-channel="(?:os|own|lh)">([^<]+)/g)].map(match=>match[1]);
+ assert.match(row('a'),/<th scope="row">值班员<\/th>\s*<td>32<\/td><td>1<\/td><td class="vacancy-number">31<\/td>/);
+ assert.deepEqual(channelGaps('a'),['/','/','/']);
+ assert.match(row('c'),/<td>10<\/td><td>\/<\/td><td class="vacancy-number">10<\/td>/);
+ assert.deepEqual(channelGaps('c'),['2','2','1']);
+ assert.deepEqual(channelGaps('d'),['/','3','/']);
+ assert.doesNotMatch(detail,/data-vacancy-position="b"/);
+ assert.match(detail,/data-channel="own"><span>外派<\/span>\s*<strong>14<\/strong><small>29.8%/);
+ assert.doesNotMatch(detail,/目标比例|vacancy-channels/);
+ assert.match(renderOrganizationVacancies({positions:[model.positions[1]]}),/当前暂无岗位空缺/);
+});
+
 test('总览展示阶段小结与图表，搜索不篡改阶段统计，不再抽取两条任务',()=>{
  const model={tasks,parents:[],milestones:[],stages:[{id:1,name:'项目筹备',color:'#4f7fe0'}]};
  const html=renderOverview(model,{month:'2026-11',today:'2026-11-01'});
