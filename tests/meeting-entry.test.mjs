@@ -15,6 +15,34 @@ const metadata=Object.entries(fields).map(([key,[name,type]])=>({id:'fld'+key,na
 const schema=schemaOf([...metadata,{id:'fldkey',name:mutationField,type:'text'}]);
 const config={baseToken:'test',baseUrl:'https://vnet.feishu.cn/base/test',sources:['thailand','malaysia','overseas'].map(project=>({id:'tbl'+project,kind:'meeting',name:project,project}))};
 const user={openId:'ou_test',name:'联调人员'};
+const actionFields={'Action Status':{id:'fldActionStatus',name:'Status'},'Action Title':{name:'Title'},'Araya Meeting':{name:'Araya'},'Malaysia Meeting':{name:'Malaysia'}};
+test('meeting action status reconciles a lost write response and can reopen',async t=>{
+ const {service,adapter,dir}=await setup(t);
+ service.actionSource={id:'tblActions',kind:'meeting-action',fields:actionFields};
+ service.state.actionStatuses=['待办','进行中','已完成'];
+ const id='tblActions:recAction',actor={...user,permissions:{meetings:{edit:true}},project:{knowledgeKey:'thailand'}};
+ const snap={meetings:[{project:'thailand',actions:[{id,structured:true,status:'待办'}]}]};
+ let status='待办',writes=0;
+ adapter.actionOptions=async()=>service.state.actionStatuses;
+ adapter.get=async()=>({Title:'联调待办',Status:{name:status},Araya:[{record_id:'recMeeting'}]});
+ adapter.updateActionStatus=async(source,recordId,next)=>{assert.equal(source.id,'tblActions');assert.equal(recordId,'recAction');writes++;status=next;if(writes===1)throw Error('回执丢失');};
+ const input={clientMutationId:randomUUID(),id,expected:'待办',status:'已完成'};
+ assert.throws(()=>service.acceptAction(input,{...actor,permissions:{meetings:{edit:false}}},snap),{status:403});
+ assert.throws(()=>service.acceptAction(input,{...actor,project:{knowledgeKey:'malaysia'}},snap),{status:404});
+ const accepted=service.acceptAction(input,actor,snap);
+ assert.equal(accepted.status,'accepted');
+ assert.equal(JSON.parse(fs.readFileSync(path.join(dir,'meeting-ledger.json'))).operations[accepted.id].value,'已完成');
+ assert.equal(service.merge(snap).meetings[0].actions[0].status,'已完成');
+ assert.equal(service.acceptAction(input,actor,snap).id,accepted.id);
+ await service.flush();
+ assert.equal(service.state.operations[accepted.id].status,'error');
+ service.retry(accepted.id);await service.flush();
+ assert.equal(writes,1);assert.equal(service.state.operations[accepted.id].status,'success');
+ const reopened=service.acceptAction({...input,clientMutationId:randomUUID(),expected:'已完成',status:'进行中'},actor,snap);
+ await service.flush();
+ assert.equal(service.state.operations[reopened.id].status,'success');assert.equal(status,'进行中');assert.equal(writes,2);
+ assert.equal(snap.meetings[0].actions[0].status,'待办');
+});
 const input=(project='thailand')=>({clientMutationId:randomUUID(),project,title:'联调会议',date:'2026-10-25',time:'09:30',status:'已开',priority:'P1',participants:['ou_test'],summary:'会议结论',actions:'1. 核对\n2. 更新',minutes:'https://vnet.feishu.cn/docx/test',recording:''});
 class FakeAdapter{
  constructor(){this.rows=new Map();this.creates=0;this.schemas=0;}

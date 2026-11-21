@@ -10,6 +10,23 @@ import {libraryScopes,libraryMetrics,libraryDocuments,documentSpecialties,region
 import {handoverStages,operationsCategories,documentLifecycle,lifecycleDocuments} from '../knowledge/lifecycle.mjs';
 import {canonicalDirectoryId,visibleDirectory,directoryDocuments,documentDirectory} from '../knowledge/directory.mjs';
 
+test('related file cards collapse by subject without merging vendors, projects, directories or documents',async()=>{
+ const {table}=await fixture();
+ const row=(id,title,other={})=>({id,title,nature:'设备技术规格',specialty:'暖通',directoryId:'prep:equipment-specifications',libraryScope:'project',projectScope:'泰国',edit:{title},links:[{url:`https://example.com/${id}`}],...other});
+ const rows=[row('bac-1','技术审核意见-BAC（第一轮）'),row('bac-2','技术审核意见-BAC （第一轮-2补充）.xlsx'),row('bac-3','技术审核意见-BAC（第一轮）'),row('bacnet','技术审核意见-BACnet（第一轮）'),row('evapco','技术审核意见-EVAPCO（第一轮）'),row('other-project','技术审核意见-BAC（第一轮）',{projectScope:'马来'}),row('other-directory','技术审核意见-BAC（第一轮）',{directoryId:'custom-other'}),row('other-discipline','技术审核意见-BAC（第一轮）',{specialty:'电气'}),row('drawing-01','施工图 ARAYA-A-01'),row('drawing-02','施工图 ARAYA-A-02')];
+ const html=table(rows,{limit:4,editable:true});
+ assert.equal((html.match(/class="material-series"/g)||[]).length,1);
+ assert.match(html,/技术审核意见-BAC<\/span><b>3<\/b>/);
+ for(const id of ['bac-1','bac-2','bac-3']){
+  assert.ok(html.includes(`href="https://example.com/${id}"`));
+  assert.ok(html.includes(`data-edit-document="${id}"`));
+ }
+ assert.match(html,/加载更多（4 \/ 8）/);
+ const search=table(rows.slice(0,3),{selection:{query:'BAC'}});
+ assert.doesNotMatch(search,/class="material-series"/);
+ assert.equal((search.match(/class="material-card"/g)||[]).length,3);
+});
+
 test('云盘归档可下钻到业务子目录，并保留总目录直达',async()=>{
  const {table}=await fixture();
  const parent='https://vnet.feishu.cn/drive/folder/DxRoot';

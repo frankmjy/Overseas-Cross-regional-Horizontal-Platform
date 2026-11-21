@@ -129,3 +129,14 @@ html[lang="en"] .meeting-trail .weekday-prefix{display:none}
   }
   body:has(.meeting-trail) .connection-tools { justify-self: start; }
 }
+.customer-weeklies .panel-head{margin-bottom:6px}
+.customer-weekly{padding:10px 11px;border:1px solid #d8e5f2;border-radius:9px;background:#f6f9fd}
+.customer-weekly+.customer-weekly{margin-top:9px}
+.customer-weekly header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.customer-weekly h3{font-size:14px;color:#234564;margin:0;overflow-wrap:anywhere}
+.customer-weekly ul{list-style:none;padding:0;margin:4px 0 0}
+.customer-weekly li+li{border-top:1px solid #e3ebf6}
+.customer-weekly li a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 3px;color:#294e77;text-decoration:none;font-size:12px}
+.customer-weekly li a:hover{color:#183f81;background:#ebf2fc}
+.customer-weekly time{color:#47678a;font-variant-numeric:tabular-nums}
+.customer-weekly details summary{cursor:pointer;font-size:12px;color:#315986;padding:6px 0 2px}

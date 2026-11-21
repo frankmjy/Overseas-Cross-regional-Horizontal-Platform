@@ -23,7 +23,7 @@ const routes = {
   '/knowledge/styles.css': ['styles.css', 'text/css; charset=utf-8'],
 };
 
-export function createKnowledgeHandler({ root, service, meetings, documents, minutes, now = Date.now }) {
+export function createKnowledgeHandler({ root, service, meetings, documents, minutes, customerRecords, now = Date.now }) {
   return async (req, res) => {
     const url = new URL(req.url, 'http://localhost'), route = url.pathname;
     if (route === '/knowledge-sharing' && url.searchParams.get('view') === 'meetings' && ['GET','HEAD'].includes(req.method)) {
@@ -40,7 +40,8 @@ export function createKnowledgeHandler({ root, service, meetings, documents, min
           if (!project||!req.auth?.permissions?.meetings?.view) {
             send(403,{ok:false,error:'无权查看会议待办。'});return true;
           }
-          const snapshot=service.read({});
+          const source=service.read({}),snapshot=meetings?meetings.merge(source):source;
+          const editable=req.auth.permissions.meetings.edit===true;
           const time=now()+8*3600000;
           const today=new Date(time).toISOString().slice(0,10);
           const since=new Date(time-29*86400000).toISOString().slice(0,10);
@@ -48,10 +49,11 @@ export function createKnowledgeHandler({ root, service, meetings, documents, min
             .filter(meeting=>(meeting.project===project||meeting.project==='overseas')&&meeting.type==='已开'&&meeting.date>=since&&meeting.date<=today)
             .sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')))
             .flatMap(meeting=>(meeting.actions||[])
-              .filter(action=>action.structured&&action.title&&action.status!=='已完成')
+              .filter(action=>action.structured&&action.title)
               .sort((a,b)=>(a.priority||'P9').localeCompare(b.priority||'P9')||(a.due||'9999').localeCompare(b.due||'9999'))
-              .map(({title,brief,owner,due,priority})=>({title,brief,owner,due,priority,meetingId:meeting.id,meetingTitle:meeting.title,meetingDate:meeting.date})));
-          send(200,{ok:true,items,refreshing:snapshot.refreshing,state:snapshot.state});return true;
+              .map(({id,title,brief,owner,due,priority,status,sync})=>({id,title,brief,owner,due,priority,status:status||'',...(editable&&sync?{sync}:{}),meetingId:meeting.id,meetingTitle:meeting.title,meetingDate:meeting.date})))
+            .sort((a,b)=>Number(a.status==='已完成')-Number(b.status==='已完成'));
+          send(200,{ok:true,items,editable,statusOptions:editable?meetings?.actionStatuses||[]:[],refreshing:snapshot.refreshing,state:snapshot.state});return true;
         }
         const meetingOverview=url.searchParams.get('meetingOverview')==='1';
         const meetingOverviewAll=meetingOverview&&req.auth?.isAdmin===true;
@@ -68,7 +70,8 @@ export function createKnowledgeHandler({ root, service, meetings, documents, min
         const visibleDocuments=meetingOverview||req.auth?.permissions?.knowledge?.view===false?[]:(merged.documents||[]).filter(document=>isLibraryDocument(document)&&(!project||matchesDocumentProject(document,project)));
         const folderUrls=new Set(visibleDocuments.map(document=>document.driveCollection?.url).filter(Boolean));
         const driveFolders=Object.fromEntries([...folderUrls].filter(url=>Object.hasOwn(service.driveFolders||{},url)).map(url=>[url,service.driveFolders[url]]));
-        const scoped={...merged,sources,meetings:visible,documents:visibleDocuments,driveFolders};
+        const customerWeeklyReports=meetingOverview&&req.auth?.permissions?.meetings?.view===true&&project&&customerRecords?(await customerRecords(project)).filter(customer=>customer.weekly).map(({id,name,weekly})=>({id,name,...weekly})):[];
+        const scoped={...merged,sources,meetings:visible,documents:visibleDocuments,driveFolders,customerWeeklyReports};
         send(200,{ok:true,...scopeKnowledgeAccess(scoped,req.auth?.permissions),meetingOverviewAll});
       } catch { send(503,{ok:false,error:'知识共享读取失败，请重试。'}); }
       return true;
@@ -92,5 +95,5 @@ export function scopeKnowledgeAccess(snapshot,permissions){
  const documents=!!permissions.knowledge?.view,meetings=!!permissions.meetings?.view;
  if(documents&&meetings)return {...snapshot,capabilities:{knowledgeEdit:!!permissions.knowledge.edit,meetingsEdit:!!permissions.meetings.edit}};
  const common={state:snapshot.state,refreshing:snapshot.refreshing,updatedAt:snapshot.updatedAt,errors:[],sources:(snapshot.sources||[]).filter(s=>['meeting','meeting-action'].includes(s.kind)?meetings:documents),capabilities:{knowledgeEdit:documents&&!!permissions.knowledge.edit,meetingsEdit:meetings&&!!permissions.meetings.edit}};
- return documents?{...snapshot,...common,meetings:[]}:{...common,documents:[],meetings:meetings?snapshot.meetings||[]:[],categories:[],templates:[],projectLibraries:[],directoryNodes:[]};
+ return documents?{...snapshot,...common,meetings:[],customerWeeklyReports:[]}:{...common,documents:[],meetings:meetings?snapshot.meetings||[]:[],customerWeeklyReports:meetings?snapshot.customerWeeklyReports||[]:[],categories:[],templates:[],projectLibraries:[],directoryNodes:[]};
 }

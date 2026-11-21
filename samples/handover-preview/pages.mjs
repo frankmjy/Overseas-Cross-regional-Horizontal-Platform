@@ -24,7 +24,7 @@ export function weeklyData(tasks,anchor,today){
  const overdue=tasks.filter(r=>!completedStatus(r.status)&&r.end&&r.end<cutoff),completed=tasks.filter(r=>r.actualCompletion&&r.actualCompletion>=start&&r.actualCompletion<=end),current=tasks.filter(r=>(!completedStatus(r.status)&&((r.start&&r.end&&r.start<=end&&r.end>=start)||overdue.some(x=>x.id===r.id)))||completed.some(x=>x.id===r.id)),next=tasks.filter(r=>!completedStatus(r.status)&&r.start&&r.end&&r.start<=nextEnd&&r.end>=nextStart);
  return{start,end,nextStart,nextEnd,overdue,completed,current,next};
 }
-export function renderMeetingTodos({state='loading',items=[]}={}){
+export function renderMeetingTodos({state='loading',items=[],editable=false,statusOptions=[]}={}){
  if(state==='forbidden')return '';
  const first=items[0];
  const shared=first&&items.every(item=>item.meetingId===first.meetingId);
@@ -34,7 +34,11 @@ export function renderMeetingTodos({state='loading',items=[]}={}){
   const name=prefix&&`${prefix[1].padStart(2,'0')}-${prefix[2].padStart(2,'0')}`===short?meetingTitle.slice(prefix[0].length):meetingTitle;
   return `${short?`<time datetime="${esc(meetingDate)}">${esc(short.replace('-','/'))}</time>`:''}${name?`<span data-business-text>${esc(name)}</span>`:''}`;
  };
- const rows=items.map(({title,brief,owner,due,priority,meetingId,meetingTitle,meetingDate})=>`
+ const rows=items.map(({id,title,brief,owner,due,priority,status,sync,meetingId,meetingTitle,meetingDate})=>{
+  const label=sync?.status==='error'?'同步失败':sync?'同步中':status||'状态待确认';
+  const tone=sync?.status==='error'?'error':status==='已完成'?'done':status==='进行中'?'active':'pending';
+  const actionLabel=sync?.status==='error'?'重试同步':sync?'查看同步':'修改待办状态';
+  return `
   <li><a class="overview-weekly-task" href="/meeting-trail?meeting=${encodeURIComponent(meetingId)}" title="${esc(title)}">
    <span class="overview-weekly-task-copy">
     <strong data-business-text>${esc(brief?.trim()||title)}</strong>
@@ -45,7 +49,8 @@ export function renderMeetingTodos({state='loading',items=[]}={}){
     ${due?`<span class="overview-weekly-due">${overviewIcon('calendar')}<time datetime="${esc(due)}" title="${esc(due.replace('T',' '))}">${esc(due.slice(5,10).replace('-','/'))}${due.slice(11,16)&&due.slice(11,16)!=='00:00'?' '+esc(due.slice(11,16)):''}</time></span>`:''}
    </span>
    <span class="overview-weekly-chevron" aria-hidden="true">›</span>
-  </a></li>`).join('');
+  </a>${editable&&id&&(statusOptions.length||sync)?`<button type="button" class="overview-meeting-status ${tone}" data-meeting-status="${esc(id)}" title="${actionLabel}" aria-label="${actionLabel}：${esc(title)}，${esc(label)}">${esc(label)} <span aria-hidden="true">⌄</span></button>`:`<span class="overview-meeting-status ${tone}">${esc(label)}</span>`}</li>`;
+ }).join('');
  const status=state==='loading'?'正在读取会议待办…':state==='unavailable'?'会议待办暂不可用':'近期会议暂无待办';
  return `<section class="overview-weekly" aria-labelledby="overviewWeeklyTitle">
   <header class="overview-weekly-heading"><h2 id="overviewWeeklyTitle"><span class="overview-module-icon">${overviewIcon('tasks')}</span><span>近期会议待办</span></h2>
@@ -217,6 +222,16 @@ export function renderOrganizationVacancies(data) {
        }).join('')}</tbody>
      </table></section>`).join('') || '<p class="work-empty">当前暂无岗位空缺</p>'}
    </div>`;
+}
+export function renderOrganizationViews({view='teams',customers=[],customerId='',loading=false,error='',operations=''}){
+ const active=customers.find(customer=>customer.id===customerId)||customers[0];
+ const tabs=`<nav class="organization-views" aria-label="项目组织视图">${[['teams','项目多团队'],['operations','运维团队']].map(([id,label])=>`<button type="button" data-organization-view="${id}" aria-pressed="${view===id}">${label}</button>`).join('')}</nav>`;
+ if(view==='operations')return tabs+operations;
+ if(!active)return tabs+`<section class="organization-overview-empty" role="${error?'alert':'status'}"><p>${esc(loading?'正在读取项目团队…':error||'当前项目暂无客户团队')}</p>${error?'<button type="button" data-action="customer-teams-retry">重试</button>':''}</section>`;
+ const chooser=customers.length>1?`<nav class="organization-customers" aria-label="客户">${customers.map(customer=>`<button type="button" data-organization-customer="${esc(customer.id)}" aria-pressed="${customer===active}"><span translate="no">${esc(customer.name)}</span></button>`).join('')}</nav>`:'';
+ const people=new Set(active.teams.flatMap(team=>team.members));
+ const teams=active.teams.map(team=>`<article class="organization-team"${team.members.length>=6?' data-large-team':''}${team.name==='运维团队'?' data-operations-team':''}><header><span class="organization-team-icon">${overviewIcon(team.name==='运维团队'?'person':'organization')}</span><h3>${esc(team.name)}</h3><b>${team.members.length} <span>人</span></b></header>${team.members.length?`<ul>${team.members.map(name=>`<li translate="no">${esc(name)}</li>`).join('')}</ul>`:''}${team.name==='运维团队'?'<button type="button" data-organization-view="operations"><span>查看运维架构</span><span aria-hidden="true">›</span></button>':''}</article>`).join('');
+ return `${tabs}${chooser}<section class="organization-customer" aria-labelledby="organization-customer-title"><header class="organization-customer-header"><h2 id="organization-customer-title" translate="no">${esc(active.name)}</h2><dl><div><dt>团队</dt><dd>${active.teams.length}</dd></div><div><dt>成员</dt><dd>${people.size}</dd></div></dl></header><div class="organization-team-grid">${teams}</div></section>`;
 }
 export function renderOrganization(data,{loading=false,error='',loginUrl=''}={}){
  if(loading)return '<div class="work-empty" role="status">正在读取项目组织…</div>';

@@ -33,6 +33,13 @@ export function matchesMeeting(row,value,schema,id){
  return Object.entries(fields).every(([key])=>{const actual=row[schema[key].name];if(key==='date')return instant(actual)===Date.parse(value.date+'T'+value.time+':00+08:00');if(key==='participants')return JSON.stringify((Array.isArray(actual)?actual:[]).map(p=>p.id||p.open_id).sort())===JSON.stringify(value.participants);if(['minutes','recording'].includes(key)&&value[key]){const links=safeLinks(actual);return links.length===1&&links[0].url===value[key];}return text(actual)===value[key];})&&(!schema.project||text(row[schema.project.name])==='海外运维')&&(!value.meetingType||text(row[schema.meetingType?.name])===value.meetingType);
 }
 export class MeetingAdapter extends BaseAdapter{
+ async actionOptions(source){
+  const configured=source.fields['Action Status'];
+  const field=(await this.cli('+field-list',['--table-id',source.id])).fields.find(field=>field.id===configured.id&&field.name===configured.name);
+  if(field?.type!=='select'||field.multiple||!Array.isArray(field.options))throw Error('待办状态字段缺失或类型不兼容。');
+  return field.options.map(option=>option.name).filter(name=>typeof name==='string'&&name);
+ }
+ async updateActionStatus(source,id,status){await this.cli('+record-upsert',['--table-id',source.id,'--record-id',id,'--json',JSON.stringify({[source.fields['Action Status'].id]:status})]);}
  async schema(source){return schemaOf((await this.cli('+field-list',['--table-id',source.id])).fields);}
  async ensureKey(source,schema){if(schema.mutation)return schema;await this.cli('+field-create',['--table-id',source.id,'--json',JSON.stringify({name:mutationField,type:'text',description:'网页会议提交幂等标识，请勿手动修改。'})]);const next=await this.schema(source);if(!next.mutation)throw Error('会议提交标识字段未就绪。');return next;}
  async people(source,schema){let offset=0,rev;const people=new Map();for(let page=0;page<100;page++){const d=await this.cli('+record-list',['--table-id',source.id,'--limit','200','--offset',String(offset),'--field-id',schema.participants.id]);if(rev!==undefined&&rev!==d.rev)throw Error('会议人员读取期间表已变更，请重试。');rev=d.rev;const rows=normalizeRows(d);for(const r of rows)for(const p of Array.isArray(r[schema.participants.name])?r[schema.participants.name]:[])if(/^ou_\w+$/.test(p.id||p.open_id||'')&&p.name)people.set(p.id||p.open_id,{id:p.id||p.open_id,name:p.name});if(!d.has_more)return [...people.values()];if(!rows.length)throw Error('会议人员分页没有前进。');offset+=rows.length;}throw Error('会议人员超过读取上限。');}

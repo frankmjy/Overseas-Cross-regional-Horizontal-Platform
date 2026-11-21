@@ -153,6 +153,24 @@ const labels = new Map(`
 项目组织|Project Team
 每周跟进|Weekly Tracking
 近期会议待办|Recent Meeting Actions
+修改待办状态|Edit Action Status
+待办状态|Action Status
+保存状态|Save Status
+待办状态已同步|Action status synced
+待办状态已受理，正在同步|Status accepted, syncing
+保存结果待确认，请重试核对。|Save result unconfirmed. Retry to check.
+请选择新的待办状态。|Select a different status.
+项目组织视图|Organization Views
+项目多团队|Project Teams
+运维团队|Operations Team
+查看运维架构|View Operations Structure
+团队|Teams
+成员|Members
+正在读取项目团队…|Loading project teams…
+当前项目暂无客户团队|No customer teams for this project
+客户周会周报|Customer Weekly Reports
+往期周报|Earlier Reports
+打开云盘|Open Drive
 近期会议暂无待办|No open actions from recent meetings
 正在读取会议待办…|Loading meeting actions…
 会议待办暂不可用|Meeting actions unavailable

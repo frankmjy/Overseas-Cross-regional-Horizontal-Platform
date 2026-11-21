@@ -1,6 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pageDefinitions,weeklyData,monthlyData,renderOverview,organizationData,renderOrganization,renderOrganizationVacancies,overviewAgenda,overviewCalendarCells,overviewCycle,stageInsight,stageInsightRows,ganttRowControls,taskDeliverableCount} from '../samples/handover-preview/pages.mjs';
+import {pageDefinitions,weeklyData,monthlyData,renderOverview,organizationData,renderOrganization,renderOrganizationViews,renderMeetingTodos,renderOrganizationVacancies,overviewAgenda,overviewCalendarCells,overviewCycle,stageInsight,stageInsightRows,ganttRowControls,taskDeliverableCount} from '../samples/handover-preview/pages.mjs';
+
+test('客户团队默认展示，运维架构保持独立，后续可增加不同客户',()=>{
+ const customers=[{id:'hoyo',name:'HOYOOverse',teams:[{name:'销售团队',members:['甲','乙']},{name:'运维团队',members:['乙']} ]},{id:'other',name:'其他客户',teams:[{name:'工程团队',members:['丙']}]}];
+ const summary=renderOrganizationViews({customers});
+ assert.match(summary,/data-organization-view="teams" aria-pressed="true"/);
+ assert.match(summary,/<dt>成员<\/dt><dd>2<\/dd>/);
+ assert.match(summary,/查看运维架构/);
+ assert.doesNotMatch(summary,/>丙</);
+ assert.match(renderOrganizationViews({customers,customerId:'other'}),/>丙</);
+ assert.match(renderOrganizationViews({customers,view:'operations',operations:'既有运维岗位'}),/既有运维岗位/);
+});
+
+test('已完成会议待办可重开，只读者看到真实状态但没有修改入口',()=>{
+ const items=[{id:'tbl:rec1',title:'事项',status:'已完成',meetingId:'meeting'}];
+ assert.match(renderMeetingTodos({items}),/class="overview-meeting-status done">已完成/);
+ assert.doesNotMatch(renderMeetingTodos({items}),/data-meeting-status=/);
+ const editable=renderMeetingTodos({items,editable:true,statusOptions:['待办','已完成']});
+ assert.match(editable,/data-meeting-status="tbl:rec1"/);
+ assert.match(editable,/href="\/meeting-trail\?meeting=meeting"/);
+});
 const tasks=[{id:'late',code:'1',title:'逾期检查',stage:1,status:'逾期进行',start:'2026-10-01',end:'2026-10-20',actualCompletion:''},{id:'done',code:'2',title:'已完成检查',stage:1,status:'已完成',start:'2026-10-01',end:'2026-11-01',actualCompletion:'2026-11-01'},{id:'next',code:'3',title:'下周检查',stage:1,status:'未开始',start:'2026-11-02',end:'2026-11-06',actualCompletion:''}];
 test('只读状态标签替代完成勾选，交付物及优先级仍在原行',()=>{
  const row={...tasks[1],priority:'🔴P0-高优',attachments:[{name:'交付.txt'}],deliverableLinks:'https://example.com/doc\nhttps://example.com/doc'};

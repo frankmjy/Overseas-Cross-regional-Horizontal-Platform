@@ -18,7 +18,7 @@ export function handoverMutationReceipt(before,after,result){
  const order=after.records.map(r=>r.id),removed=before.records.filter(r=>!order.includes(r.id)).map(r=>r.id);
  return{ok:true,...result,receipt:'handover-patch-v1',baseRevision:before.revision,revision:after.revision,records:after.records.filter(r=>prior.get(r.id)!==JSON.stringify(r)),removedIds:removed,...(JSON.stringify(order)!==JSON.stringify(before.records.map(r=>r.id))?{recordOrder:order}:{}),modelPatch:metadata};
 }
-export function createHandoverHandler({root,service,organization}={}){
+export function createHandoverHandler({root,service,organization,customerRecords}={}){
  const files=new Map(['app.mjs','model.mjs','styles.css','editor.mjs','pages.mjs','inline.mjs'].map(name=>['/handover-preview/'+name,['samples/handover-preview/'+name,name.endsWith('.css')?'text/css':'text/javascript']]));
  files.set('/project-tasks/handover/priority.mjs',['project-tasks/handover/priority.mjs','text/javascript']);
  for(const name of ['resources','summary','ordering'])files.set(`/project-tasks/handover/${name}.mjs`,[`project-tasks/handover/${name}.mjs`,'text/javascript']);
@@ -48,7 +48,7 @@ export function createHandoverHandler({root,service,organization}={}){
    }
    if(!api)throw failure('页面不存在。',404);
    const route=url.pathname.slice('/api/handover-plan'.length)||'/',upload=/^\/uploads\/([\da-f-]{36})$/i.exec(route);
-   const method=upload?'POST':{'/':'GET','/options':'GET','/operations':'GET','/mutations':'POST','/retry':'POST','/discard':'POST','/refresh':'POST','/organization':'GET'}[route];
+   const method=upload?'POST':{'/':'GET','/options':'GET','/operations':'GET','/mutations':'POST','/retry':'POST','/discard':'POST','/refresh':'POST','/organization':'GET','/organization-teams':'GET'}[route];
    if(!method)throw failure('接口不存在。',404);if(req.method!==method)throw failure('不支持此请求方法。',405);
    if(method==='POST'){
     let origin;try{origin=new URL(req.headers.origin);}catch{}if(!origin||origin.host!==req.headers.host||req.headers['sec-fetch-site']==='cross-site')throw failure('不允许跨站提交。',403);
@@ -57,6 +57,11 @@ export function createHandoverHandler({root,service,organization}={}){
    else if(route==='/options'){service.warm();const snapshot=service.snapshot(req.auth);send(200,{ok:true,ready:snapshot.ready,schema:snapshot.schema,users:snapshot.users,parents:snapshot.records.filter(r=>!r.deleted&&r.level==='任务组').map(r=>({id:r.id,code:r.code,title:r.title,stage:r.stage})),documents:(()=>{const options=service.documents?.options(req.auth);return options?{...options,targets:options.targets.map(t=>{const source=service.documents.sources?.find(s=>s.id===t.id);return{...t,name:source?.name||'项目资料库',url:service.documents.config?.baseUrl?service.documents.config.baseUrl+'?table='+encodeURIComponent(t.id):''};})}:{state:'error',natures:[],directoryNodes:[],error:'归档服务尚未接入。'};})()});}
    else if(route==='/operations')send(200,{ok:true,operations:service.snapshot(req.auth).operations,revision:service.state.revision||0});
    else if(route==='/organization'){if(!organization)throw failure('项目组织服务暂不可用。',503);send(200,{ok:true,data:await organization(req.auth.project.knowledgeKey)});}
+   else if(route==='/organization-teams'){
+    if(!req.auth?.permissions?.projects?.view)throw failure('无权查看项目组织。',403);
+    const customers=await customerRecords?.(req.auth.project.knowledgeKey)||[];
+    send(200,{ok:true,customers:customers.map(({id,name,teams})=>({id,name,teams}))});
+   }
    else if(upload){
     if(!/^application\/octet-stream(?:;|$)/i.test(req.headers['content-type']||''))throw failure('附件提交格式不正确。',415);
     const plan=service.deliverables.uploadPlan(upload[1],req.auth);service.deliverables.storeUpload(upload[1],await bytes(req,Math.min(plan.size,64*1024*1024)),req.auth);send(201,{ok:true});

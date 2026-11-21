@@ -1,6 +1,6 @@
-export function scopeIdentityCache(state, appId, empty) {
+export function scopeIdentityCache(state, appId, empty, finished=['success']) {
   if (!appId || state.appId === appId) return null;
-  if (Object.values(state.operations || {}).some(op => op.status !== 'success')) {
+  if (Object.values(state.operations || {}).some(op => !finished.includes(op.status))) {
     const message = '应用已变更，但仍有未同步任务。请先使用原应用完成或核对任务，禁止将旧人员标识直接写入新应用。';
     throw Object.assign(new Error(message), { status:409, publicMessage:message });
   }

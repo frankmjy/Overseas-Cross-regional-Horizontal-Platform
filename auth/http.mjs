@@ -185,7 +185,7 @@ export function createAuthHandler({ service, root, canBootstrap = () => true, ac
         if (!project.planConnected && (url.pathname === '/api/base-sync' || /^\/api\/project-tasks(?:\/|$)/.test(url.pathname))) throw authError('该项目任务表尚未接入。', 409);
       }
       if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) sameOrigin(req, origin);
-      if ((url.pathname === '/api/application-settings' || url.pathname === '/api/admin/permissions') && req.method === 'POST') {
+      if (['/api/application-settings','/api/admin/permissions','/api/knowledge/meetings/action-status','/api/knowledge/meetings/action-status-retry'].includes(url.pathname) && req.method === 'POST') {
         const csrf = req.headers['x-csrf-token'];
         if (typeof csrf !== 'string' || Buffer.byteLength(csrf) !== Buffer.byteLength(session.csrf) || !timingSafeEqual(Buffer.from(csrf), Buffer.from(session.csrf))) throw authError('配置请求已失效，请刷新后重试。', 403);
       }

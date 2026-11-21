@@ -79,7 +79,24 @@ test('总览读取当前项目和海外同频近30天的正式待办，保留可
   const response=await call(true);
   assert.equal(response.code,200);
   const {items}=JSON.parse(response.body);
-  assert.deepEqual(items.map(item=>item.title),['soon','later','older','fourth']);
+  assert.deepEqual(items.map(item=>item.title),['soon','later','older','fourth','done']);
+  assert.equal(items.at(-1).status,'已完成');
   assert.equal(items[0].brief,'short');
   assert.doesNotMatch(response.body,/private-note|other-project|draft/);
+});
+
+test('客户周报限定在有会议访问权限的当前项目，不返回客户成员名单',async()=>{
+ const snapshot={state:'ready',meetings:[],documents:[],sources:[]};
+ const customerRecords=async project=>project==='thailand'?[{id:'hoyo',name:'HOYOverse',teams:[{name:'运维团队',members:['名单成员']}],weekly:{folder:'https://vnet.feishu.cn/drive/folder/Test',reports:[]}}]:[];
+ const handler=createKnowledgeHandler({service:{read:()=>snapshot},customerRecords});
+ async function call(project,view,overview=true){
+  const response={writeHead(code){this.code=code;},end(body){this.body=JSON.parse(body);}};
+  await handler({url:overview?'/api/knowledge?meetingOverview=1':'/api/knowledge',method:'GET',auth:{project:{knowledgeKey:project},permissions:{meetings:{view},knowledge:{view:true}}}},response);
+  assert.equal(response.code,200);
+  return response.body.customerWeeklyReports;
+ }
+ assert.deepEqual(await call('thailand',true),[{id:'hoyo',name:'HOYOverse',folder:'https://vnet.feishu.cn/drive/folder/Test',reports:[]}]);
+ assert.deepEqual(await call('thailand',false),[]);
+ assert.deepEqual(await call('thailand',true,false),[]);
+ assert.deepEqual(await call('malaysia',true),[]);
 });

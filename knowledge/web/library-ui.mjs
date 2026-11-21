@@ -88,16 +88,56 @@ function renderDriveFolder(document,children=[]){
  if(!folders.length)return parent;
  return `<div class="material-drive-group">${parent}<details class="material-drive-children"${folders.length<=4?' open':''}><summary>${icon('chevron')}<span>资料入口</span><b>${folders.length}</b></summary><ul>${folders.map(child=>`<li><a href="${esc(child.url)}" target="_blank" rel="noopener noreferrer">${icon('folder')}<span data-business-text>${esc(child.name.replace(/^\d{1,2}(?:\s*[-—.]\s*|\s+)(?=\S)/u,''))}</span>${icon('external')}</a></li>`).join('')}</ul></details></div>`;
 }
-export function renderDocumentCards(rows,{limit=60,collapsedGroups=[],editable=false,selection={},driveFolders={}}={}){
+const fileExtension=/\.(?:pdf|docx?|xlsx?|pptx?|dwg|dxf|zip|rar|7z|csv|txt|png|jpe?g)$/iu;
+const fileVariant=/(?:\s*\((?:第[一二三四五六七八九十\d]+(?:轮|次)(?:\s*[-–—]\s*\d+)?\s*(?:补充|回复|问题)?|副本|补充(?:\d+)?|修订(?:版)?|终版|定稿|copy(?:\s+\d+)?)\)|\s*[-–—_]\s*(?:v(?:er)?\.?\s*\d+(?:\.\d+)*|(?:回复|补充)[-_ ]?\d{0,8}|修订版|终版|定稿|副本|copy))$/iu;
+function materialSeriesTitle(title){
+ let base=String(title||'').normalize('NFKC').trim().replace(fileExtension,'').trim();
+ let previous;
+ do{
+  previous=base;
+  // A bare numeric suffix can be a device number. Only strip it after a recognized file variant.
+  base=base.replace(/\s*\(\d{1,2}\)$/u,(suffix,offset)=>fileVariant.test(base.slice(0,offset))?'':suffix).replace(fileVariant,'').trim();
+ }while(base!==previous);
+ return base.replace(/\s*[-–—]\s*/gu,'-').replace(/\s+/gu,' ');
+}
+function materialSeries(documents,query){
+ if(query?.trim())return documents.map(document=>({document}));
+ const buckets=new Map();
+ const entries=[];
+ for(const document of documents){
+  const title=materialSeriesTitle(document.title),scope=document.libraryScope;
+  const qualified=title.length>=6&&!/^(?:未命名|项目资料|技术(?:审核|评审)意见$|技术文件$|会议纪要$)/u.test(title);
+  if(!qualified||document.members||document.driveFolder||document.driveCollection||!scope||scope==='project'&&!document.projectScope){entries.push({document});continue;}
+  const {chapter,stage}=documentLifecycle(document);
+  const key=JSON.stringify([scope,document.projectScope||'',chapter,stage,documentDirectory(document),natureOf(document),document.specialty||'',title.toLowerCase()]);
+  if(!buckets.has(key)){
+   const entry={document,title,key,files:[]};buckets.set(key,entry);entries.push(entry);
+  }
+  buckets.get(key).files.push(document);
+ }
+ return entries;
+}
+function renderMaterialSeries({title,key,files},editable,grouped,open){
+ return `<details class="material-series" data-material-series="${esc(key)}"${open?' open':''}>
+  <summary title="${esc(title)}"><span class="material-file-icon is-collection">${icon('folder')}</span><span class="material-series-title" data-business-text>${esc(title)}</span><b>${files.length}</b><span class="material-series-toggle">${icon('chevron')}</span></summary>
+  <div class="material-series-files">${files.map(document=>materialCard(document,editable,grouped)).join('')}</div></details>`;
+}
+export function renderDocumentCards(rows,{limit=60,collapsedGroups=[],openSeries=[],editable=false,selection={},driveFolders={}}={}){
  if(!rows.length)return '<p class="library-empty">暂无资料</p>';
  const showFolders=Boolean(selection.directory||selection.natures?.length===1)&&!selection.specialties?.length&&!selection.specialty;
  const collapsed=new Set(collapsedGroups);
+ const opened=new Set(openSeries);
  let visible=0,expandedCount=0;
  function grid(documents,grouped){
-  expandedCount+=documents.length;
-  const shown=documents.slice(0,Math.max(0,limit-visible));
+  const entries=materialSeries(documents,selection.query);
+  expandedCount+=entries.length;
+  const shown=entries.slice(0,Math.max(0,limit-visible));
   visible+=shown.length;
-  return shown.length?`<div class="material-grid">${shown.map(document=>document.driveFolder?renderDriveFolder(document,showFolders?driveFolders[document.driveFolder]:undefined):materialCard(document,editable,grouped)).join('')}</div>`:'';
+  return shown.length?`<div class="material-grid">${shown.map(entry=>{
+   const {document,files,key}=entry;
+   if(files?.length>1)return renderMaterialSeries(entry,editable,grouped,opened.has(key));
+   return document.driveFolder?renderDriveFolder(document,showFolders?driveFolders[document.driveFolder]:undefined):materialCard(document,editable,grouped);
+  }).join('')}</div>`:'';
  }
  const body=groupBy(rows,natureOf).sort(([a],[b])=>natureCompare(a,b)).map(([name,documents])=>{
   const isGrouped=equipmentNatures.has(name);

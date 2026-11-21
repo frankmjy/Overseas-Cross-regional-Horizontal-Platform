@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "release": "20261121.1",
+  "status": "deployed-server-verified",
+  "predecessor": "20261120.1",
+  "candidateSha256": "d4849291957cb2594f34f5168b452f22ee95c520729e3dfb2dca4f8b0a56b0f0",
+  "manifestSha256": "fc8cbd0c21eb4f1db646e380269f0aa2d5c35c7514a00888e0a4caf919423669",
+  "payloadSha256": "77bb0ba003c74559770b8e910884167d798cac66335e459e3c3d9a44750b216c",
+  "filesChanged": [
+    "server.mjs",
+    "src/platform-translations.js",
+    "knowledge/customer-records.mjs",
+    "knowledge/http.mjs",
+    "knowledge/meeting-fields.mjs",
+    "knowledge/meeting-http.mjs",
+    "knowledge/meeting-service.mjs",
+    "knowledge/web/app.mjs",
+    "knowledge/web/library-ui.mjs",
+    "knowledge/web/library.css",
+    "knowledge/web/meeting-trail.css",
+    "knowledge/web/meeting-trail.mjs",
+    "auth/http.mjs",
+    "auth/identity-cache.mjs",
+    "project-tasks/handover/http.mjs",
+    "samples/handover-preview/app.mjs",
+    "samples/handover-preview/pages.mjs",
+    "samples/handover-preview/styles.css"
+  ],
+  "features": [
+    "知识共享将同名及同主题版本归为可展开小组，保留逐份搜索和原文链接",
+    "项目总览展示会议待办状态，授权用户可重新修改并同步飞书",
+    "泰国项目组织新增项目团队总览，保留运维团队独立视图",
+    "议事航迹增加 HOYOverse 客户周报，资料管理按客户周报归档"
+  ],
+  "checks": {
+    "businessTests": 512,
+    "exactDeployedFilesVerified": 376,
+    "packagingTests": 5,
+    "nativeRollback": true,
+    "environmentPreserved": true,
+    "https": true,
+    "onlineBrowser": {
+      "passed": true,
+      "protocol": "https",
+      "authenticated": true,
+      "browser": "Chrome",
+      "organization": {
+        "customerTeams": 7,
+        "customerMembers": 20,
+        "shiftTeams": 8
+      },
+      "reports": {
+        "meetingRecent": 3,
+        "meetingExpanded": 5,
+        "library": 5
+      },
+      "knowledge": {
+        "bacGrouped": 6,
+        "searchIndividual": true
+      },
+      "meetingStatus": {
+        "liveRows": 9,
+        "options": [
+          "待办",
+          "进行中",
+          "已完成"
+        ],
+        "verifiedWriteAgainstIsolatedRecords": true
+      }
+    },
+    "independentSessionSurvivalSeconds": 110
+  },
+  "recordedAt": "2026-11-21T10:24:32.4429970Z"
+}

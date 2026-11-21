@@ -1,7 +1,8 @@
 import { filterTasks, hierarchy, timeRange, timelineColumns, stageNames, colors, naturalCompare, day, calendarCells, text } from './model.mjs';
 import { translateProjectTitle } from '../../src/platform-translations.js';
+import { readPlatformSession } from '../../src/platform-context.js';
 import {completedStatus,statusPresentation} from '../../project-tasks/handover/status.mjs';
-import {pageDefinitions,renderOverview,renderWeekly,renderMonthly,renderOrganization,renderOrganizationVacancies,monthlyData,organizationData,overviewAgenda,stageInsightRows,ganttRowControls,taskDeliverableCount,renderMeetingTodos} from './pages.mjs';
+import {pageDefinitions,renderOverview,renderWeekly,renderMonthly,renderOrganization,renderOrganizationViews,renderOrganizationVacancies,monthlyData,organizationData,overviewAgenda,stageInsightRows,ganttRowControls,taskDeliverableCount,renderMeetingTodos} from './pages.mjs';
 import {createHandoverEditor} from './editor.mjs';
 import {createInlineTaskEntry} from './inline.mjs';
 import {taskResources,renderResourceLinks,bindOutsideDismiss} from '../../project-tasks/handover/resources.mjs';
@@ -51,6 +52,8 @@ const state = { mode: ['gantt', 'list', 'milestones', 'calendar'].includes(query
   range: 'project', scale: 'fit', open: new Set(), calendar: today().slice(0, 7),week:today(),reviewMonth:today().slice(0,7),weeklyView:'current',periodPage:1 };
 let model, phase = 'idle', searchTimer, focusedBeforeDialog,lastRead=0,retryReadAt=0,organization=null,organizationError='',organizationLoading=false;
 let meetingTodos={state:'loading'}, meetingTodosRequested=false;
+let meetingStatusLocked=false;
+const orgView={view:query.get('org')==='operations'?'operations':'teams',customerId:query.get('customer')||'',customers:[],loading:false,error:'',loaded:false};
 state.mode=state.page==='milestones'?'milestones':'gantt';
 const dialog = $('#detailDialog');
 const editor=createHandoverEditor({dialog:$('#taskEditorDialog'),getModel:()=>model,getContext:()=>state,api:securePage?api:'/api/handover-plan',onAccepted:data=>{model=data;render();if(data.needsRefresh)load(false,true);},onMessage:showMessage});
@@ -64,7 +67,15 @@ const inlineEntry=createInlineTaskEntry({root:document,getModel:()=>model,submit
 }});
 function showMessage(message,error=false){const notice=$('#notice');delete notice.dataset.planRead;notice.hidden=false;notice.classList.toggle('error',error);notice.textContent=message;}
 function loginUrl(){return 'https://localhost:3333/project-management?view=handover&tab='+state.page;}
-function setPage(page){if(!pageDefinitions.some(p=>p.id===page))return;state.page=page;state.mode=page==='milestones'?'milestones':'gantt';resetFilters();state.periodPage=1;setOpen();render();$('.workspace').classList.remove('nav-open');if(page==='organization')loadOrganization();}
+function setPage(page){if(!pageDefinitions.some(p=>p.id===page))return;state.page=page;state.mode=page==='milestones'?'milestones':'gantt';resetFilters();state.periodPage=1;setOpen();render();$('.workspace').classList.remove('nav-open');if(page==='organization')loadOrganizationView();}
+function loadOrganizationView(){return orgView.view==='operations'?loadOrganization():loadCustomerTeams();}
+async function loadCustomerTeams(force=false){
+ if(orgView.loading||orgView.loaded&&!force||!securePage)return;
+ Object.assign(orgView,{loading:true,error:''});renderBoard();
+ try{const response=await fetch('/api/handover-plan/organization-teams',{signal:AbortSignal.timeout(8000)}),data=await response.json();if(!response.ok)throw Error(data.error);Object.assign(orgView,{customers:data.customers,loaded:true});}
+ catch(e){orgView.error=e.message||'项目团队读取失败。';}
+ finally{orgView.loading=false;if(state.page==='organization'&&orgView.view==='teams')renderBoard();}
+}
 async function loadOrganization(){if(organizationLoading)return;if(!securePage){organizationError='请在登录后查看当前项目组织。';renderBoard();return;}organizationLoading=true;organizationError='';renderBoard();try{const response=await fetch('/api/staffing',{signal:AbortSignal.timeout(45000)}),data=await response.json();if(!response.ok)throw Error(data.error);organization=organizationData(data);}catch(e){organizationError=e.message||'项目组织未能读取，请重试。';}finally{organizationLoading=false;if(state.page==='organization')renderBoard();}}
 function tasks() { return model ? filterTasks(model, state) : []; }
 function nodes(filters = state) { return model ? model.milestones.filter(r => (!filters.stage || r.stage === filters.stage)
@@ -74,6 +85,8 @@ function parentRows() { const ids=new Set(tasks().map(t=>t.parentId)),all=new Se
 function resetFilters() { Object.assign(state, { stage: 0, keyword: '', overviewKeyword:'', overviewDay:'', category: '', status: '', review: false, unscheduled: false }); }
 function syncUrl() {
   const url = new URL(location.href);
+  if(state.page==='organization'&&orgView.view==='operations')url.searchParams.set('org','operations');else url.searchParams.delete('org');
+  if(state.page==='organization'&&orgView.customerId)url.searchParams.set('customer',orgView.customerId);else url.searchParams.delete('customer');
   url.searchParams.delete('batch');
   url.searchParams.delete('mode');
   for (const [key, value] of [['tab', state.page], ['stage', state.stage], ['q', state.keyword]]) { if (value) url.searchParams.set(key, value); else url.searchParams.delete(key); }
@@ -190,28 +203,70 @@ function calendar() {
   const filteredModel = { ...model, tasks: tasks(), milestones: nodes() };
   return `<div class="calendar-wrap"><div class="calendar-grid">${['一', '二', '三', '四', '五', '六', '日'].map(d => `<span class="calendar-day-head" data-weekday-label>${d}</span>`).join('')}${calendarCells(filteredModel, state.calendar).map(c => `<button class="calendar-day${c.current ? '' : ' other'}${c.date === today() ? ' today' : ''}" data-day="${c.date}" aria-label="${c.date}，${c.due.length}项截止，${c.milestones.length}个里程碑"><strong>${Number(c.date.slice(8))}</strong>${c.milestones.slice(0, 2).map(r => `<span class="calendar-event"><span data-project-title>${esc(r.title)}</span></span>`).join('')}${c.due.length ? `<span class="calendar-due">${c.due.length}项截止</span>` : ''}</button>`).join('')}</div></div>`;
 }
-async function loadMeetingTodos() {
-  if(meetingTodosRequested)return;
+function paintMeetingTodos(){const panel=$('.overview-weekly');if(!panel)return;const offset=panel.querySelector('ol')?.scrollTop||0;panel.outerHTML=renderMeetingTodos(meetingTodos);const list=$('.overview-weekly-items');if(list)list.scrollTop=offset;}
+async function loadMeetingTodos(force=false) {
+  if(meetingTodosRequested&&!force)return;
   meetingTodosRequested=true;
   const update=value=>{
     meetingTodos=value;
-    const panel=$('.overview-weekly');
-    if(panel)panel.outerHTML=renderMeetingTodos(meetingTodos);
+    paintMeetingTodos();
   };
   try {
     for(let attempt=0;attempt<30;attempt++){
       const response=await fetch('/api/knowledge?meetingTodos=1',{signal:AbortSignal.timeout(8000)});
       if(response.status===403){update({state:'forbidden'});return;}
       if(!response.ok)throw Error('会议待办读取失败');
-      const {items,refreshing,state}=await response.json();
+      const {items,refreshing,state,editable,statusOptions}=await response.json();
       if(items.length||!refreshing){
-        update({items,state:['error','partial'].includes(state)?'unavailable':'ready'});
+        update({items,editable,statusOptions,state:['error','partial'].includes(state)?'unavailable':'ready'});
         return;
       }
       await new Promise(resolve=>setTimeout(resolve,1500));
     }
     update({state:'unavailable'});
   } catch {update({state:'unavailable'});}
+}
+async function meetingStatusRequest(route,body){
+ const endpoint='/api/knowledge/meetings/';
+ let options={signal:AbortSignal.timeout(8000)};
+ if(body){const session=await readPlatformSession();options={signal:AbortSignal.timeout(8000),method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':session.csrf||''},body:JSON.stringify(body)};}
+ const response=await fetch(endpoint+route,options),data=await response.json();
+ if(!response.ok)throw Object.assign(Error(data.error||'会议待办暂不可用'),{status:response.status});
+ return data.operation;
+}
+async function watchMeetingStatus(id){
+ for(let attempt=0;attempt<10;attempt++){
+  try{const op=await meetingStatusRequest('action-status-operation?id='+encodeURIComponent(id));if(['success','error','conflict'].includes(op.status)){await loadMeetingTodos(true);showMessage(op.status==='success'?'待办状态已同步':op.error,op.status!=='success');return;}}catch{break;}
+  await new Promise(resolve=>setTimeout(resolve,1200));
+ }
+ await loadMeetingTodos(true);
+}
+function editMeetingStatus(id){
+ const item=meetingTodos.items?.find(action=>action.id===id);
+ if(!item||!meetingTodos.editable)return;
+ if(item.sync&&item.sync.status!=='error')return watchMeetingStatus(item.sync.id);
+ const retry=item.sync?.status==='error';let submission;
+ openDialog(`<header class="detail-header"><h2 id="detailTitle">修改待办状态</h2><button type="button" class="icon-button" data-action="close-dialog" aria-label="关闭详情">×</button></header><form class="meeting-status-form"><div class="detail-main"><p class="meeting-status-title" data-business-text>${esc(item.title)}</p>${retry?`<p>${esc(item.sync.error)}</p>`:`<label>待办状态<select name="status" required>${[...new Set([item.status,...meetingTodos.statusOptions])].filter(Boolean).map(status=>`<option value="${esc(status)}"${item.status===status?' selected':''}>${esc(status)}</option>`).join('')}</select></label>`}</div><footer class="detail-footer"><span role="status"></span><button type="submit">${retry?'重试同步':'保存状态'}</button></footer></form>`);
+ const form=dialog.querySelector('form'),value=form.elements.namedItem('status'),feedback=form.querySelector('[role=status]'),submit=form.querySelector('[type=submit]');
+ form.onsubmit=async event=>{
+  event.preventDefault();if(submit.disabled)return;
+  if(value?.value===item.status){feedback.textContent='请选择新的待办状态。';return;}
+  submission||=retry?{id:item.sync.id}:{id,clientMutationId:crypto.randomUUID(),expected:item.status,status:value.value};
+  submit.disabled=true;if(value)value.disabled=true;meetingStatusLocked=true;feedback.textContent='正在保存…';
+  try{
+   const operation=await meetingStatusRequest(retry?'action-status-retry':'action-status',submission);
+   if(!retry)item.status=submission.status;
+   item.sync=operation.status==='success'?null:operation;
+   meetingStatusLocked=false;closeDialog();paintMeetingTodos();
+   document.querySelector('.overview-weekly-open')?.focus({preventScroll:true});
+   showMessage('待办状态已受理，正在同步');watchMeetingStatus(operation.id);
+  }catch(error){
+   const uncertain=!error.status||error.status>=500;
+   meetingStatusLocked=uncertain;if(!uncertain){submission=undefined;if(value)value.disabled=false;}
+   feedback.textContent=uncertain?'保存结果待确认，请重试核对。':error.message;
+   submit.disabled=false;
+  }
+ };
 }
 function renderBoard() {
   closeRowMenu();
@@ -221,7 +276,7 @@ function renderBoard() {
   const meetingScroll=previousMeetingList?.scrollTop||0;
   const meetingAnchor=previousMeetingList?.querySelector('a')?.title;
   const meetingPaused=previousMeetingList?.parentElement.paused;
-  const renderers={gantt,milestones,overview:()=>renderOverview(model,{month:state.calendar,today:today(),keyword:state.overviewKeyword,selectedDay:state.overviewDay,meetingTodos}),weekly:()=>renderWeekly(model,{anchor:state.week,today:today(),view:state.weeklyView,page:state.periodPage}),monthly:()=>renderMonthly(model,{month:state.reviewMonth,page:state.periodPage}),organization:()=>renderOrganization(organization,{loading:organizationLoading,error:organizationError,loginUrl:securePage?'':loginUrl()})};
+  const renderers={gantt,milestones,overview:()=>renderOverview(model,{month:state.calendar,today:today(),keyword:state.overviewKeyword,selectedDay:state.overviewDay,meetingTodos}),weekly:()=>renderWeekly(model,{anchor:state.week,today:today(),view:state.weeklyView,page:state.periodPage}),monthly:()=>renderMonthly(model,{month:state.reviewMonth,page:state.periodPage}),organization:()=>renderOrganizationViews({...orgView,operations:orgView.view==='operations'?renderOrganization(organization,{loading:organizationLoading,error:organizationError,loginUrl:securePage?'':loginUrl()}):''})};
   $('.plan-panel').dataset.page=state.page;$('#board').dataset.page=state.page;$('#board').innerHTML=renderers[state.page]();
   if(state.page==='overview'){
     const list=$('.overview-weekly-items');
@@ -262,7 +317,7 @@ function openDialog(html) {
   if (!dialog.open) dialog.showModal();
   dialog.scrollTop = 0;
 }
-function closeDialog() { dialog.close(); focusedBeforeDialog?.focus?.(); }
+function closeDialog() { if(meetingStatusLocked)return;dialog.close(); focusedBeforeDialog?.focus?.(); }
 bindOutsideDismiss(dialog,closeDialog);
 function detailActions(row){
   if(!model.capabilities?.editable)return '';
@@ -306,7 +361,7 @@ async function load(refresh = false,silent=false) {
     if(data.ready===false){model=data;phase='ready';lastRead=Date.now();$('#loadStatus').hidden=false;$('#workspaceData').hidden=true;$('#loadStatus').innerHTML=data.error?`<span>${esc(data.error)}</span><button class="text-button" data-action="refresh">重试连接</button>`:'<span class="spinner"></span>正在读取正式任务';return;}
     const initial = !model,wasPending=model?.numberingPending||model?.operations?.some(o=>o.status!=='success'),changed=initial||data.revision!==model.revision||data.source.fetchedAt!==model.source.fetchedAt||today()!==model.clockDay;model=data;model.clockDay=today();phase = 'ready';lastRead=Date.now();$('#loadStatus').hidden = true; $('#workspaceData').hidden = false;
     if(wasPending&&!data.numberingPending&&!data.operations?.some(o=>o.status!=='success'))showMessage('同步完成。');
-    if (initial) setOpen(hasFilter());if(changed||!silent)render();if(initial&&state.page==='organization')loadOrganization();
+    if (initial) setOpen(hasFilter());if(changed||!silent)render();if(initial&&state.page==='organization')loadOrganizationView();
     if(data.ready===false&&data.error)showMessage(data.error,true);if(data.numberingError)showMessage(data.numberingError,true);
   } catch (error) {
     phase = 'error';
@@ -321,6 +376,9 @@ async function load(refresh = false,silent=false) {
 document.addEventListener('click', async event => {
   if(event.target.closest('[data-home]')){event.preventDefault();setPage('overview');return;}
   const trigger = event.target.closest('button'); if (!trigger) return;
+  if(trigger.dataset.organizationView){orgView.view=trigger.dataset.organizationView;renderBoard();syncUrl();loadOrganizationView();return;}
+  if(trigger.dataset.organizationCustomer){orgView.customerId=trigger.dataset.organizationCustomer;renderBoard();syncUrl();return;}
+  if(trigger.dataset.meetingStatus)return editMeetingStatus(trigger.dataset.meetingStatus);
   if(trigger.dataset.page)return setPage(trigger.dataset.page);
   if(trigger.dataset.rowActions){
    const row=model.records.find(r=>r.id===trigger.dataset.rowActions);if(!row||!model.capabilities?.editable||row.id.startsWith('local:')||model.pendingRecordIds?.includes(row.id))return;
@@ -360,6 +418,7 @@ document.addEventListener('click', async event => {
     case 'trash': editor.trash();break;
     case 'week-today': state.week=today();state.periodPage=1;renderBoard();break;
     case 'organization-retry': loadOrganization();break;
+    case 'customer-teams-retry': loadCustomerTeams(true);break;
     case 'organization-vacancies': openDialog(renderOrganizationVacancies(organization));break;
     case 'close-dialog': closeDialog(); break;
     case 'clear': resetFilters(); setOpen(); render(); break;
@@ -376,7 +435,7 @@ document.addEventListener('click', async event => {
 });
 document.addEventListener('input', event => { if(event.target.id==='overviewSearch'){clearTimeout(searchTimer);state.overviewKeyword=event.target.value;const position=event.target.selectionStart;searchTimer=setTimeout(()=>{renderBoard();const input=$('#overviewSearch');input?.focus({preventScroll:true});input?.setSelectionRange(position,position);},180);return;} if (event.target.id === 'search') { clearTimeout(searchTimer); state.keyword = event.target.value; searchTimer = setTimeout(() => { setOpen(Boolean(state.keyword)); renderMetrics(); renderStages(); renderBoard(); syncUrl(); }, 120); } });
 document.addEventListener('change', event => { if(event.target.id==='overviewCalendarYear'||event.target.id==='overviewCalendarMonth'){const year=$('#overviewCalendarYear').value,month=$('#overviewCalendarMonth').value;state.calendar=year+'-'+month.padStart(2,'0');state.overviewDay='';renderBoard();}else if (event.target.id === 'calendarMonth' && /^\d{4}-\d\d$/.test(event.target.value)) { state.calendar = event.target.value; state.overviewDay='';renderBoard(); } else if(event.target.id==='weekAnchor'&&/^\d{4}-\d\d-\d\d$/.test(event.target.value)){state.week=event.target.value;state.periodPage=1;renderBoard();}else if(event.target.id==='reviewMonth'&&/^\d{4}-\d\d$/.test(event.target.value)){state.reviewMonth=event.target.value;state.periodPage=1;renderBoard();}else if (event.target.id === 'category' || event.target.id === 'status') { state[event.target.id] = event.target.value; setOpen(true); render(); } });
-dialog.addEventListener('cancel', () => focusedBeforeDialog?.focus?.());
+dialog.addEventListener('cancel', event => {if(meetingStatusLocked)event.preventDefault();else focusedBeforeDialog?.focus?.();});
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (model && state.page === 'gantt') renderBoard(); }, 100); });
 let polling=false;

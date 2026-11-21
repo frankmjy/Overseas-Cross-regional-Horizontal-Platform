@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {meetingMonthNow,summarizeMeetings,renderMeetingOverview,renderMeetingCalendar,renderMeetingFollowups} from '../knowledge/web/meetings-overview.mjs';
+import {renderMeetingTrail} from '../knowledge/web/meeting-trail.mjs';
+
+test('客户周报有独立模块、最近各期与往期、原始云盘入口',()=>{
+ const reports=Array.from({length:5},(_,index)=>({title:`第${index+1}期`,date:`2026-11-0${5-index}`,url:`https://vnet.feishu.cn/docx/doc${index+1}`}));
+ const html=renderMeetingTrail({meetings:[],sources:[],state:{},project:'thailand',feed:{state:'ready',customerWeeklyReports:[{name:'HOYOOverse',folder:'https://vnet.feishu.cn/drive/folder/Folder',reports}]}});
+ assert.match(html,/客户周会周报/);
+ assert.match(html,/打开云盘/);
+ assert.match(html,/<summary>往期周报 <b>2<\/b>/);
+ assert.ok(html.indexOf('/docx/doc1')<html.indexOf('/docx/doc5'));
+});
 const rows=[
  {id:'a',project:'thailand',title:'澄清会议',date:'2026-10-15',links:[{label:'会议纪要'},{label:'会议妙记'}],actions:[]},
  {id:'b',project:'malaysia',title:'项目会<script>',date:'2026-10-16',links:[{label:'会议妙记'}],actions:[{title:'确认接口',owner:'专业组',due:'2026-10-28',status:'未完成'},{title:'已处理',status:'已完成'}]},
